@@ -1,5 +1,9 @@
 name: Windows
 
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   workflow_dispatch:
   push:
@@ -66,6 +70,15 @@ jobs:
           architecture: ${{ matrix.arch }}
           cache: npm
 
+      - name: Set up Go native browser bridge
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26.1'
+          cache: false
+
+      - name: Install required npm version
+        run: npm install --global npm@11.17.0
+
       - name: Validate lockfile portability
         run: npm run check:lockfile
 
@@ -88,25 +101,42 @@ jobs:
             throw "ffmpeg-static remains in the lockfile"
           }
 
+      - name: Build native browser bridge before integration tests
+        run: npm run build:browser-host
+
       - name: Generate license inventory
         run: npm run compliance:licenses
 
       - name: Run tests
         run: npm test
 
+      - name: Typecheck evaluation harness
+        run: npm run typecheck:evals
+
       - name: Build
         run: npm run build
 
       - name: Package native installer
         run: npm run ${{ matrix.dist_script }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       - name: Verify packaged architecture
         run: node scripts/verify-windows-package.mjs ${{ matrix.arch }}
 
       - name: Upload Windows installer
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: skill-recorder-windows-${{ matrix.arch }}
           path: release/*-windows-${{ matrix.arch }}.exe
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload compliance companion
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-recorder-windows-x64-compliance
+          path: .compliance/**
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
