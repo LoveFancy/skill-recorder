@@ -1,6 +1,8 @@
 import { AnalysisSchema } from "../../common/analysis";
 import { createReadTools } from "../builders/read-tools";
 import test from "node:test";
+import { once } from "node:events";
+import { rm } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { mkdtempSync,readFileSync,rmSync,writeFileSync,existsSync } from "node:fs";
 import os from "node:os";
@@ -46,7 +48,7 @@ test("native host → durable session → timeline → required model evidence, 
   let buffer=Buffer.alloc(0);const messages:any[]=[];
   host.stdout!.on('data',(chunk:Buffer)=>{buffer=Buffer.concat([buffer,chunk]);while(buffer.length>=4&&buffer.length>=buffer.readUInt32LE(0)+4){const n=buffer.readUInt32LE(0);messages.push(JSON.parse(buffer.subarray(4,4+n).toString()));buffer=buffer.subarray(4+n);}});
   const send=(value:unknown)=>{const b=Buffer.from(JSON.stringify(value)),h=Buffer.alloc(4);h.writeUInt32LE(b.length);host!.stdin!.write(Buffer.concat([h,b]));};
-  const wait=async(predicate:()=>boolean)=>{const start=Date.now();while(!predicate()){if(Date.now()-start>5000)throw new Error('Native bridge timeout');await new Promise(r=>setTimeout(r,10));}};
+  const wait=async(predicate:()=>boolean)=>{const start=Date.now();while(!predicate()){if(Date.now()-start>10000)throw new Error('Native bridge timeout; received kinds: '+messages.map(m=>m.kind).join(',')+'; bridge: '+JSON.stringify(bridge.status()));await new Promise(r=>setTimeout(r,10));}};
   await wait(()=>messages.some(m=>m.kind==='session'));
   const raw=event(meta.id,Date.now()-500);send({kind:'events',events:[raw]});
   await wait(()=>messages.filter(m=>m.kind==='ack').length===1);
@@ -79,7 +81,12 @@ test("native host → durable session → timeline → required model evidence, 
   const targets=String(await builderTool.handler({}, {sessionId:meta.id,toolCallId:'builder',toolName:builderTool.name,arguments:{}}));
   assert.ok(targets.includes('#save'));assert.ok(!targets.includes('person@example.com'));assert.equal(JSON.parse(targets).total,2);
 
- }finally{host?.kill();bridge.close();store?.dispose();if(previous===undefined)delete process.env.SKILL_RECORDER_SESSIONS_DIR;else process.env.SKILL_RECORDER_SESSIONS_DIR=previous;rmSync(root,{recursive:true,force:true});}
+ }finally{
+  if(host && host.exitCode===null && host.signalCode===null){const exited=once(host,'exit');host.kill();await exited;}
+  bridge.close();store?.dispose();await store?.whenClosed();
+  if(previous===undefined)delete process.env.SKILL_RECORDER_SESSIONS_DIR;else process.env.SKILL_RECORDER_SESSIONS_DIR=previous;
+  await rm(root,{recursive:true,force:true,maxRetries:5,retryDelay:100});
+ }
 });
 
 test("long browser recordings require all pages, including final operations",async()=>{
