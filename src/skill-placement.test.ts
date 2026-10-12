@@ -5,17 +5,19 @@ import { DEFAULT_TARGET, TARGETS } from "../common/skill";
 import { skillPlacementModel, skillTargetFor } from "./skill-placement";
 
 test("placement model preserves Scout and Cowork action ordering", () => {
-  const defaultSkill = skillPlacementModel(skillTargetFor(DEFAULT_TARGET.architecture));
+  assert.equal(DEFAULT_TARGET.architecture, "agent-skill");
+  assert.equal(skillPlacementModel(skillTargetFor(DEFAULT_TARGET.architecture)).defaultPlacement, "export");
+  const defaultSkill = skillPlacementModel(skillTargetFor("scout"));
   assert.equal(defaultSkill.defaultPlacement, "install");
   assert.deepEqual(
     defaultSkill.actions.map(({ placement, primary, label }) => [placement, primary, label]),
     [
-      ["export", false, "Export…"],
-      ["install", true, "Add to Scout"],
+      ["export", false, "导出…"],
+      ["install", true, "添加到 Scout"],
     ],
   );
-  assert.equal(defaultSkill.installDoneTitle, "Added to Scout");
-  assert.equal(defaultSkill.installDoneMessage, "is now in Scout — it loads automatically.");
+  assert.equal(defaultSkill.installDoneTitle, "已添加到 Scout");
+  assert.equal(defaultSkill.installDoneMessage, "已添加到 Scout，将自动加载。");
 
   const exportOnlyTarget = TARGETS.find(
     (target) =>
@@ -31,6 +33,6 @@ test("placement model preserves Scout and Cowork action ordering", () => {
   assert.equal(exportOnly.defaultPlacement, "export");
   assert.deepEqual(
     exportOnly.actions.map(({ placement, primary, label }) => [placement, primary, label]),
-    [["export", true, "Export skill"]],
+    [["export", true, "导出技能"]],
   );
 });

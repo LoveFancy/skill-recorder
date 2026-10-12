@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test, { type TestContext } from "node:test";
 
-import { CopilotClient, CopilotSession, type SessionConfig } from "@github/copilot-sdk";
+import { AgentClient, AgentSession, type SessionConfig } from "../ai/client";
 
 import { AnalysisSchema } from "../../common/analysis";
 import type { SkillBuildProgress } from "../../common/ipc";
@@ -41,11 +41,11 @@ function fixture(
   process.env.SKILL_RECORDER_SKILLS_DIR = skills;
   const progress: SkillBuildProgress[] = [];
   const counts = { turns: 0, sessions: 0, aborts: 0 };
-  const client = new CopilotClient();
+  const client = new AgentClient();
   t.mock.method(client, "createSession", async (config: SessionConfig) => {
     counts.sessions++;
     await options.beforeSession?.();
-    const session = new CopilotSession();
+    const session = new AgentSession();
     t.mock.method(session, "abort", async () => { counts.aborts++; });
     t.mock.method(session, "disconnect", async () => undefined);
     t.mock.method(session, "sendAndWait", async (input: string | { prompt: string }) => {
@@ -65,7 +65,7 @@ function fixture(
     return session;
   });
   class TestBuilder extends SkillBuilder {
-    protected override async ensureClient(): Promise<CopilotClient> {
+    protected override async ensureClient(): Promise<AgentClient> {
       return client;
     }
   }
@@ -100,7 +100,7 @@ test("preview renders the entire final file without installing or marking the se
   assert.equal(preview.markdown.includes("{{repo}}"), false);
   assert.equal(existsSync(f.skills), false);
   assert.equal(loadPersistedSkill(sessionId), null);
-  assert.match(f.progress.at(-1)?.message ?? "", /Nothing has been installed/);
+  assert.match(f.progress.at(-1)?.message ?? "", /尚未安装/);
   assert.deepEqual(await f.builder.prepare(sessionId, plan), preview);
   assert.equal(f.counts.turns, 1);
 });

@@ -188,3 +188,28 @@ test("sharp loads through the app's require path as a callable factory (guards s
   assert.ok(cropped.length > 0);
 });
 
+
+test("bounded overview sampling covers the end of a long recording", () => {
+  const frames = Array.from({ length: 63 }, (_, i) => frame(`${i}.jpg`, 1000 + i * 1000));
+  const samples = sampleCapturedFrames(frames, 1000, 63000, 1, 6);
+  assert.equal(samples.length, 6);
+  assert.equal(samples[0].frame.file, "0.jpg");
+  assert.equal(samples.at(-1)?.frame.file, "62.jpg");
+});
+
+test("temporal overview retains similar screenshots at distinct timestamps", async (t) => {
+  const root = await mkdtemp(path.join(tmpdir(), "skill-recorder-overview-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const framesDir = path.join(root, "frames"); await mkdir(framesDir);
+  const jpeg = await sharp({ create: { width: 100, height: 100, channels: 3, background: "white" } }).jpeg().toBuffer();
+  const frames = [frame("first.jpg", 1000), frame("last.jpg", 63000)];
+  for (const source of frames) await writeFile(path.join(root, source.file), jpeg);
+  const manifestPath = path.join(root, "video-frames.json");
+  await writeFile(manifestPath, JSON.stringify({ version: 1, format: "jpeg", frames }));
+  const extractor = new FrameExtractor({ capturedFramesPath: manifestPath, framesDir, anchorEpochMs: 1000 });
+  await extractor.extractAtEpochs([{ tMs: 1000 }]);
+  assert.equal(extractor.manifest.length, 1);
+  await extractor.extractWindow({ startMs: 1000, endMs: 63000, maxFrames: 2, preserveTimeline: true });
+  assert.ok(extractor.manifest.some((record) => record.tMs === 63000));
+  assert.equal(extractor.capturedManifest.length, 2);
+});

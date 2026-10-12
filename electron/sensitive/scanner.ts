@@ -86,11 +86,15 @@ function fieldsFromEvent(ev: RecEvent, startedAt: number | null): ScanField[] {
   const atMs = startedAt != null ? ev.epoch - startedAt : null;
   const known = KNOWN_FIELD_SOURCES[ev.type];
   const fields: ScanField[] = [];
-  for (const [key, value] of Object.entries(ev.payload)) {
+  const walk = (value: unknown, source: SensitiveSource, depth = 0): void => {
+    if (depth > 16) return;
     const text = str(value);
-    if (!text) continue;
-    fields.push({ text, source: known?.[key] ?? "other", atMs });
-  }
+    if (text) fields.push({ text, source, atMs });
+    else if (value && typeof value === "object") {
+      for (const child of Object.values(value)) walk(child, source, depth + 1);
+    }
+  };
+  for (const [key, value] of Object.entries(ev.payload)) walk(value, known?.[key] ?? "other");
   return fields;
 }
 

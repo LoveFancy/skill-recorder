@@ -31,6 +31,8 @@ export const AnalysisStepSchema = z.object({
   apps: z.array(z.string()).default([]),
   /** Free-text evidence refs the agent leaned on (events, urls, frame files). */
   evidence: z.array(z.string()).default([]),
+  /** Stable IDs of real Chrome operations underlying this reconstructed step. */
+  browserEventIds: z.array(z.string().max(100)).optional(),
   confidence: Confidence.default("medium"),
 });
 export type AnalysisStep = z.infer<typeof AnalysisStepSchema>;

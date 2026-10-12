@@ -13,6 +13,7 @@ export const NARRATION_LANGUAGES = [
   { code: "bs", label: "Bosnian" },
   { code: "br", label: "Breton" },
   { code: "bg", label: "Bulgarian" },
+  { code: "yue", label: "Cantonese" },
   { code: "ca", label: "Catalan" },
   { code: "zh", label: "Chinese" },
   { code: "hr", label: "Croatian" },
@@ -102,10 +103,12 @@ export const NARRATION_LANGUAGES = [
 
 export type NarrationLanguage = (typeof NARRATION_LANGUAGES)[number]["code"];
 
-export const DEFAULT_NARRATION_LANGUAGE: NarrationLanguage = "en";
+export const DEFAULT_NARRATION_LANGUAGE: NarrationLanguage = "zh";
 
-/** Current q8 model files total 251,875,316 bytes at the publisher. */
-export const NARRATION_MODEL_DOWNLOAD_LABEL = "~252 MB";
+export const SENSEVOICE_LANGUAGES = NARRATION_LANGUAGES.filter(({code}) => ["zh", "yue", "en", "ja", "ko"].includes(code));
+
+/** INT8 model plus tokens total 239,549,735 bytes. */
+export const NARRATION_MODEL_DOWNLOAD_LABEL = "约 240 MB";
 
 export function isNarrationLanguage(value: unknown): value is NarrationLanguage {
   return (
@@ -117,13 +120,13 @@ export function isNarrationLanguage(value: unknown): value is NarrationLanguage 
 export function narrationLanguageLabel(language: NarrationLanguage): string {
   const match = NARRATION_LANGUAGES.find(({ code }) => code === language);
   if (!match) throw new Error(`Unsupported narration language: ${language}`);
-  return match.label;
+  return new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(language === "jw" ? "jv" : language) ?? match.label;
 }
 
 /**
  * The offline voice-narration transcript. This is the spoken form of the typed
  * marker: the user's own stated intent while recording. It is produced after
- * Stop by the narration stage (Whisper via transformers.js) and written to
+ * Stop by the narration stage (SenseVoice Small INT8 via sherpa-onnx) and written to
  * `narration.json`. It is NEVER appended to the finalized `events.jsonl`; the
  * describer reads it through the `get_narration` tool, and it only leaves the
  * machine on Analyze, exactly like screenshots.

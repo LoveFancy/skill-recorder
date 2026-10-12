@@ -50,29 +50,21 @@ export function RecordingPrivacyWarning({
               />
             </svg>
           </span>
-          <h2 id="recording-warning-title">Before you record</h2>
+          <h2 id="recording-warning-title">录制前须知</h2>
         </header>
 
-        <p id="recording-warning-copy" className="recording-warning-copy">
-          Keep passwords, access tokens, API keys, and other sensitive or confidential
-          information off screen and out of narration.
-        </p>
-        <p id="recording-warning-detail" className="recording-warning-detail">
-          For complete transparency, review exactly what&apos;s captured and what may later be
-          sent to GitHub Copilot for cloud analysis.
-        </p>
+        <p id="recording-warning-copy" className="recording-warning-copy">请勿在屏幕或旁白中包含密码、访问令牌、API 密钥等敏感或机密信息。</p>
+        <p id="recording-warning-detail" className="recording-warning-detail">请查看具体采集内容，以及之后可能发送给 AI 服务进行分析的数据。</p>
 
         <div className="recording-warning-actions">
-          <button className="secondary" onClick={onReview} disabled={starting}>
-            See exactly what&apos;s captured
-          </button>
+          <button className="secondary" onClick={onReview} disabled={starting}>查看具体采集内容</button>
           <button
             ref={startRef}
             className="record-cta"
             onClick={onStart}
             disabled={starting}
           >
-            {starting ? "Starting…" : "Start recording"}
+            {starting ? "正在启动…" : "开始录制"}
           </button>
         </div>
       </div>

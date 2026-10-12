@@ -1,3 +1,4 @@
+import { StepScreenshots } from "./StepScreenshots";
 import {
   useCallback,
   useEffect,
@@ -138,7 +139,7 @@ export function EditableText({
       tabIndex={0}
       role="textbox"
       aria-label={ariaLabel ?? placeholder}
-      title="Click to edit"
+      title="点击编辑"
       onClick={begin}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -173,7 +174,7 @@ function RowControls({
           <button
             type="button"
             className="tile-btn"
-            title="Move up"
+            title="上移"
             disabled={index === 0}
             onClick={() => onMove(-1)}
           >
@@ -182,7 +183,7 @@ function RowControls({
           <button
             type="button"
             className="tile-btn"
-            title="Move down"
+            title="下移"
             disabled={index === count - 1}
             onClick={() => onMove(1)}
           >
@@ -190,7 +191,7 @@ function RowControls({
           </button>
         </>
       )}
-      <button type="button" className="tile-btn tile-btn-del" title="Remove" onClick={onRemove}>
+      <button type="button" className="tile-btn tile-btn-del" title="删除" onClick={onRemove}>
         ×
       </button>
     </div>
@@ -245,7 +246,7 @@ function ValuePill({
   // Unknown token: no value to edit — flag it so the user (or agent) fixes it before export.
   if (!value) {
     return (
-      <span className="val-pill val-pill-unresolved" title="No value is defined for this token">
+      <span className="val-pill val-pill-unresolved" title="此变量尚未设置值">
         {`{{${token}}}`}
       </span>
     );
@@ -258,7 +259,7 @@ function ValuePill({
         ref={btnRef}
         type="button"
         className={`val-pill${value.value.trim() ? "" : " val-pill-empty"}${open ? " val-pill-active" : ""}`}
-        title={`${label}${value.value ? `: ${value.value}` : ""} — click to edit`}
+        title={`${label}${value.value ? `: ${value.value}` : ""} — 点击编辑`}
         onClick={(e) => {
           e.stopPropagation();
           onOpen();
@@ -393,7 +394,7 @@ function ValuePopover({
           }
         }}
       />
-      <div className="val-pop-hint">Esc to cancel · ⏎ to save</div>
+      <div className="val-pop-hint">Esc 取消 · 回车保存</div>
     </div>,
     document.body,
   );
@@ -560,7 +561,7 @@ function TokenText({
       tabIndex={0}
       role="textbox"
       aria-label={ariaLabel}
-      title="Click to edit"
+      title="点击编辑"
       onClick={(e) => {
         // A click on a pill edits its value (via popover), not the surrounding prose.
         const t = e.target as HTMLElement;
@@ -620,8 +621,8 @@ export function SkillStepTiles({
             <EditableText
               className="ed-strong"
               value={s.title}
-              placeholder="Step title"
-              ariaLabel="Step title"
+              placeholder="步骤标题"
+              ariaLabel="步骤标题"
               onChange={(v) => patch(i, { title: v })}
             />
             <RowControls
@@ -636,13 +637,13 @@ export function SkillStepTiles({
             onChangeText={(v) => patch(i, { text: v })}
             values={values}
             onChangeValues={onChangeValues}
-            placeholder="What happens in this step?"
-            ariaLabel="Step description"
+            placeholder="这一步做什么？"
+            ariaLabel="步骤描述"
           />
           {s.tools.length > 0 && (
             <div className="tile-foot">
               {s.tools.map((tool) => (
-                <span className="step-tool" title={`Runtime tool: ${tool}`} key={tool}>
+                <span className="step-tool" title={`执行工具：${tool}`} key={tool}>
                   {planToolLabel(tool)}
                 </span>
               ))}
@@ -651,7 +652,7 @@ export function SkillStepTiles({
         </div>
       ))}
       <AddTile
-        label="Add step"
+        label="添加步骤"
         onAdd={() => onChange([...steps, { kind: "action", title: "", text: "", tools: [] }])}
       />
     </div>
@@ -683,8 +684,8 @@ export function AutomationStepTiles({
             <EditableText
               className="ed-strong"
               value={s.label}
-              placeholder="Step label"
-              ariaLabel="Step label"
+              placeholder="步骤名称"
+              ariaLabel="步骤名称"
               onChange={(v) => patch(i, { label: v })}
             />
             <RowControls
@@ -699,12 +700,12 @@ export function AutomationStepTiles({
             onChangeText={(v) => patch(i, { prompt: v })}
             values={values}
             onChangeValues={onChangeValues}
-            placeholder="The instruction the agent runs for this step"
-            ariaLabel="Step instruction"
+            placeholder="智能体执行这一步的指令"
+            ariaLabel="步骤指令"
           />
         </div>
       ))}
-      <AddTile label="Add step" onAdd={() => onChange([...steps, { label: "", prompt: "" }])} />
+      <AddTile label="添加步骤" onAdd={() => onChange([...steps, { label: "", prompt: "" }])} />
     </div>
   );
 }
@@ -712,9 +713,11 @@ export function AutomationStepTiles({
 /* --- Analysis steps (ordered; title + detail) ----------------------------- */
 
 export function AnalysisStepTiles({
+  sessionId,
   steps,
   onChange,
 }: {
+  sessionId: string;
   steps: AnalysisStep[];
   onChange: (next: AnalysisStep[]) => void;
 }) {
@@ -730,8 +733,8 @@ export function AnalysisStepTiles({
             <EditableText
               className="ed-strong"
               value={s.title}
-              placeholder="What you did"
-              ariaLabel="Step title"
+              placeholder="操作概述"
+              ariaLabel="步骤标题"
               onChange={(v) => patch(i, { title: v })}
             />
             <RowControls
@@ -746,15 +749,16 @@ export function AnalysisStepTiles({
             multiline
             className="ed-detail"
             value={s.detail}
-            placeholder="A little more detail"
-            ariaLabel="Step detail"
+            placeholder="补充操作详情"
+            ariaLabel="步骤详情"
             hideEmpty
             onChange={(v) => patch(i, { detail: v })}
           />
+          <StepScreenshots sessionId={sessionId} startMs={s.startMs} endMs={s.endMs} />
         </div>
       ))}
       <AddTile
-        label="Add step"
+        label="添加步骤"
         onAdd={() =>
           onChange([
             ...steps,
@@ -768,7 +772,7 @@ export function AnalysisStepTiles({
 
 /* --- Automation schedule editor (read-first: sentence → controls) --------- */
 
-const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+const DAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 const INTERVAL_CHOICES = [15, 30, 60, 120, 180, 240, 360, 720];
 
 function fmtTime(t: TimeOfDay): string {
@@ -784,7 +788,7 @@ function anchorOf(s: AutomationSchedule): TimeOfDay {
   return s.times[0] ?? { hour: 9, minute: 0 };
 }
 
-/** Compact schedule editor. Reads as a plain-language sentence; "Edit" reveals the
+/** Compact schedule editor. Reads as a plain-language sentence; "编辑" reveals the
  *  structured controls. Structured edits clear `naturalLanguage` so the displayed
  *  cadence always reflects the real firing rule. */
 export function ScheduleEditor({
@@ -800,9 +804,7 @@ export function ScheduleEditor({
     return (
       <div className="sched-read">
         <span className="sched-when">{describeSchedule(schedule)}</span>
-        <button type="button" className="linky" onClick={() => setEditing(true)}>
-          Edit
-        </button>
+        <button type="button" className="linky" onClick={() => setEditing(true)}>编辑</button>
       </div>
     );
   }
@@ -830,9 +832,9 @@ export function ScheduleEditor({
           value={schedule.kind}
           onChange={(e) => changeKind(e.target.value as AutomationSchedule["kind"])}
         >
-          <option value="single">Once a day</option>
-          <option value="interval">Every…</option>
-          <option value="multi">A few times a day</option>
+          <option value="single">每天一次</option>
+          <option value="interval">每隔…</option>
+          <option value="multi">每天多次</option>
         </select>
 
         {schedule.kind === "single" && (
@@ -859,7 +861,7 @@ export function ScheduleEditor({
                 </option>
               ))}
             </select>
-            <span className="sched-lbl">from</span>
+            <span className="sched-lbl">从</span>
             <input
               type="time"
               className="tile-input tile-time"
@@ -869,9 +871,7 @@ export function ScheduleEditor({
           </>
         )}
 
-        <button type="button" className="linky sched-done" onClick={() => setEditing(false)}>
-          Done
-        </button>
+        <button type="button" className="linky sched-done" onClick={() => setEditing(false)}>完成</button>
       </div>
 
       {schedule.kind === "multi" && (
@@ -889,7 +889,7 @@ export function ScheduleEditor({
               <button
                 type="button"
                 className="tile-btn tile-btn-del"
-                title="Remove time"
+                title="删除时间"
                 disabled={schedule.times.length <= 1}
                 onClick={() => onChange({ ...schedule, times: removeAt(schedule.times, i), naturalLanguage: "" })}
               >
@@ -903,26 +903,24 @@ export function ScheduleEditor({
             onClick={() =>
               onChange({ ...schedule, times: [...schedule.times, anchorOf(schedule)], naturalLanguage: "" })
             }
-          >
-            + Add time
-          </button>
+          >+ 添加时间</button>
         </div>
       )}
 
       <div className="sched-days">
-        <span className="sched-lbl">On</span>
+        <span className="sched-lbl">执行日期</span>
         {DAY_LABELS.map((lbl, d) => (
           <button
             key={d}
             type="button"
             className={`day-chip${days.length === 0 || days.includes(d) ? " on" : ""}`}
-            title={days.length === 0 ? "Every day" : undefined}
+            title={days.length === 0 ? "每天" : undefined}
             onClick={() => toggleDay(d)}
           >
             {lbl}
           </button>
         ))}
-        {days.length === 0 && <span className="sched-lbl sched-every">every day</span>}
+        {days.length === 0 && <span className="sched-lbl sched-every">每天</span>}
       </div>
     </div>
   );

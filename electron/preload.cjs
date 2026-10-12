@@ -13,14 +13,16 @@ const IPC = {
   microphoneNarration: "microphone:narration",
   microphoneDevice: "microphone:device",
   microphoneSettingsChanged: "microphone:settings-changed",
+  pickRecordingSource: "screen:pick-source",
+  annotateRegion: "screen:annotate-region",
   screenSettings: "screen:settings",
   screenSource: "screen:source",
   screenSettingsChanged: "screen:settings-changed",
   status: "recorder:status",
   marker: "recorder:marker",
   doctor: "doctor:check",
-  copilotSignIn: "copilot:sign-in",
-  copilotSignInCancel: "copilot:sign-in-cancel",
+  aiSettings: "ai:settings",
+  aiSettingsSave: "ai:settings-save",
   statusChanged: "recorder:status-changed",
   recordingPrivacyReviewed: "recorder:privacy-reviewed",
   recordingPrivacyWarningRequested: "recorder:privacy-warning-requested",
@@ -35,6 +37,7 @@ const IPC = {
   sensitiveGetReport: "sensitive:get-report",
   analyze: "analyze:start",
   analyzeFeedback: "analyze:feedback",
+  stepScreenshots: "analysis:screenshots",
   getAnalysis: "analyze:get",
   updateAnalysis: "analyze:update",
   cancelAnalysis: "analyze:cancel",
@@ -109,6 +112,8 @@ contextBridge.exposeInMainWorld("skillRecorder", {
     ipcRenderer.on(IPC.microphoneSettingsChanged, listener);
     return () => ipcRenderer.removeListener(IPC.microphoneSettingsChanged, listener);
   },
+  pickRecordingSource: () => ipcRenderer.invoke(IPC.pickRecordingSource),
+  annotateRegion: (mode) => ipcRenderer.invoke(IPC.annotateRegion, mode),
   screenSettings: () => ipcRenderer.invoke(IPC.screenSettings),
   selectScreen: (sourceId) => ipcRenderer.invoke(IPC.screenSource, sourceId),
   onScreenSettingsChanged: (cb) => {
@@ -119,8 +124,10 @@ contextBridge.exposeInMainWorld("skillRecorder", {
   status: () => ipcRenderer.invoke(IPC.status),
   marker: (note) => ipcRenderer.invoke(IPC.marker, note),
   doctor: () => ipcRenderer.invoke(IPC.doctor),
-  copilotSignIn: (attemptId) => ipcRenderer.invoke(IPC.copilotSignIn, attemptId),
-  cancelCopilotSignIn: (attemptId) => ipcRenderer.invoke(IPC.copilotSignInCancel, attemptId),
+  browserStatus: () => ipcRenderer.invoke("browser:status"),
+  revealBrowserExtension: () => ipcRenderer.invoke("browser:reveal"),
+  aiSettings: () => ipcRenderer.invoke(IPC.aiSettings),
+  saveAiSettings: (input) => ipcRenderer.invoke(IPC.aiSettingsSave, input),
   onStatusChanged: (cb) => {
     const listener = (_event, status) => cb(status);
     ipcRenderer.on(IPC.statusChanged, listener);
@@ -170,6 +177,7 @@ contextBridge.exposeInMainWorld("skillRecorder", {
   getSensitiveReport: (sessionId) => ipcRenderer.invoke(IPC.sensitiveGetReport, sessionId),
   analyze: (sessionId) => ipcRenderer.invoke(IPC.analyze, sessionId),
   analyzeFeedback: (input) => ipcRenderer.invoke(IPC.analyzeFeedback, input),
+  stepScreenshots: (id, start, end) => ipcRenderer.invoke(IPC.stepScreenshots, id, start, end),
   getAnalysis: (sessionId) => ipcRenderer.invoke(IPC.getAnalysis, sessionId),
   updateAnalysis: (input) => ipcRenderer.invoke(IPC.updateAnalysis, input),
   cancelAnalysis: (sessionId) => ipcRenderer.invoke(IPC.cancelAnalysis, sessionId),

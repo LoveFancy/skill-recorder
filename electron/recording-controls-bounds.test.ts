@@ -11,7 +11,7 @@ import {
 test("recording controls start bottom-center inside the work area", () => {
   const workArea = { x: -1920, y: 0, width: 1920, height: 1040 };
   assert.deepEqual(initialRecordingControlsBounds(workArea), {
-    x: -1240,
+    x: -1290,
     y: 946,
     width: RECORDING_CONTROLS_SIZE.width,
     height: RECORDING_CONTROLS_SIZE.collapsedHeight,
@@ -38,9 +38,9 @@ test("recording controls clamp to negative-coordinate and small displays", () =>
 
 test("overlay panel expansion preserves the bar's bottom edge", () => {
   const workArea = { x: 0, y: 0, width: 1440, height: 900 };
-  const collapsed = { x: 440, y: 806, width: 560, height: 76 };
+  const collapsed = { x: 440, y: 806, width: 660, height: 76 };
   const expanded = resizeRecordingControlsBounds(collapsed, true, workArea);
-  assert.deepEqual(expanded, { x: 440, y: 632, width: 560, height: 250 });
+  assert.deepEqual(expanded, { x: 440, y: 632, width: 660, height: 250 });
   assert.equal(expanded.y + expanded.height, collapsed.y + collapsed.height);
   assert.deepEqual(
     resizeRecordingControlsBounds(expanded, false, workArea),

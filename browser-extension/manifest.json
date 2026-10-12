@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "技能录制器 · 浏览器采集",
+  "version": "0.1.0",
+  "description": "离线采集指定标签页的真实操作，加入技能录制器轨迹。",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA+ConPNsFwp1K8G9IgpIc6EQrdiKI+yalDIchelp0227HR+YbLPPPicCi/620daMsUzzO0YQwHZMq5fH5ZwXAWgB8D+nzg3ESKcu763j1ViFhIt9CdW3dSDIStTo2P1vsMAGNvL7KtFnUGgRzxfIooGk01kYv0Dj1rPRM8eqtpHgqDZ3iRLMBBeNnCIMEq1acI3qsosloAdJIykUwhgXClaJLHOPTTo8wSpN+cVdhwXdNW2yEh/WPIQrgMonPRV4g+9V8rT7Y+6265bdm1XGSmYDRkaWFPfkwKhiJLBsyE6hhm/w9Lv4ToqUdNj8xjrcZuqHjk5peSwDWDAN9XJqbNwIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "storage",
+    "scripting",
+    "activeTab",
+    "alarms"
+  ],
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "技能录制器"
+  }
+}

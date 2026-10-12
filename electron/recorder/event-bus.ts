@@ -34,6 +34,15 @@ export class EventBus {
     return ev;
   }
 
+  async publishDurable(input: EventInput): Promise<void> {
+    const store = this.store;
+    if (!store) throw new Error("No active session");
+    await new Promise<void>((resolve, reject) => {
+      const ev = store.append(input.type, input.source, input.payload, error => error ? reject(error) : resolve());
+      for (const listener of this.listeners) listener(ev);
+    });
+  }
+
   subscribe(listener: EventListener): () => void {
     this.listeners.add(listener);
     return () => {

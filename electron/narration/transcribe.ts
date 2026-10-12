@@ -2,11 +2,11 @@ import type { NarrationLanguage, NarrationSegment } from "../../common/narration
 import { decodeAudioFile } from "../audio/decode";
 import { createLogger } from "../logger";
 import { detectSilence, type SilenceSpan } from "./audio-analysis";
-import { narrationModelId, type AsrPipeline } from "./whisper";
+import { narrationModelId, type AsrPipeline } from "./sensevoice";
 
 const log = createLogger("Narration/transcribe");
 
-// Whisper is trained on 16 kHz mono audio.
+// SenseVoice expects 16 kHz mono audio.
 const SAMPLE_RATE = 16_000;
 
 /**
@@ -111,11 +111,7 @@ const BOILERPLATE = new Set([
 
 export function narrationTranscriptionOptions(language: NarrationLanguage) {
   return {
-    return_timestamps: true,
-    chunk_length_s: 30,
-    stride_length_s: 5,
     language,
-    task: "transcribe",
   } as const;
 }
 

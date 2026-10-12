@@ -1,11 +1,8 @@
 # Installing Skill Recorder from source
 
-> [!TIP]
-> **Just want to install and use the app? [Go to the latest release](https://github.com/microsoft/skill-recorder/releases/latest).**
-> Scroll to **Commit-pinned installation** and copy the complete command for your
-> operating system. Paste it into **PowerShell** on Windows or **Terminal** on
-> macOS or Ubuntu, then press **Enter**. No changes to the command are needed.
-> See the [step-by-step guide](README.md#install-it) for more help.
+> This variant uses an OpenAI-compatible model API. Build this checkout locally;
+> the upstream release commands below download the original upstream app. See
+> [Configure your model](README.md#configure-your-model) for API settings.
 
 This page is the **advanced installation reference**, including script inspection,
 configuration, and manual developer setup. The commands below are templates, not
@@ -13,7 +10,7 @@ ready-to-run release commands.
 
 Skill Recorder can run directly from an exact source revision on Windows, macOS,
 or Ubuntu. These methods do not download a prebuilt Skill Recorder application.
-Node.js, Electron, native dependencies, and the GitHub Copilot CLI are obtained
+Node.js, Electron and native dependencies are obtained
 from canonical upstreams or compatible configured registries and assembled
 locally.
 
@@ -68,14 +65,14 @@ The source installers:
 6. Run `npm run compliance:licenses` and fail if any installed platform package
    lacks reviewed legal material.
 7. Build locally, retain repository/dependency licenses, and record hashes for
-   the installed Electron and Copilot executables.
+   the installed Electron executable.
 8. Create Start Menu **and** desktop shortcuts on Windows; a launcher plus a
    `Skill Recorder (Source)` app in `~/Applications` (reachable from Spotlight,
    Launchpad, and the Dock) on macOS; and a launcher plus desktop entry on Ubuntu.
 9. Print a final confirmation listing the shortcuts that were created.
 
-No administrator access, global Node.js installation, or global Copilot CLI
-installation is required. GitHub Copilot authentication, entitlement, and
+No administrator access, global Node.js installation, or global model CLI
+installation is required. Model API access and
 network access are still required.
 
 Piping a downloaded script directly to a shell gives you no opportunity to
@@ -315,7 +312,7 @@ so a mirror cannot substitute different content.
 
 The source channels distribute this repository's MIT-licensed source. The
 user's package manager obtains Sharp/libvips, ONNX Runtime, Tesseract.js, the
-unmodified GitHub Copilot CLI, and other npm dependencies through its configured registry;
+other npm dependencies through its configured registry;
 the installer obtains the reviewed Electron runtime from GitHub. Canonical
 registry URLs and integrity hashes keep the lockfile portable across direct
 npmjs access and compatible corporate mirrors. The local build is not a
@@ -324,7 +321,7 @@ redistributable application package.
 Each platform's compliance check retains:
 
 - `LICENSE` and `THIRD-PARTY-NOTICES.md`;
-- complete license files installed with npm packages, including the Copilot CLI
+- complete license files installed with npm packages
   license;
 - Electron and Chromium runtime notices;
 - canonical GPL, LGPL, MPL, and Artistic-2.0 texts under `.compliance/licenses`;
@@ -381,7 +378,7 @@ The complete repeatable process is documented in
 5. Publish SHA-256 values for that commit's `install.ps1` and `install.sh`.
 6. Protect the release tag from movement or deletion.
 7. Test the one-line and inspect-first source paths on clean machines.
-8. Do not mirror or repackage Node.js, Electron, npm dependencies, or Copilot
+8. Do not mirror or repackage Node.js, Electron, npm dependencies
    binaries in the source-install channel.
 9. For any prebuilt release, use `npm run dist*` and publish the complete,
    version-matched compliance materials.

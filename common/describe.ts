@@ -78,6 +78,7 @@ function stepDetails(s: Step): string[] {
   if (s.markers.length) {
     out.push(`- Notes: ${s.markers.map((m) => `“${m}”`).join("; ")}`);
   }
+  if (s.browserEventIds?.length) out.push(`- 真实浏览器操作：${s.browserEventIds.length} 条（详见 events.jsonl）`);
   if (s.frames.length) {
     out.push(`- Keyframes: ${s.frames.length}`);
   }

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 
-import { approveAll, type CopilotSession } from "@github/copilot-sdk";
+import type { AgentSession } from "../ai/client";
 
 import {
   BuiltSkillSchema,
@@ -25,7 +25,7 @@ import { createReadTools } from "../builders/read-tools";
 import { loadPersistedAnalysis } from "../describer/describer";
 import { createLogger } from "../logger";
 import { isValidSessionId, sessionDir } from "../recorder/session-store";
-import { SKILL_BUILDER_INSTRUCTIONS } from "./instructions";
+import { SKILL_BUILDER_INSTRUCTIONS, OUTPUT_LANGUAGE_INSTRUCTIONS } from "./instructions";
 import { createSkillBuilderTools } from "./tools";
 
 const log = createLogger("SkillBuilder");
@@ -88,7 +88,7 @@ export class SkillPreviewExpiredError extends Error {
 interface LiveBuild extends BaseLive {
   sessionDir: string;
   architecture: SkillArchitecture;
-  copilot: CopilotSession;
+  agent: AgentSession;
   holder: { plan: SkillPlan | undefined; submission: SkillSubmission | undefined };
   /** Last plan proposed this build (kept so submit can reference it). */
   lastPlan: SkillPlan | null;
@@ -113,7 +113,7 @@ export function loadPersistedSkill(sessionId: string): BuiltSkill | null {
 }
 
 /**
- * Drives the multi-turn GitHub Copilot CLI agent that turns a recording's analysis
+ * Drives the multi-turn model agent that turns a recording's analysis
  * into a generalized, native-tool-first skill for a target architecture. Shares the
  * {@link AgentBuilder} pool (one live conversation per recording) so the plan →
  * refine → build flow stays in a single session. Streams progress out via a
@@ -139,7 +139,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     this.discardPreview(sessionId);
     try {
       const refining = Boolean(feedback && feedback.trim());
-      this.emit(sessionId, "start", refining ? "Refining the plan…" : "Planning the skill…");
+      this.emit(sessionId, "start", refining ? "正在完善计划…" : "正在生成技能计划…");
       let live = this.live.get(sessionId);
       if (!refining || !live) {
         await this.disposeLive(sessionId); // fresh conversation for a fresh plan
@@ -170,7 +170,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
           this.previews.delete(oldest);
         }
       }
-      this.emit(sessionId, "done", "Skill ready for review. Nothing has been installed.");
+      this.emit(sessionId, "done", "技能预览已就绪，尚未安装。");
       return { id: prepared.id, markdown: prepared.markdown };
     } finally {
       this.finish(sessionId);
@@ -288,12 +288,12 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     if (!live) live = await this.createLive(sessionId, plan.architecture);
     this.requireActive(operation);
     live.lastPlan = plan;
-    this.emit(sessionId, "drafting", "Writing the skill…");
+    this.emit(sessionId, "drafting", "正在生成技能…");
     live.holder.submission = undefined;
     try {
-      await live.copilot.sendAndWait(`${CREATE_PROMPT}\n\n${renderPlanForPrompt(plan)}`, TURN_TIMEOUT_MS);
+      await live.agent.sendAndWait(`${CREATE_PROMPT}\n\n${renderPlanForPrompt(plan)}`, TURN_TIMEOUT_MS);
     } catch (err) {
-      await live.copilot.abort().catch(() => undefined);
+      await live.agent.abort().catch(() => undefined);
       throw new Error(`Skill build failed: ${msg(err)}`);
     }
     this.requireActive(operation);
@@ -342,16 +342,12 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     ];
 
     const catalogue = requireCatalogue(architecture, "skill").content;
-    const systemContent = `${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}`.trim();
+    const systemContent = `${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
 
     const client = await this.ensureClient();
-    const copilot = await client.createSession({
+    const agent = await client.createSession({
       systemMessage: { mode: "append", content: systemContent },
       tools,
-      onPermissionRequest: approveAll,
-      workingDirectory: dir,
-      enableHostGitOperations: false,
-      infiniteSessions: { enabled: false },
       availableTools: tools.map((t) => t.name),
       ...(this.model ? { model: this.model } : {}),
     });
@@ -360,7 +356,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
       sessionId,
       sessionDir: dir,
       architecture,
-      copilot,
+      agent,
       holder,
       lastPlan: null,
     };
@@ -374,18 +370,18 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     operation: BuildOperation,
   ): Promise<SkillPlan> {
     live.holder.plan = undefined;
-    this.emit(live.sessionId, "working", "Thinking…");
+    this.emit(live.sessionId, "working", "正在思考…");
     try {
-      await live.copilot.sendAndWait(prompt, TURN_TIMEOUT_MS);
+      await live.agent.sendAndWait(prompt, TURN_TIMEOUT_MS);
     } catch (err) {
-      await live.copilot.abort().catch(() => undefined);
+      await live.agent.abort().catch(() => undefined);
       throw new Error(`Planning failed: ${msg(err)}`);
     }
     this.requireActive(operation);
     const plan = live.holder.plan;
     if (!plan) throw new Error("The agent finished without proposing a plan.");
     live.lastPlan = plan;
-    this.emit(live.sessionId, "done", "Plan ready for your review.");
+    this.emit(live.sessionId, "done", "计划已生成，请检查。");
     return plan;
   }
 

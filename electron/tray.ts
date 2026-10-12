@@ -37,12 +37,12 @@ export function createTray(
     tray.setContextMenu(
       Menu.buildFromTemplate([
         {
-          label: recording ? "Stop recording" : "Start recording",
+          label: recording ? "结束录制" : "开始录制",
           click: () => void (recording ? stopRecording() : startRecording()),
         },
         { type: "separator" },
         {
-          label: recording ? "Show recording controls" : "Show window",
+          label: recording ? "显示录制控制栏" : "显示窗口",
           click: () => {
             if (recording) {
               showRecordingControls();
@@ -51,7 +51,7 @@ export function createTray(
             showRecorderWindow();
           },
         },
-        { label: "Quit", role: "quit" },
+        { label: "退出", role: "quit" },
       ]),
     );
   };

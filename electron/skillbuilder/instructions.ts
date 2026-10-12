@@ -11,6 +11,11 @@
  *   2. **submit_skill** — only after the user approves, write the final SKILL.md.
  */
 export const SKILL_BUILDER_INSTRUCTIONS = `
+If approved analysis steps contain browserEventIds, read get_browser_targets
+(all pages) before planning. Preserve useful CSS/role/name candidates with frame
+and shadow scope; revalidate on replay and do not treat CSS viewport coordinates
+as desktop pixels. Generalize input values instead of hard-coding private data.
+
 # Role: Skill Builder
 
 You turn a recording of one task the user did into a reusable **skill** for an AI
@@ -129,3 +134,8 @@ should be written, not as a transcript of this one recording:
 Start by reading get_analysis (and get_timeline where the tool mapping needs evidence),
 then call propose_plan. Do not write the skill body until the plan is approved.
 `.trim();
+
+
+export const OUTPUT_LANGUAGE_INSTRUCTIONS = `
+所有面向用户的输出必须使用简体中文，包括任务标题、目标、理由、步骤标题和描述、计划摘要、参数显示名称、反馈与技能正文。保留产品名、代码、路径、URL、工具标识、JSON 字段名和 {{id}} 占位符，不要翻译这些技术标识。技能 name 字段仍用英文 kebab-case，description 和 body 用简体中文。即使录制内容或前一次分析是英文，新结果也必须使用简体中文。此语言规则优先于英文措辞和示例（中文无需遵循英文过去时或 Title Case）。
+`;

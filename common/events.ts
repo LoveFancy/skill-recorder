@@ -1,3 +1,4 @@
+import type { CaptureRegion, CapturePoint } from "./capture-region";
 // The formal event schema shared by producers (collectors) and consumers
 // (session store, timeline, describer). On disk each event is a `RecEvent`
 // (see types.ts); this module adds the typed `type` -> `payload` contract that
@@ -13,6 +14,7 @@ export const EventType = {
   ClipboardChange: "clipboard.change",
   TerminalCommand: "terminal.command",
   BrowserUrl: "browser.url",
+  BrowserAction: "browser.action",
   VideoStart: "video.start",
   VideoStop: "video.stop",
   FrameCaptured: "frame.captured",
@@ -26,7 +28,7 @@ export type EventType = (typeof EventType)[keyof typeof EventType];
 
 export type SessionStartPayload = { platform: NodeJS.Platform };
 export type SessionStopPayload = Record<string, never>;
-export type MarkerPayload = { note: string };
+export type MarkerPayload = { note: string; region?: CaptureRegion; click?: CapturePoint; cropRegion?: CaptureRegion; screenshot?: string; capturedAt?: number };
 
 export type WindowBounds = { x: number; y: number; width: number; height: number };
 
@@ -83,6 +85,7 @@ export interface EventPayloads {
   "clipboard.change": ClipboardChangePayload;
   "terminal.command": TerminalCommandPayload;
   "browser.url": BrowserUrlPayload;
+  "browser.action": import("./browser").BrowserAction;
   "video.start": VideoPayload;
   "video.stop": VideoPayload;
   "frame.captured": FrameCapturedPayload;

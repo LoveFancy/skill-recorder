@@ -12,3 +12,6 @@ release
 evals/results/
 # Opt-in OCR eval's downloaded traineddata cache
 evals/.cache/
+
+# Standalone Chrome native host build output
+native/bin/

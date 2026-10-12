@@ -1,3 +1,4 @@
+import { verifyBrowserResources } from "./verify-browser-resources.mjs";
 import { existsSync } from "node:fs";
 import { chmod, copyFile, readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -46,6 +47,8 @@ export default async function verifyPackagedCompliance(context) {
       : path.join(context.appOutDir, "resources");
 
   await ensureNodePtyHelpersAreExecutable(resources, platform);
+  const browserArch=typeof context.arch==="number"?(["ia32","x64","armv7l","arm64","universal"][context.arch]??String(context.arch)):context.arch;
+  await verifyBrowserResources(resources,platform,browserArch);
 
   const compliance = path.join(resources, "compliance");
   const electronNotices = path.join(compliance, "electron");

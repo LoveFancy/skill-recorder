@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { approveAll, CopilotClient, type CopilotSession } from "@github/copilot-sdk";
+import { AgentClient, type AgentSession } from "../ai/client";
 
 import {
   AnalysisSchema,
@@ -10,13 +10,12 @@ import {
   type AnalysisFeedback,
   type AnalysisSubmission,
 } from "../../common/analysis";
-import { COPILOT_SIGNED_OUT_ERROR, type AnalyzeProgress } from "../../common/ipc";
+import type { AnalyzeProgress } from "../../common/ipc";
 import type { SessionMeta } from "../../common/types";
 import { FrameExtractor } from "../frames/extractor";
 import { createLogger } from "../logger";
-import { copilotConnectionOption, withStartupTimeout } from "../copilot-cli-path";
 import { sessionsRoot, sessionDir, isValidSessionId } from "../recorder/session-store";
-import { DESCRIBER_INSTRUCTIONS } from "./instructions";
+import { DESCRIBER_INSTRUCTIONS, OUTPUT_LANGUAGE_INSTRUCTIONS } from "./instructions";
 import { createDescriberTools, type RedactionContext } from "./tools";
 
 const log = createLogger("Describer");
@@ -29,11 +28,15 @@ const MAX_LIVE_SESSIONS = 4;
 
 const KICKOFF_PROMPT =
   "Reconstruct what the user did in this recording. Start with get_timeline, then read events " +
-  "where anything is unclear, and look at frames only where the events are ambiguous. When " +
+  "where anything is unclear. If annotationCoverage.total is positive, first call get_annotations with offset=0 " +
+  "and follow every nextOffset to inspect all user click markers, region selections, and cropped screenshots. " +
+  "Treat them as priority intent evidence and combine them with nearby narration and surrounding events in your steps. If captureCoverage.capturedFrameCount is positive, call get_frames " +
+  "from 0 to the full recording duration to inspect a visual overview BEFORE submitting. " +
+  "Then inspect narrower windows where the UI changes, especially inside a single app with few OS events. When " +
   "confident, call submit_analysis with the overall intent and the ordered list of steps.";
 
 const NUDGE_PROMPT =
-  "Please call submit_analysis now with your best analysis of the overall intent and the ordered steps.";
+  "First inspect any remaining user annotations using get_annotations and its nextOffset; then call submit_analysis with your best analysis of the overall intent and the ordered steps.";
 
 const msg = (err: unknown) => (err instanceof Error ? err.message : String(err));
 
@@ -47,7 +50,7 @@ interface VideoMeta {
 interface LiveSession {
   sessionId: string;
   sessionDir: string;
-  copilot: CopilotSession;
+  agent: AgentSession;
   revision: number;
   feedbackLog: Analysis["feedbackLog"];
   /** Mutable capture slot the `submit_analysis` tool writes into. */
@@ -76,16 +79,18 @@ export function loadPersistedAnalysis(sessionId: string): Analysis | null {
 }
 
 /**
- * Drives the multi-turn GitHub Copilot CLI agent that turns a recording's captured
+ * Drives the multi-turn model agent that turns a recording's captured
  * signals into an intent + ordered steps, and revises them from NL feedback. Owns
- * a single shared {@link CopilotClient}; keeps one live session per recording so the
+ * a single shared {@link AgentClient}; keeps one live session per recording so the
  * feedback loop stays in the same conversation. Streams progress out via a callback.
- * The deterministic baseline `description.md` remains the fallback when Copilot is
+ * The deterministic baseline `description.md` remains the fallback when the model is
  * unavailable (callers surface the thrown error).
  */
 export class Describer {
-  private client: CopilotClient | null = null;
-  private clientStart: Promise<CopilotClient> | null = null;
+  isBusy(): boolean { return this.active.size > 0; }
+
+  private client: AgentClient | null = null;
+  private clientStart: Promise<AgentClient> | null = null;
   private model: string | undefined;
   private readonly live = new Map<string, LiveSession>();
   private readonly active = new Set<string>();
@@ -97,7 +102,7 @@ export class Describer {
     if (this.active.has(sessionId)) throw new Error("An analysis is already running for this session.");
     this.active.add(sessionId);
     try {
-      this.emit(sessionId, "start", "Starting analysis…");
+      this.emit(sessionId, "start", "正在开始分析…");
       await this.disposeLive(sessionId); // fresh conversation each explicit analyze
       const live = await this.createLive(sessionId);
       live.redaction.current = redaction ?? null;
@@ -112,7 +117,7 @@ export class Describer {
     if (this.active.has(sessionId)) throw new Error("An analysis is already running for this session.");
     this.active.add(sessionId);
     try {
-      this.emit(sessionId, "start", "Re-analyzing with your feedback…");
+      this.emit(sessionId, "start", "正在根据反馈重新分析…");
       const live = this.live.get(sessionId) ?? (await this.createLive(sessionId));
       live.redaction.current = redaction ?? null;
       const prior = loadPersistedAnalysis(sessionId);
@@ -148,7 +153,7 @@ export class Describer {
   /** Abort an in-flight run for a session. */
   async cancel(sessionId: string): Promise<void> {
     const live = this.live.get(sessionId);
-    if (live) await live.copilot.abort().catch(() => undefined);
+    if (live) await live.agent.abort().catch(() => undefined);
   }
 
   /** True while an analyze/feedback turn is actively running for this session. */
@@ -173,7 +178,7 @@ export class Describer {
     for (const [id, live] of this.live) {
       if (this.active.has(id)) continue;
       this.live.delete(id);
-      await live.copilot.disconnect().catch(() => undefined);
+      await live.agent.disconnect().catch(() => undefined);
     }
   }
 
@@ -191,21 +196,14 @@ export class Describer {
     this.emitProgress({ sessionId, phase, message });
   }
 
-  private async ensureClient(): Promise<CopilotClient> {
+  private async ensureClient(): Promise<AgentClient> {
     if (this.client) return this.client;
     if (this.clientStart) return this.clientStart;
     this.clientStart = (async () => {
-      const connOpts = copilotConnectionOption();
-      if (connOpts) log.info("CLI path resolved from node_modules");
-      const client = new CopilotClient(connOpts);
-      await withStartupTimeout(client.start(), "Copilot CLI (Describer)");
-      const auth = await client.getAuthStatus();
-      if (!auth.isAuthenticated) {
-        await client.stop().catch(() => undefined);
-        throw new Error(COPILOT_SIGNED_OUT_ERROR);
-      }
-      this.model = await this.pickVisionModel(client);
-      log.info("Copilot ready", auth.login ? `as ${auth.login}` : "", this.model ? `· model ${this.model}` : "");
+      const client = new AgentClient();
+      await client.start();
+      this.model = process.env.SKILL_RECORDER_MODEL || undefined;
+      log.info("Model client ready");
       this.client = client;
       return client;
     })();
@@ -214,22 +212,6 @@ export class Describer {
     } catch (err) {
       this.clientStart = null;
       throw err;
-    }
-  }
-
-  /** Prefer a vision-capable, enabled model (frames need vision). */
-  private async pickVisionModel(client: CopilotClient): Promise<string | undefined> {
-    const override = process.env.SKILL_RECORDER_MODEL;
-    if (override) return override;
-    try {
-      const models = await client.listModels();
-      const vision = models.filter(
-        (m) => m.capabilities?.supports?.vision && m.policy?.state !== "disabled",
-      );
-      return vision[0]?.id;
-    } catch (err) {
-      log.warn("listModels failed; using CLI default model:", msg(err));
-      return undefined;
     }
   }
 
@@ -255,19 +237,12 @@ export class Describer {
 
     const client = await this.ensureClient();
     const config = {
-      systemMessage: { mode: "append" as const, content: DESCRIBER_INSTRUCTIONS },
+      systemMessage: { mode: "append" as const, content: DESCRIBER_INSTRUCTIONS + "\n\n" + OUTPUT_LANGUAGE_INSTRUCTIONS },
       tools,
-      onPermissionRequest: approveAll,
-      workingDirectory: dir,
-      enableHostGitOperations: false,
-      infiniteSessions: { enabled: false },
       ...(this.model ? { model: this.model } : {}),
     };
-    // Always constrain the agent to our sandboxed custom tools. If the runtime
-    // cannot honor the allowlist we fail the analysis rather than silently
-    // creating an unsandboxed session — which, combined with approveAll, would
-    // auto-run the SDK's full default toolset in the user's environment.
-    const copilot = await client.createSession({
+    // Expose only the recording-scoped tools; the HTTP client has no implicit host tools.
+    const agent = await client.createSession({
       ...config,
       availableTools: tools.map((t) => t.name),
     });
@@ -276,7 +251,7 @@ export class Describer {
     const live: LiveSession = {
       sessionId,
       sessionDir: dir,
-      copilot,
+      agent,
       revision: prior?.revision ?? 0,
       feedbackLog: prior?.feedbackLog ?? [],
       holder,
@@ -293,7 +268,7 @@ export class Describer {
       if (this.live.size <= MAX_LIVE_SESSIONS) break;
       if (id === keep || this.active.has(id)) continue;
       this.live.delete(id);
-      void live.copilot.disconnect().catch(() => undefined);
+      void live.agent.disconnect().catch(() => undefined);
     }
   }
 
@@ -301,7 +276,7 @@ export class Describer {
     const live = this.live.get(sessionId);
     if (!live) return;
     this.live.delete(sessionId);
-    await live.copilot.disconnect().catch(() => undefined);
+    await live.agent.disconnect().catch(() => undefined);
   }
 
   private async runTurn(
@@ -314,17 +289,17 @@ export class Describer {
       ? statSync(narrationFile).mtimeMs
       : null;
     live.holder.submission = undefined;
-    this.emit(live.sessionId, "working", "Thinking…");
+    this.emit(live.sessionId, "working", "正在思考…");
     try {
-      await live.copilot.sendAndWait(prompt, TURN_TIMEOUT_MS);
+      await live.agent.sendAndWait(prompt, TURN_TIMEOUT_MS);
     } catch (err) {
       // Don't leave the agent running past our timeout/abort — reclaim the turn.
-      await live.copilot.abort().catch(() => undefined);
+      await live.agent.abort().catch(() => undefined);
       throw new Error(`Analysis run failed: ${msg(err)}`);
     }
     if (!live.holder.submission) {
-      this.emit(live.sessionId, "working", "Asking the agent to finalize its analysis…");
-      await live.copilot.sendAndWait(NUDGE_PROMPT, TURN_TIMEOUT_MS).catch(() => undefined);
+      this.emit(live.sessionId, "working", "正在整理分析结果…");
+      await live.agent.sendAndWait(NUDGE_PROMPT, TURN_TIMEOUT_MS).catch(() => undefined);
     }
     const submission = live.holder.submission;
     if (!submission) throw new Error("The agent finished without submitting an analysis.");
@@ -343,7 +318,7 @@ export class Describer {
         },
       ];
     }
-    this.emit(live.sessionId, "drafting", "Finalizing analysis…");
+    this.emit(live.sessionId, "drafting", "正在完成分析…");
     const analysis = toAnalysis(
       live.sessionId,
       live.revision,
@@ -352,7 +327,7 @@ export class Describer {
       narrationSourceUpdatedAt,
     );
     this.persist(live.sessionDir, analysis);
-    this.emit(live.sessionId, "done", `Analysis ready (revision ${analysis.revision}).`);
+    this.emit(live.sessionId, "done", `分析已完成（第 ${analysis.revision} 版）。`);
     return analysis;
   }
 

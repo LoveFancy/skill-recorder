@@ -1,4 +1,6 @@
 export interface ScreenSource {
+  thumbnail?: string;
+  appIcon?: string;
   id: string;
   label: string;
   displayId: string;
@@ -77,12 +79,12 @@ export function resolveScreenPreference(
   const exact =
     displayMatch ??
     (!preference.displayId
-      ? sources.find((source) => source.id === preference.id) ?? null
+      ? sources.find((source) => source.id === preference.id && (!preference.id.startsWith("window:") || source.label === preference.label)) ?? null
       : null);
   const labelMatch =
     exact ??
     (!preference.displayId && preference.label
-      ? uniqueMatch(sources.filter((source) => source.label === preference.label))
+      ? uniqueMatch(sources.filter((source) => source.label === preference.label && source.id.startsWith("window:") === preference.id.startsWith("window:")))
       : null);
 
   if (labelMatch) {

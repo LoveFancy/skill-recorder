@@ -1,3 +1,4 @@
+import { verifyBrowserResources } from "./verify-browser-resources.mjs";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
@@ -35,6 +36,7 @@ const asarFiles = asarEntries.map((entry) => `${asarPath}!${entry}`);
 const files = [...walk(unpacked), ...asarFiles];
 const normalizedFiles = files.map((file) => file.toLowerCase().replaceAll("\\", "/"));
 const expectedPayloads = [
+  ...(arch === "x64" ? [{ packagePath: "/sherpa-onnx-win-x64/", executable: "/sherpa-onnx-win-x64/sherpa-onnx.node" }] : []),
   {
     packagePath: `/@koromix/koffi-win32-${arch}/`,
     executable: `/@koromix/koffi-win32-${arch}/win32_${arch}/koffi.node`,
@@ -49,10 +51,6 @@ const expectedPayloads = [
   {
     packagePath: `/onnxruntime-node/bin/napi-v6/win32/${arch}/`,
     executable: `/onnxruntime-node/bin/napi-v6/win32/${arch}/onnxruntime_binding.node`,
-  },
-  {
-    packagePath: `/@github/copilot-win32-${arch}/`,
-    executable: `/@github/copilot-win32-${arch}/copilot.exe`,
   },
 ];
 for (const payload of expectedPayloads) {
@@ -91,7 +89,6 @@ const otherArch = arch === "arm64" ? "x64" : "arm64";
 const wrongArchitecturePayloads = [
   `/@koromix/koffi-win32-${otherArch}/`,
   `/@img/sharp-win32-${otherArch}/`,
-  `/@github/copilot-win32-${otherArch}/copilot.exe`,
 ];
 for (const wrongPayload of wrongArchitecturePayloads) {
   if (normalizedFiles.some((file) => file.includes(wrongPayload))) {
@@ -121,6 +118,7 @@ for (const notice of ["third-party-notices.md", "license"]) {
   }
 }
 
+await verifyBrowserResources(path.join(unpacked,"resources"),"win32",arch);
 await verifyComplianceDirectory(path.join(unpacked, "resources", "compliance"), {
   requireSources: true,
   requireElectronNotices: true,

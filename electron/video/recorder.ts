@@ -159,7 +159,7 @@ export class VideoRecorder {
   ): Promise<void> {
     try {
       const sources = await desktopCapturer.getSources({
-        types: ["screen"],
+        types: ["screen", "window"],
         thumbnailSize: { width: 0, height: 0 },
       });
       if (sources.length === 0) {
@@ -170,7 +170,7 @@ export class VideoRecorder {
         ? sources.find((candidate) => candidate.display_id === displayId)
         : sourceId
           ? sources.find((candidate) => candidate.id === sourceId)
-          : sources[0];
+          : sources.find(candidate => candidate.id.startsWith("screen:")) ?? sources[0];
       if (!source) {
         log.warn("selected screen source is unavailable; skipping video");
         return;
@@ -222,7 +222,7 @@ export class VideoRecorder {
         maxWidth: MAX_WIDTH,
         maxHeight: MAX_HEIGHT,
       });
-      log.info("capture requested for screen source", source.id, "->", this.file);
+      log.info("capture requested for source", source.id, "->", this.file);
       await Promise.race([started, delay(START_TIMEOUT_MS)]);
       if (this.startEpoch == null) {
         log.warn("screen capture did not start; continuing without video");
@@ -235,6 +235,8 @@ export class VideoRecorder {
       await this.removeEmptyArtifacts();
     }
   }
+
+  captureSnapshot(): void { this.win?.webContents.send("video:snapshot"); }
 
   /** Stop capturing and return the result, or null if no usable video was produced. */
   async stop(): Promise<VideoResult | null> {

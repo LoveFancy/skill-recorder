@@ -92,16 +92,17 @@ export class SessionStore {
     writeFileSync(path.join(this.dir, "session.json"), JSON.stringify(this.meta, null, 2));
   }
 
-  append(type: string, source: string, payload: Record<string, unknown> = {}): RecEvent {
+  append(type: string, source: string, payload: Record<string, unknown> = {}, onWritten?: (error?: Error | null) => void): RecEvent {
+    const capturedAt = type === "browser.action" && typeof payload.capturedAt === "number" ? payload.capturedAt : Date.now();
     const ev: RecEvent = {
       seq: this.count,
-      t: performance.now() - this.startMonotonic,
-      epoch: Date.now(),
+      t: type === "browser.action" ? capturedAt - this.meta.startedAt : performance.now() - this.startMonotonic,
+      epoch: capturedAt,
       type,
       source,
       payload,
     };
-    this.eventsStream.write(JSON.stringify(ev) + "\n");
+    this.eventsStream.write(JSON.stringify(ev) + "\n", onWritten);
     this.count++;
     return ev;
   }

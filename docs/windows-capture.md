@@ -15,7 +15,7 @@ before trusting a Windows build.
 | Browser URLs | UI Automation address bar read (`powershell.exe` host) | Functional, not byte exact | None |
 | Clipboard | Electron clipboard | Full | None |
 | Screen video + frames | `desktopCapturer` + Chromium snapshots + Sharp | Full | Screen capture |
-| Voice narration (opt-in) | hidden-window `getUserMedia` + `MediaRecorder`; Chromium decode + offline Whisper | Full | Microphone |
+| Voice narration (opt-in) | hidden-window `getUserMedia` + `MediaRecorder`; Chromium decode + offline SenseVoice Small INT8 | Full | Microphone |
 
 Notes:
 
@@ -33,7 +33,7 @@ Notes:
 2. **Windows PowerShell.** `powershell.exe` (Windows PowerShell 5.1, in-box on
    every Windows 10/11) is used to host the UI Automation URL reader. No install
    needed.
-3. **Copilot CLI** on `PATH` for the describer (`copilot`).
+3. Configure an OpenAI-compatible Base URL, API key, and vision-capable model in the app settings.
 4. No system media package is needed for new recordings.
 
 ## Doctor signals
@@ -60,8 +60,8 @@ Run a real recording on Windows and verify each source lands in the session's
 5. **Video.** Confirm `video.webm`, `video-frames.json`, snapshots under
    `video-frames/`, and retained images under `frames/`.
 6. **Voice narration.** Turn on **Narrate**, open its settings, and confirm the
-   language selector lists all 99 supported languages alphabetically and defaults
-   to English. Grant microphone access and select a named input or **System default**.
+   language selector offers Mandarin, Cantonese, English, Japanese, and Korean and defaults
+   to Chinese. Grant microphone access and select a named input or **System default**.
    During capture, use the main microphone button to mute/unmute and its adjacent
    menu to switch inputs. Speak before and after a switch, then confirm `audio.json`
    contains separate version-2 segments with `narrationLanguage`; their
@@ -69,7 +69,7 @@ Run a real recording on Windows and verify each source lands in the session's
    device must stop microphone capture with a visible error rather than silently
    recording from another input; reconnecting it should restore the saved preference
    when Chromium can identify it. If the model is not installed, starting analysis
-   approves the one-time ~252 MB Whisper download. Confirm `narration.json` records
+   approves the one-time ~240 MB SenseVoice Small INT8 download. Confirm `narration.json` records
    the chosen language and contains the original-language words with `atMs` offsets.
    Exercise representative languages, including English and a non-Latin script.
    Later runs are offline. On Windows the mic grant is requested by the OS on first
@@ -91,16 +91,15 @@ unavailable on this platform", or a reduced-capture notice).
 
 `package.json` configures electron-builder for macOS and Windows NSIS. Native
 modules (`koffi`, `@koromix/*`, `sharp`, `@img/*`,
-`@huggingface/transformers`, `onnxruntime-node`, and Copilot platform packages)
+`@huggingface/transformers`, `onnxruntime-node`, and native terminal packages)
 are listed under `asarUnpack` so
 their binaries load from disk rather than from inside the asar archive. The
-Whisper model itself is not bundled. It downloads to the app's user-data
-`models` folder only after the user approves the one-time ~252 MB download from
+SenseVoice model itself is not bundled. It downloads to the app's user-data
+`models` folder only after the user approves the one-time ~240 MB download from
 the HUD or Sessions; recording and core session processing do not wait for it.
-The multilingual q8 files total about 251.9 MB versus 251.2 MB for the previous
-English-only checkpoint. Both use the same Whisper `small` architecture, so
-runtime memory and transcription speed are expected to remain effectively
-unchanged.
+The INT8 model plus tokens total 239,549,735 bytes. Speech is segmented using
+silence boundaries, with a maximum of 25 seconds per inference segment. The timestamps
+are segment boundaries, not word-level alignment.
 
 Build each Windows installer on its matching native machine or CI runner so npm
 selects the correct optional packages:
@@ -108,11 +107,9 @@ selects the correct optional packages:
 ```powershell
 npm ci
 npm run dist:win:x64
-# or, on Windows ARM64:
-npm run dist:win:arm64
 ```
 
-The Windows workflow uses `windows-latest` and `windows-11-arm`, then verifies the
+The Windows workflow uses `windows-latest` for x64, then verifies the
 PE architecture and packaged native payloads.
 
 ## Known limitations
@@ -131,3 +128,20 @@ PE architecture and packaged native payloads.
 - The Windows paths are also validated by typecheck, a PowerShell parse check of
   the UIA script, and a `win32` describer eval
   (`evals/scenarios/windows-deploy.ts`).
+
+## Recording source picker
+
+Before recording, choose **选择屏幕或应用**. The picker offers thumbnails of entire
+screens and individual application windows, with filters for both. Only one source
+is recorded per session. Window sources are revalidated before capture; a closed
+window cannot silently fall back to full-screen recording. Re-select application
+windows after restarting the app because native window IDs may be reused.
+
+The floating toolbar also offers **框选重点**. For a screen recording it opens a
+screen annotation overlay; for a window recording it opens a window snapshot.
+Annotations are saved as marker events and shown on the step screenshot previews.
+They are manual region annotations, not inferred mouse clicks. Video and screenshots
+use the selected capture source; other event collectors follow their existing settings.
+
+SenseVoice uses sherpa-onnx-node native prebuilt libraries on macOS and Windows x64.
+Windows ARM64 narration is outside the supported scope of this integration.

@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 
@@ -6,33 +5,19 @@ import { CAPTURE_SOURCES, FULL_CAPTURE } from "../common/config";
 import type {
   ActiveWindowInfo,
   BrowserUrlInfo,
-  CopilotInfo,
+  AiProviderInfo,
   DoctorReport,
   DoctorSource,
 } from "../common/ipc";
 import { browserUrlProviderKind } from "./collectors/url-provider";
-import { resolveCopilotCliPath } from "./copilot-cli-path";
+import { getAiSettings } from "./ai/settings";
 import { sessionsRoot } from "./recorder/session-store";
 
 const require = createRequire(import.meta.url);
 
-function which(cmd: string): string | null {
-  try {
-    const finder = process.platform === "win32" ? "where" : "which";
-    const out = execFileSync(finder, [cmd], { encoding: "utf8" })
-      .trim()
-      .split(/\r?\n/)[0];
-    return out || null;
-  } catch {
-    return null;
-  }
-}
-
-function checkCopilot(): CopilotInfo {
-  // The app ships its own Copilot CLI in node_modules, so a global `copilot` on PATH is
-  // optional — check the bundled binary first or one-liner installs look broken here.
-  const p = resolveCopilotCliPath() ?? which("copilot");
-  return { ok: Boolean(p), path: p ?? null };
+function checkAiProvider(): AiProviderInfo {
+  try { const settings = getAiSettings(); return { ok: settings.configured, path: settings.baseUrl }; }
+  catch { return { ok: false, path: null }; }
 }
 
 function checkActiveWindow(): ActiveWindowInfo {
@@ -79,7 +64,7 @@ export function runDoctor(): DoctorReport {
 
   return {
     platform: process.platform,
-    copilotCli: checkCopilot(),
+    aiProvider: checkAiProvider(),
     activeWindow: checkActiveWindow(),
     browserUrl,
     sessionsDir: sessionsRoot(),

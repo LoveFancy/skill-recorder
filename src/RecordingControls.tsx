@@ -22,6 +22,8 @@ export function RecordingControls() {
   const [devicePending, setDevicePending] = useState(false);
   const [finishPending, setFinishPending] = useState<"done" | "discard" | null>(null);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus | null>(null);
+  const [annotationPending, setAnnotationPending] = useState(false);
+  const [annotationMessage, setAnnotationMessage] = useState<string | null>(null);
   const [terminalPending, setTerminalPending] = useState(false);
   const [terminalConfirm, setTerminalConfirm] = useState<"done" | "discard" | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -78,9 +80,9 @@ export function RecordingControls() {
 
   useEffect(() => {
     void window.skillRecorder.setRecordingControlsExpanded(
-      confirmDiscard || showMicrophoneMenu || terminalConfirm !== null,
+      confirmDiscard || showMicrophoneMenu || terminalConfirm !== null || actionError !== null,
     );
-  }, [confirmDiscard, showMicrophoneMenu, terminalConfirm]);
+  }, [confirmDiscard, showMicrophoneMenu, terminalConfirm, actionError]);
 
   useEffect(() => {
     if (!confirmDiscard) return;
@@ -140,7 +142,7 @@ export function RecordingControls() {
     setActionError(null);
     const enable = status.microphone.state !== "on";
     const result = await window.skillRecorder.setMicrophoneEnabled(enable);
-    if (!result.ok) setActionError(result.error ?? "Could not change the microphone.");
+    if (!result.ok) setActionError(result.error ?? "无法修改麦克风设置。");
     setMicrophonePending(false);
   }, [status]);
 
@@ -150,7 +152,7 @@ export function RecordingControls() {
     const result = await window.skillRecorder.selectMicrophone(deviceId);
     setMicrophoneSettings(result.status);
     if (!result.ok) {
-      setActionError(result.error ?? "Could not switch microphones.");
+      setActionError(result.error ?? "无法切换麦克风。");
     } else {
       setShowMicrophoneMenu(false);
     }
@@ -167,7 +169,7 @@ export function RecordingControls() {
       return;
     }
     if (!result.ok) {
-      setActionError(result.error ?? "Could not stop the recording.");
+      setActionError(result.error ?? "无法结束录制。");
       setFinishPending(null);
     }
   }, []);
@@ -183,7 +185,7 @@ export function RecordingControls() {
       return;
     }
     if (!result.ok) {
-      const error = result.error ?? "Could not discard the recording.";
+      const error = result.error ?? "无法丢弃录制。";
       setActionError(error);
       setFinishPending(null);
       window.alert(error);
@@ -215,17 +217,17 @@ export function RecordingControls() {
   const activeMicrophoneLabel =
     status?.microphone.activeDevice?.label ??
     microphoneSettings?.selectedDeviceLabel ??
-    "System default";
+    "系统默认";
   const microphoneLabel =
     status?.microphone.state === "starting"
-      ? "Starting"
+      ? "启动中"
       : status?.microphone.state === "stopping"
-        ? "Stopping"
+        ? "停止中"
         : microphoneOn
-          ? "On"
+          ? "执行日期"
           : microphoneError
-            ? "Retry"
-            : "Off";
+            ? "重试"
+            : "关闭";
   const error =
     actionError ??
     status?.microphone.error ??
@@ -234,12 +236,12 @@ export function RecordingControls() {
     null;
   const captureLabel =
     status?.transition === "starting"
-      ? "Starting"
+      ? "启动中"
       : status?.transition === "stopping"
-        ? "Saving"
+        ? "保存中"
         : status?.transition === "discarding"
-          ? "Discarding"
-          : "Capturing";
+          ? "丢弃中"
+          : "录制中";
 
   return (
     <div
@@ -259,10 +261,8 @@ export function RecordingControls() {
           aria-describedby="recording-discard-description"
         >
           <div>
-            <h2 id="recording-discard-title">Discard this recording?</h2>
-            <p id="recording-discard-description">
-              Screen video, activity, recorded-terminal output, and voice segments will be permanently deleted.
-            </p>
+            <h2 id="recording-discard-title">丢弃本次录制？</h2>
+            <p id="recording-discard-description">屏幕视频、活动记录、终端输出和语音片段将被永久删除。</p>
           </div>
           <div className="recording-discard-actions">
             <button
@@ -270,15 +270,13 @@ export function RecordingControls() {
               className="recording-keep"
               disabled={finishPending === "discard"}
               onClick={() => setConfirmDiscard(false)}
-            >
-              Keep recording
-            </button>
+            >继续录制</button>
             <button
               className="recording-confirm-discard"
               disabled={finishPending === "discard"}
               onClick={() => void discard()}
             >
-              {finishPending === "discard" ? "Discarding..." : "Discard recording"}
+              {finishPending === "discard" ? "正在丢弃…" : "丢弃录制"}
             </button>
           </div>
         </section>
@@ -293,18 +291,14 @@ export function RecordingControls() {
           aria-describedby="recording-terminal-description"
         >
           <div>
-            <h2 id="recording-terminal-title">A terminal command is still running</h2>
-            <p id="recording-terminal-description">
-              Closing the recording will stop the command and save its output as interrupted.
-            </p>
+            <h2 id="recording-terminal-title">终端命令仍在运行</h2>
+            <p id="recording-terminal-description">结束录制将停止命令，并将输出保存为已中断状态。</p>
           </div>
           <div className="recording-discard-actions">
             <button
               className="recording-keep"
               onClick={() => setTerminalConfirm(null)}
-            >
-              Keep recording
-            </button>
+            >继续录制</button>
             <button
               className={
                 terminalConfirm === "discard"
@@ -319,8 +313,8 @@ export function RecordingControls() {
               }}
             >
               {terminalConfirm === "discard"
-                ? "Close terminal and discard"
-                : "Close terminal and save"}
+                ? "关闭终端并丢弃"
+                : "关闭终端并保存"}
             </button>
           </div>
         </section>
@@ -330,20 +324,20 @@ export function RecordingControls() {
         <section
           ref={microphoneMenuRef}
           className="recording-microphone-menu"
-          aria-label="Choose microphone"
+          aria-label="选择麦克风"
         >
           <header>
-            <strong>Microphone</strong>
+            <strong>麦克风</strong>
             <span>
               {microphoneOn
                 ? `Using ${activeMicrophoneLabel}`
-                : `Next: ${microphoneSettings?.selectedDeviceLabel ?? "System default"}`}
+                : `下次使用：${microphoneSettings?.selectedDeviceLabel ?? "系统默认"}`}
             </span>
           </header>
           <div
             className="recording-microphone-options"
             role="radiogroup"
-            aria-label="Audio input"
+            aria-label="音频输入"
           >
             {microphoneSettings?.devices.map((device) => {
               const selected =
@@ -360,9 +354,7 @@ export function RecordingControls() {
                 >
                   <span>{device.label}</span>
                   {selected && (
-                    <span className="recording-microphone-selected">
-                      Selected
-                    </span>
+                    <span className="recording-microphone-selected">已选择</span>
                   )}
                 </button>
               );
@@ -392,6 +384,8 @@ export function RecordingControls() {
         </section>
       )}
 
+      {actionError && !showMicrophoneMenu && <p className="recording-action-error" role="alert">{actionError}</p>}
+      {annotationMessage && !actionError && <div className="recording-capture-feedback" role="status">{annotationMessage}</div>}
       <div className="recording-bar-wrap">
         <div className="recording-bar">
           <div className="recording-live" role="status" aria-label={`${captureLabel} ${formatMs(elapsed)}`}>
@@ -415,16 +409,16 @@ export function RecordingControls() {
               disabled={lifecycleBusy || microphoneBusy}
               aria-label={
                 microphoneOn
-                  ? `Mute ${activeMicrophoneLabel}. Narration is transcribed in ${narrationLanguage}.`
+                  ? `关闭 ${activeMicrophoneLabel}。旁白按 ${narrationLanguage} 转写。`
                   : microphoneError
-                    ? `Retry microphone. ${status?.microphone.error ?? ""}`
-                    : `Unmute ${microphoneSettings?.selectedDeviceLabel ?? "System default"} for ${narrationLanguage} narration`
+                    ? `重试麦克风。${status?.microphone.error ?? ""}`
+                    : `开启 ${microphoneSettings?.selectedDeviceLabel ?? "系统默认"}，使用 ${narrationLanguage} 旁白`
               }
               aria-pressed={microphoneOn}
               title={
                 microphoneOn
                   ? `Mute ${activeMicrophoneLabel} · ${narrationLanguage} transcript`
-                  : `Unmute ${microphoneSettings?.selectedDeviceLabel ?? "System default"} · ${narrationLanguage} transcript`
+                  : `开启 ${microphoneSettings?.selectedDeviceLabel ?? "系统默认"} · ${narrationLanguage} 转写`
               }
               onClick={() => void toggleMicrophone()}
             >
@@ -434,10 +428,10 @@ export function RecordingControls() {
             <button
               className="recording-microphone-menu-toggle"
               disabled={lifecycleBusy || microphoneBusy}
-              aria-label="Choose microphone"
+              aria-label="选择麦克风"
               aria-haspopup="dialog"
               aria-expanded={showMicrophoneMenu}
-              title="Choose microphone"
+              title="选择麦克风"
               onClick={() => {
                 setActionError(null);
                 setConfirmDiscard(false);
@@ -455,14 +449,14 @@ export function RecordingControls() {
             disabled={lifecycleBusy || terminalPending}
             aria-label={
               terminalStatus?.state === "closed"
-                ? "Open recorded terminal"
-                : `Focus recorded terminal. ${terminalStatus?.state ?? ""}`
+                ? "打开录制终端"
+                : `切换到录制终端。${terminalStatus?.state ?? ""}`
             }
-            title="Open a terminal captured only with this recording"
+            title="打开仅用于本次录制的终端"
             onClick={() => void openTerminal()}
           >
             <TerminalIcon />
-            <span>{terminalPending ? "Opening" : "Terminal"}</span>
+            <span>{terminalPending ? "打开中" : "终端"}</span>
             {terminalStatus?.state !== "closed" && (
               <span
                 className={`recording-terminal-dot ${
@@ -473,6 +467,22 @@ export function RecordingControls() {
             )}
           </button>
 
+          <div className="recording-capture-tools" role="group" aria-label="截图与标注工具">
+            {([
+              { mode:"crop", label:"截图", title:"拖动选取局部画面并保存截图" },
+              { mode:"region", label:"框选", title:"在当前界面框选重点，双击或 Enter 确认" },
+              { mode:"click", label:"点击", title:"在当前界面标记点击位置并保存截图" },
+            ] as const).map(tool => <button key={tool.mode} className="recording-annotate" disabled={lifecycleBusy || annotationPending} title={tool.title} aria-label={tool.title} onClick={async () => {
+              setAnnotationPending(true); setActionError(null); setAnnotationMessage(null);
+              try {
+                const result = await window.skillRecorder.annotateRegion(tool.mode);
+                if (!result.ok) setActionError(result.error ?? "无法保存截图");
+                else if (result.saved) setAnnotationMessage(tool.mode === "crop" ? "局部截图已保存" : "标注截图已保存");
+              } catch { setActionError("无法保存截图"); }
+              finally { setAnnotationPending(false); }
+            }}><CaptureToolIcon mode={tool.mode} /></button>)}
+          </div>
+
           <button
             className="recording-discard"
             disabled={lifecycleBusy}
@@ -481,18 +491,16 @@ export function RecordingControls() {
               setShowMicrophoneMenu(false);
               setConfirmDiscard(true);
             }}
-          >
-            Discard
-          </button>
+          >丢弃</button>
           <button className="recording-done" disabled={lifecycleBusy} onClick={() => void done(false)}>
-            {finishPending === "done" || status?.transition === "stopping" ? "Saving..." : "Done"}
+            {finishPending === "done" || status?.transition === "stopping" ? "正在保存…" : "完成"}
           </button>
         </div>
         <span className="recording-drag-handle" aria-hidden />
       </div>
 
       <span className="recording-controls-live" aria-live="polite">
-        {error ?? ""}
+        {error ?? annotationMessage ?? ""}
       </span>
     </div>
   );
@@ -555,4 +563,10 @@ function MicrophoneIcon({ off }: { off: boolean }) {
       )}
     </svg>
   );
+}
+
+function CaptureToolIcon({ mode }: { mode:"crop" | "region" | "click" }) {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    {mode === "crop" ? <><path d="M4 8h4l2-3h4l2 3h4v12H4z"/><circle cx="12" cy="14" r="3"/></> : mode === "region" ? <><path d="M9 4H4v5m11-5h5v5M4 15v5h5m6 0h5v-5"/><rect x="7" y="7" width="10" height="10" rx="1"/></> : <><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></>}
+  </svg>;
 }

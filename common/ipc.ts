@@ -1,3 +1,5 @@
+import type { CaptureRegion } from "./capture-region";
+import type { AiSettings, AiSettingsInput, AiSettingsResult } from "./ai";
 import type { Analysis, AnalysisFeedback, AnalysisStep, Confidence } from "./analysis";
 import type { AutomationPlan, BuiltAutomation } from "./automation";
 import type { MicrophoneDevice } from "./microphone";
@@ -123,7 +125,7 @@ export interface AnalyzeResult {
   error?: string;
   /**
    * Present when the on-device pre-send scan redacted potentially sensitive
-   * details before the session was sent to GitHub Copilot — masked values in the
+   * details before the session was sent to the configured model — masked values in the
    * captured text, plus a count of on-screen regions blurred in frames. This is
    * purely informational — the analysis still ran and `ok` is unaffected. The
    * report carries only masked values + short redacted context, never raw values,
@@ -364,6 +366,7 @@ export interface ScreenSettingsResult {
 
 export interface MarkerResult {
   ok: boolean;
+  saved?: boolean;
   error?: string;
 }
 
@@ -382,34 +385,9 @@ export interface DebugBundleResult {
   error?: string;
 }
 
-export interface CopilotInfo {
+export interface AiProviderInfo {
   ok: boolean;
   path: string | null;
-}
-
-/** Success means the bundled CLI completed login and a fresh SDK client verified it. */
-export type CopilotSignInResult =
-  | { ok: true; status: "authenticated" }
-  | {
-      ok: false;
-      status: "failed" | "canceled" | "timed-out";
-      /** Manual fallback; never includes credentials. */
-      command?: string;
-      error?: string;
-    };
-
-/**
- * Message every Copilot-backed feature throws when the CLI has no stored credentials.
- * Skill Recorder ships its own Copilot CLI in `node_modules`, so there is usually no
- * global `copilot` command to run — the renderer matches this message to offer the
- * in-app sign-in affordance instead.
- */
-export const COPILOT_SIGNED_OUT_ERROR =
-  "GitHub Copilot isn't signed in on this computer yet. Sign in below, then try again.";
-
-/** Whether an error from a Copilot-backed feature means "no credentials yet". */
-export function isCopilotSignedOutError(error?: string | null): boolean {
-  return typeof error === "string" && error.includes("isn't signed in on this computer");
 }
 
 /** Which foreground-window provider is available on this platform. */
@@ -440,7 +418,7 @@ export interface DoctorSource {
 
 export interface DoctorReport {
   platform: NodeJS.Platform;
-  copilotCli: CopilotInfo;
+  aiProvider: AiProviderInfo;
   activeWindow: ActiveWindowInfo;
   browserUrl: BrowserUrlInfo;
   sessionsDir: string;
@@ -459,14 +437,16 @@ export const IPC = {
   microphoneNarration: "microphone:narration",
   microphoneDevice: "microphone:device",
   microphoneSettingsChanged: "microphone:settings-changed",
+  pickRecordingSource: "screen:pick-source",
+  annotateRegion: "screen:annotate-region",
   screenSettings: "screen:settings",
   screenSource: "screen:source",
   screenSettingsChanged: "screen:settings-changed",
   status: "recorder:status",
   marker: "recorder:marker",
   doctor: "doctor:check",
-  copilotSignIn: "copilot:sign-in",
-  copilotSignInCancel: "copilot:sign-in-cancel",
+  aiSettings: "ai:settings",
+  aiSettingsSave: "ai:settings-save",
   statusChanged: "recorder:status-changed",
   recordingPrivacyReviewed: "recorder:privacy-reviewed",
   recordingPrivacyWarningRequested: "recorder:privacy-warning-requested",
@@ -481,6 +461,7 @@ export const IPC = {
   sensitiveGetReport: "sensitive:get-report",
   analyze: "analyze:start",
   analyzeFeedback: "analyze:feedback",
+  stepScreenshots: "analysis:screenshots",
   getAnalysis: "analyze:get",
   updateAnalysis: "analyze:update",
   cancelAnalysis: "analyze:cancel",
@@ -521,6 +502,8 @@ export const IPC = {
 
 /** Shape exposed on `window.skillRecorder` by the preload bridge. */
 export interface SkillRecorderApi {
+  browserStatus(): Promise<import("./browser").BrowserStatus>;
+  revealBrowserExtension(): Promise<void>;
   /** Request a start; may require the pre-recording privacy warning first. */
   start(): Promise<StartResult>;
   /** Start once after the user explicitly proceeds through the privacy warning. */
@@ -537,6 +520,8 @@ export interface SkillRecorderApi {
   onMicrophoneSettingsChanged(
     cb: (status: MicrophoneSettingsStatus) => void,
   ): () => void;
+  pickRecordingSource(): Promise<ScreenSettingsResult>;
+  annotateRegion(mode?: "region" | "click" | "crop"): Promise<MarkerResult>;
   screenSettings(): Promise<ScreenSettingsStatus>;
   selectScreen(sourceId: string): Promise<ScreenSettingsResult>;
   onScreenSettingsChanged(
@@ -545,12 +530,8 @@ export interface SkillRecorderApi {
   status(): Promise<RecorderStatus>;
   marker(note: string): Promise<MarkerResult>;
   doctor(): Promise<DoctorReport>;
-  /**
-   * Sign in through the browser using the bundled CLI and verify authentication.
-   * The attempt ID scopes cancellation to the requesting panel.
-   */
-  copilotSignIn(attemptId: string): Promise<CopilotSignInResult>;
-  cancelCopilotSignIn(attemptId: string): Promise<void>;
+  aiSettings(): Promise<AiSettings>;
+  saveAiSettings(input: AiSettingsInput): Promise<AiSettingsResult>;
   onStatusChanged(cb: (status: RecorderStatus) => void): () => void;
   openTerminal(): Promise<TerminalActionResult>;
   terminalReady(): Promise<TerminalActionResult>;
@@ -590,6 +571,7 @@ export interface SkillRecorderApi {
   /** Send NL feedback and re-analyze in the same multi-turn session. */
   analyzeFeedback(input: AnalysisFeedbackInput): Promise<AnalyzeResult>;
   /** Load the persisted analysis for a session, if any. */
+  stepScreenshots(sessionId: string, startMs?: number, endMs?: number): Promise<{ timeMs: number; dataUrl: string; regions: CaptureRegion[] }[]>;
   getAnalysis(sessionId: string): Promise<Analysis | null>;
   /** Edit the title/intent text directly (no re-analysis). */
   updateAnalysis(input: AnalysisEditInput): Promise<AnalyzeResult>;

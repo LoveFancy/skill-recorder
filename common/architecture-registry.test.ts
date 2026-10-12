@@ -48,21 +48,21 @@ test("the manifest derives architecture validation and target availability", () 
       ["scout", "skill", true, ["install", "export"], "Scout"],
       ["scout", "automation", true, ["install"], "Scout"],
       ["cowork", "skill", true, ["export"], "Microsoft 365 Copilot"],
-      ["agent-skill", "skill", true, ["export"], "your agent"],
+      ["agent-skill", "skill", true, ["export"], "你的智能体"],
       ["copilot-studio", "skill", false, ["export"], "Copilot Studio"],
     ],
   );
-  assert.equal(DEFAULT_TARGET.architecture, "scout");
+  assert.equal(DEFAULT_TARGET.architecture, "agent-skill");
   assert.equal(DEFAULT_TARGET.kind, "skill");
   assert.equal(
-    buildTargetFor(DEFAULT_TARGET.architecture, "automation").installTargetLabel,
+    buildTargetFor("scout", "automation").installTargetLabel,
     "Scout",
   );
 
   assert.deepEqual(enabledArchitectureLabels("skill"), [
     "Scout",
     "Cowork",
-    "Agent skill",
+    "通用智能体技能",
   ]);
   assert.deepEqual(enabledArchitectureLabels("automation"), ["Scout"]);
 });
@@ -83,7 +83,7 @@ test("target placements are enforced from the manifest", () => {
 test("architecture definitions reject invalid registry shapes", () => {
   const skill = {
     kind: "skill" as const,
-    label: "Skill",
+    label: "技能",
     enabled: true,
     note: "Enabled.",
     placements: ["install"] as const,

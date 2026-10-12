@@ -9,12 +9,8 @@ import {
 } from "./transcribe";
 
 test("multilingual transcription preserves the explicitly selected source language", () => {
-  assert.deepEqual(narrationTranscriptionOptions("fr"), {
-    return_timestamps: true,
-    chunk_length_s: 30,
-    stride_length_s: 5,
-    language: "fr",
-    task: "transcribe",
+  assert.deepEqual(narrationTranscriptionOptions("zh"), {
+    language: "zh",
   });
 });
 

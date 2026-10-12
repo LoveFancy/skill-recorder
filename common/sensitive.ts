@@ -46,7 +46,7 @@ export type SensitiveSource =
  *  memory only; never persist or display it directly — mask it first. */
 export interface SensitiveMatch {
   category: SensitiveCategory;
-  /** Human label for the UI, e.g. "GitHub token" or "Email address". */
+  /** Human label for the UI, e.g. "GitHub token" or "电子邮箱". */
   label: string;
   severity: SensitiveSeverity;
   /** The matched substring (in-memory only). */
@@ -81,7 +81,7 @@ interface DetectorSpec {
 const STRUCTURED_PII: DetectorSpec[] = [
   {
     category: "credit-card",
-    label: "Payment card number",
+    label: "银行卡号",
     severity: "high",
     rank: 55,
     // 13–19 digits with optional single space/dash separators, anchored to a digit
@@ -113,7 +113,7 @@ const STRUCTURED_PII: DetectorSpec[] = [
   },
   {
     category: "phone",
-    label: "Phone number",
+    label: "电话号码",
     severity: "low",
     rank: 45,
     // North-American grouped format (3-3-4) with a required separator between
@@ -131,7 +131,7 @@ const STRUCTURED_PII: DetectorSpec[] = [
   },
   {
     category: "phone",
-    label: "Phone number",
+    label: "电话号码",
     severity: "low",
     rank: 45,
     // International E.164: must start with "+" and hold 8–15 digits total, with
@@ -144,7 +144,7 @@ const STRUCTURED_PII: DetectorSpec[] = [
   },
   {
     category: "email",
-    label: "Email address",
+    label: "电子邮箱",
     severity: "medium",
     rank: 40,
     pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
@@ -322,22 +322,22 @@ export interface SensitiveReport {
 export function sourceLabel(source: SensitiveSource): string {
   switch (source) {
     case "window-title":
-      return "Window title";
+      return "窗口标题";
     case "url":
       return "URL";
     case "command":
-      return "Terminal command";
+      return "终端命令";
     case "terminal-output":
-      return "Terminal output";
+      return "终端输出";
     case "clipboard":
-      return "Clipboard";
+      return "剪贴板";
     case "note":
-      return "Note";
+      return "备注";
     case "narration":
-      return "Voice narration";
+      return "语音旁白";
     case "frame":
-      return "On-screen text";
+      return "屏幕文字";
     case "other":
-      return "Other captured text";
+      return "其他采集文本";
   }
 }

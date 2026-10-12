@@ -33,6 +33,7 @@ export const StepSchema = z.object({
   markers: z.array(z.string()),
   /** Seqs of the events folded into this step (stable ids). */
   eventSeqs: z.array(z.number().int()),
+  browserEventIds: z.array(z.string()).optional(),
   /** Frame filenames correlated into this step's span. */
   frames: z.array(z.string()),
   /** Deterministic one-line label (filled by the segmenter). */
@@ -166,7 +167,7 @@ export function buildBundle(input: BundleInput): SessionBundle {
     let boundary: StepBoundary | null = null;
     if (!cur) boundary = "start";
     else if (ev.type === "app.activate" && app && app !== curApp) boundary = "app-change";
-    else if (ev.type === "browser.url" && host && host !== curHost) boundary = "url-change";
+    else if ((ev.type === "browser.url" || (ev.type === "browser.action" && p.action === "navigation")) && host && host !== curHost) boundary = "url-change";
     else if (ev.type === "terminal.command") boundary = "command";
 
     if (boundary) cur = openStep(ev.epoch, boundary, app ?? curApp);
@@ -176,6 +177,7 @@ export function buildBundle(input: BundleInput): SessionBundle {
 
     const step = cur!;
     step.eventSeqs.push(ev.seq);
+    if(ev.type==="browser.action" && typeof p.eventId==="string") (step.browserEventIds??=[]).push(p.eventId);
     if (app && !step.app) step.app = app;
 
     switch (ev.type) {
@@ -187,6 +189,7 @@ export function buildBundle(input: BundleInput): SessionBundle {
       case "app.title-change":
         pushUniq(step.titles, str(p.title));
         break;
+      case "browser.action":
       case "browser.url":
         pushUniq(step.hosts, host);
         pushUniq(step.urls, str(p.url));

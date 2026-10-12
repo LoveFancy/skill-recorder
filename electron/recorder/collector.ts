@@ -9,6 +9,7 @@ export interface CollectorContext {
   /** Publish a typed event; `source` is filled in with the collector name. */
   publish<K extends EventType>(type: K, payload: EventPayloads[K]): void;
   /** The current session's directory (for collectors that write side files). */
+  publishDurable?<K extends EventType>(type: K, payload: EventPayloads[K]): Promise<void>;
   sessionDir: string;
   log: Logger;
 }
@@ -42,6 +43,7 @@ export class CollectorHost {
     for (const collector of collectors) {
       const ctx: CollectorContext = {
         sessionDir,
+        publishDurable: (type, payload) => this.bus.publishDurable({ type, source: collector.name, payload } as EventInput),
         log: createLogger(collector.name),
         publish: (type, payload) => {
           this.bus.publish({ type, source: collector.name, payload } as EventInput);

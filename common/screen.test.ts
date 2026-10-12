@@ -113,3 +113,11 @@ test("screen sources retain capture labels when display metadata is unavailable"
     ["Screen 1", "Screen 2"],
   );
 });
+
+test("window preferences select the requested window and cannot silently impersonate it", () => {
+  const windows: ScreenSource[] = [...sources, { id:"window:42:0",label:"Editor — report",displayId:"" }];
+  const preference = { id:"window:42:0",label:"Editor — report",displayId:"" };
+  assert.equal(resolveScreenPreference(preference,windows).source?.id,"window:42:0");
+  assert.equal(resolveScreenPreference(preference,sources).unavailable,true);
+  assert.equal(resolveScreenPreference(preference,[{ id:"window:42:0",label:"Unrelated window",displayId:"" }]).unavailable,true);
+});

@@ -37,3 +37,5 @@ export class Tray {
 }
 
 export default { app, ipcMain, globalShortcut, clipboard, screen, desktopCapturer, nativeImage, BrowserWindow, Menu, Tray };
+
+export const safeStorage = { isEncryptionAvailable: () => false, getSelectedStorageBackend: () => "basic_text", encryptString: notAvailable("safeStorage.encryptString"), decryptString: notAvailable("safeStorage.decryptString") };

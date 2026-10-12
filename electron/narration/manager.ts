@@ -12,7 +12,6 @@ import type {
   NarrationStatus,
 } from "../../common/ipc";
 import {
-  DEFAULT_NARRATION_LANGUAGE,
   isNarrationLanguage,
   NARRATION_FILE,
   type NarrationLanguage,
@@ -29,7 +28,7 @@ import {
   narrationModelCacheDir,
   removeLegacyNarrationModelCache,
   type ModelLoadProgress,
-} from "./whisper";
+} from "./sensevoice";
 
 const log = createLogger("Narration");
 
@@ -45,7 +44,7 @@ function readTranscript(file: string): NarrationTranscript | null {
   if (!existsSync(file)) return null;
   try {
     const transcript = readJson<NarrationTranscript>(file);
-    const language = transcript.language ?? DEFAULT_NARRATION_LANGUAGE;
+    const language = transcript.language ?? "en";
     return typeof transcript.model === "string" &&
       isNarrationLanguage(language) &&
       Array.isArray(transcript.segments)
@@ -239,7 +238,6 @@ export class NarrationManager {
     if (readTranscript(narrationFile)) {
       return { ok: true, outcome: "already-transcribed" };
     }
-    await rm(narrationFile, { force: true });
 
     const audioJson = path.join(dir, "audio.json");
     if (!existsSync(audioJson)) return { ok: false, error: "This recording has no saved narration." };

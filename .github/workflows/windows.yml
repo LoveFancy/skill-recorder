@@ -1,6 +1,7 @@
 name: Windows
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -21,9 +22,6 @@ jobs:
           - arch: x64
             runner: windows-latest
             dist_script: dist:win:x64
-          - arch: arm64
-            runner: windows-11-arm
-            dist_script: dist:win:arm64
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -54,6 +52,7 @@ jobs:
           }
 
       - name: Test commit-pinned source installation
+        if: github.repository == 'microsoft/skill-recorder'
         shell: powershell
         env:
           SKILL_RECORDER_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -103,3 +102,11 @@ jobs:
 
       - name: Verify packaged architecture
         run: node scripts/verify-windows-package.mjs ${{ matrix.arch }}
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-recorder-windows-${{ matrix.arch }}
+          path: release/*-windows-${{ matrix.arch }}.exe
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,28 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'"><title>选择录制内容</title><style>
+* { box-sizing:border-box; }
+body { margin:0; background:#fff; color:#202124; font:15px system-ui; }
+header { padding:22px 28px 16px; background:#f6f6f7; border-bottom:1px solid #ededee; }
+h1 { margin:0 0 6px; font-size:22px; font-weight:600; }
+p { margin:0; color:#72767d; }
+nav { display:flex; gap:8px; padding:16px 28px; background:#f6f6f7; }
+button { font:inherit; cursor:pointer; border:1px solid #d9dce1; border-radius:8px; padding:9px 18px; background:white; color:inherit; }
+nav button { border-color:transparent; background:transparent; }
+nav button.active { background:#e7f0ff; color:#076aff; }
+main { padding:28px 30px; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); align-content:start; gap:28px 24px; height:calc(100vh - 237px); overflow:auto; }
+.source { position:relative; padding:16px 14px 0; text-align:center; border:2px solid #d6d9df; border-radius:12px; align-self:start; min-width:0; background:white; }
+.source:hover { border-color:#9abdf7; background:#fbfdff; }
+.source.selected { border-color:#076aff; background:#f1f6ff; box-shadow:0 0 0 2px #076aff18; }
+.source .preview { display:block; width:100%; height:138px; object-fit:contain; background:white; }
+.source .app-icon { position:absolute; top:-9px; left:-9px; display:block; width:36px; height:36px; padding:3px; object-fit:contain; border:1px solid #e5e5e6; border-radius:9px; background:#f6f6f7; box-shadow:0 2px 4px #00000014; }
+.source .icon-fallback { display:grid; place-items:center; font-size:19px; color:#5b6777; }
+.source .empty-preview { height:138px; display:grid; place-items:center; color:#8a8e95; font-size:13px; }
+.source strong { display:block; padding:17px 0 13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:17px; line-height:24px; font-weight:500; }
+.empty { grid-column:1/-1; color:#777; padding:50px 0; text-align:center; }
+footer { position:fixed; bottom:0; width:100%; background:white; border-top:1px solid #eee; padding:18px 28px; display:flex; justify-content:space-between; align-items:center; gap:20px; }
+footer span { color:#777; font-size:12px; }
+footer div { display:flex; gap:10px; flex-shrink:0; }
+#confirm { background:#076aff; border-color:#076aff; color:white; }
+button:disabled { opacity:.4; cursor:default; }
+button:focus-visible { outline:3px solid #8ab7ff; outline-offset:3px; }
+@media(max-width:850px) { main { grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px 20px; } footer span { max-width:260px; } }
+</style></head><body><header><h1>选择录制内容</h1><p>选择整个屏幕，或只录制一个应用窗口</p></header><nav><button id="all" class="active">全部</button><button id="screens">屏幕</button><button id="windows">应用窗口</button></nav><main id="sources"></main><footer><span>应用窗口关闭或最小化可能中断画面，请保持窗口可见。</span><div><button id="cancel">取消</button><button id="confirm" disabled>确认选择</button></div></footer></body></html>

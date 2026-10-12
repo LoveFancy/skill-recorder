@@ -1,3 +1,5 @@
+import { BrowserSettingsPanel } from "./BrowserSettingsPanel";
+import { AiSettingsPanel } from "./AiSettingsPanel";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type {
@@ -11,7 +13,7 @@ import type {
 import {
   DEFAULT_NARRATION_LANGUAGE,
   isNarrationLanguage,
-  NARRATION_LANGUAGES,
+  SENSEVOICE_LANGUAGES as NARRATION_LANGUAGES,
   NARRATION_MODEL_DOWNLOAD_LABEL,
   narrationLanguageLabel,
   type NarrationLanguage,
@@ -96,7 +98,10 @@ export function Recorder() {
     const offMicrophones =
       window.skillRecorder.onMicrophoneSettingsChanged(setMicrophoneSettings);
     const offScreens =
-      window.skillRecorder.onScreenSettingsChanged(setScreenSettings);
+      window.skillRecorder.onScreenSettingsChanged((next) => {
+        setScreenSettings(next);
+        setScreenPending(false);
+      });
     const offSensitive = window.skillRecorder.onSensitiveModelStatusChanged(setSensitive);
     return () => {
       offRecorder();
@@ -131,7 +136,7 @@ export function Recorder() {
   const narrationLanguageName = narrationLanguageLabel(narrationLanguage);
   const advancedOn = sensitive?.enabled ?? true;
   const selectedScreenLabel =
-    screenSettings?.selectedSourceLabel ?? "Loading screens...";
+    screenSettings?.selectedSourceLabel ?? "正在加载屏幕…";
 
   useEffect(() => {
     if (recording) {
@@ -208,7 +213,7 @@ export function Recorder() {
   const toggle = useCallback(async () => {
     if (recording) {
       const res = await window.skillRecorder.stop();
-      if (!res.ok) window.alert(res.error ?? "Action failed");
+      if (!res.ok) window.alert(res.error ?? "操作失败");
       applyRecorderStatus(await window.skillRecorder.status());
       return;
     }
@@ -218,7 +223,7 @@ export function Recorder() {
       setShowRecordingWarning(true);
       return;
     }
-    if (!res.ok) window.alert(res.error ?? "Action failed");
+    if (!res.ok) window.alert(res.error ?? "操作失败");
     applyRecorderStatus(await window.skillRecorder.status());
   }, [applyRecorderStatus, recording]);
 
@@ -227,7 +232,7 @@ export function Recorder() {
     const res = await window.skillRecorder.confirmStart();
     if (!res.ok) {
       setWarningStarting(false);
-      window.alert(res.error ?? "Could not start recording.");
+      window.alert(res.error ?? "无法开始录制。");
       return;
     }
     setShowRecordingWarning(false);
@@ -255,12 +260,12 @@ export function Recorder() {
   const selectNarrationLanguage = useCallback(
     async (value: string) => {
       if (!isNarrationLanguage(value)) {
-        window.alert("Unsupported narration language.");
+        window.alert("不支持此旁白语言。");
         return;
       }
       setSelectedNarrationLanguage(value);
       const result = await window.skillRecorder.setNarrationLanguage(value);
-      if (!result.ok) window.alert(result.error ?? "Could not change the narration language.");
+      if (!result.ok) window.alert(result.error ?? "无法修改旁白语言。");
       applyRecorderStatus(await window.skillRecorder.status());
     },
     [applyRecorderStatus],
@@ -276,7 +281,7 @@ export function Recorder() {
     setMicrophoneSettings(result.status);
     if (!result.ok) {
       setMicrophoneActionError(
-        result.error ?? "Could not update the narration preference.",
+        result.error ?? "无法修改旁白设置。",
       );
       setShowNarrationSettings(true);
     }
@@ -290,7 +295,7 @@ export function Recorder() {
     setMicrophoneSettings(result.status);
     if (!result.ok) {
       setMicrophoneActionError(
-        result.error ?? "Could not select that microphone.",
+        result.error ?? "无法选择此麦克风。",
       );
     }
     setMicrophonePending(false);
@@ -302,7 +307,7 @@ export function Recorder() {
     const result = await window.skillRecorder.selectScreen(sourceId);
     setScreenSettings(result.status);
     if (!result.ok) {
-      setScreenActionError(result.error ?? "Could not select that screen.");
+      setScreenActionError(result.error ?? "无法选择此屏幕。");
     }
     setScreenPending(false);
   }, []);
@@ -313,7 +318,7 @@ export function Recorder() {
 
   const downloadNarrationModel = useCallback(async () => {
     const res = await window.skillRecorder.downloadNarrationModel();
-    if (!res.ok) window.alert(res.error ?? "Could not download the voice transcription model.");
+    if (!res.ok) window.alert(res.error ?? "无法下载语音转写模型。");
   }, []);
 
   const toggleAdvanced = useCallback(async () => {
@@ -324,14 +329,14 @@ export function Recorder() {
     const res = await window.skillRecorder.setAdvancedProtection(next);
     if (!res.ok) {
       void window.skillRecorder.sensitiveModelStatus().then(setSensitive);
-      window.alert(res.error ?? "Could not update advanced protection.");
+      window.alert(res.error ?? "无法修改隐私保护设置。");
     }
     setAdvancedPending(false);
   }, [sensitive]);
 
   const downloadSensitiveModels = useCallback(async () => {
     const res = await window.skillRecorder.downloadSensitiveModels();
-    if (!res.ok) window.alert(res.error ?? "Could not download the protection models.");
+    if (!res.ok) window.alert(res.error ?? "无法下载隐私保护模型。");
   }, []);
 
   return (
@@ -341,7 +346,7 @@ export function Recorder() {
           className={`record ${recording ? "on" : ""}`}
           onClick={toggle}
           disabled={transitioning || microphonePending || screenPending}
-          aria-label={recording ? "Stop recording" : "Start recording"}
+          aria-label={recording ? "结束录制" : "开始录制"}
         >
           <span className="record-glyph" />
         </button>
@@ -350,16 +355,27 @@ export function Recorder() {
         </div>
         <div className="transport-sub">
           {recording
-            ? `${status?.eventCount ?? 0} events captured`
+            ? `已采集 ${status?.eventCount ?? 0} 个事件`
             : justSaved
-              ? "Capture saved. Open Sessions to analyze"
+              ? "录制已保存，打开录制记录进行分析"
               : justDiscarded
-                ? "Recording discarded"
+                ? "录制已丢弃"
               : screenSettings?.error
-                ? "Screen capture needs attention"
-                : `Ready to capture · ${selectedScreenLabel}`}
+                ? "屏幕采集需要检查"
+                : `准备录制 · ${selectedScreenLabel}`}
         </div>
       </div>
+
+      <section className="capture-range-settings" aria-label="录制内容">
+        <div><strong>录制内容</strong><span>{screenSettings?.selectedSourceId.startsWith("window:") ? "应用窗口" : "整个屏幕"} · {selectedScreenLabel}</span></div>
+        <button className="secondary" disabled={screenPending || recording || transitioning} onClick={async () => {
+          setScreenPending(true); setScreenActionError(null);
+          try { const result = await window.skillRecorder.pickRecordingSource(); setScreenSettings(result.status); if (!result.ok) setScreenActionError(result.error ?? "无法选择录制内容"); }
+          catch (error) { setScreenActionError(error instanceof Error ? error.message : "无法选择录制内容"); }
+          finally { setScreenPending(false); }
+        }}>{screenPending ? "选择中…" : "选择屏幕或应用"}</button>
+        {screenActionError && <p className="error" role="alert">{screenActionError}</p>}
+      </section>
 
       <section ref={narrationSettingsRef} className={`narrate ${narrate ? "on" : ""}`}>
         <div className="narrate-head">
@@ -402,28 +418,28 @@ export function Recorder() {
               </svg>
             </span>
             <span className="narrate-text">
-              <span className="narrate-label">Narrate</span>
+              <span className="narrate-label">语音旁白</span>
               <span className="narrate-sub">
                 {microphonePending
-                  ? "Requesting microphone access..."
+                  ? "正在请求麦克风权限…"
                   : microphoneActionError || microphoneSettings?.error
-                    ? "Microphone needs attention"
+                    ? "麦克风需要检查"
                     : recording
                       ? narrate
                         ? `Listening · ${narrationLanguageName}`
-                        : "Voice off for this recording"
+                        : "本次录制未开启旁白"
                       : narrate
                         ? narrationLanguageName
-                        : "Explain out loud (optional)"}
+                        : "边操作边讲解（可选）"}
               </span>
             </span>
           </button>
           <button
             className={`narrate-settings-toggle ${showNarrationSettings ? "open" : ""}`}
-            aria-label="Recording settings"
+            aria-label="录制设置"
             aria-controls="recording-settings"
             aria-expanded={showNarrationSettings}
-            title="Recording settings"
+            title="录制设置"
             disabled={microphonePending || screenPending || recording || transitioning}
             onClick={() => {
               setMicrophoneActionError(null);
@@ -467,7 +483,7 @@ export function Recorder() {
               onClick={() => setShowNarrationSettings(false)}
             />
             <div id="recording-settings" className="narrate-settings">
-            <label htmlFor="narrate-language">Language</label>
+            <label htmlFor="narrate-language">语言</label>
             <div className="narrate-select-wrap">
               <select
                 id="narrate-language"
@@ -476,11 +492,11 @@ export function Recorder() {
                 onChange={(event) =>
                   void selectNarrationLanguage(event.currentTarget.value)
                 }
-                title="The transcript stays in this language"
+                title="转写文本使用所选语言"
               >
-                {NARRATION_LANGUAGES.map(({ code, label }) => (
+                {NARRATION_LANGUAGES.map(({ code }) => (
                   <option key={code} value={code}>
-                    {label}
+                    {narrationLanguageLabel(code)}
                   </option>
                 ))}
               </select>
@@ -489,7 +505,7 @@ export function Recorder() {
               </span>
             </div>
 
-            <label htmlFor="narrate-microphone">Microphone</label>
+            <label htmlFor="narrate-microphone">麦克风</label>
             <div className="narrate-select-wrap">
               <select
                 id="narrate-microphone"
@@ -504,14 +520,14 @@ export function Recorder() {
                     </option>
                   ))
                 ) : (
-                  <option value="">Loading microphones...</option>
+                  <option value="">正在加载麦克风…</option>
                 )}
               </select>
               <span className="narrate-select-chevron" aria-hidden>
                 ▾
               </span>
             </div>
-            <label htmlFor="recording-screen">Screen</label>
+            <label htmlFor="recording-screen">录制内容</label>
             <div className="narrate-select-wrap">
               <select
                 id="recording-screen"
@@ -533,7 +549,7 @@ export function Recorder() {
                   ))
                 ) : (
                   <option value="">
-                    {screenSettings ? "No screens available" : "Loading screens..."}
+                    {screenSettings ? "没有可用屏幕" : "正在加载屏幕…"}
                   </option>
                 )}
               </select>
@@ -605,11 +621,11 @@ export function Recorder() {
           </svg>
         </span>
         <span className="privacy-note-text">
-          <span className="privacy-note-title">Records your screen and activity</span>
-          <span className="privacy-note-sub">See exactly what's captured</span>
+          <span className="privacy-note-title">记录屏幕和操作活动</span>
+          <span className="privacy-note-sub">查看具体采集内容</span>
         </span>
         {!advancedOn ? (
-          <span className="privacy-note-badge is-off">Protection off</span>
+          <span className="privacy-note-badge is-off">隐私保护已关闭</span>
         ) : null}
         <span className="privacy-note-chevron" aria-hidden>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -629,10 +645,10 @@ export function Recorder() {
         onClick={openLibrary}
         aria-label={
           pendingCount > 0
-            ? `Review sessions, ${pendingCount} ready to analyze`
+            ? `查看录制记录，${pendingCount} 条待分析`
             : sessionCount === 0
-              ? "Review sessions, nothing recorded yet"
-              : `Review sessions, ${sessionCount} recorded`
+              ? "查看录制记录，暂无录制"
+              : `查看录制记录，共 ${sessionCount} 条`
         }
       >
         <span className="sessions-open-icon" aria-hidden>
@@ -661,15 +677,15 @@ export function Recorder() {
         </span>
         <span className="sessions-open-text">
           <span className="sessions-open-label">
-            Review sessions
+            查看录制记录
             {pendingCount > 0 && <span className="sessions-open-flag">{pendingCount}</span>}
           </span>
           <span className={`sessions-open-sub ${pendingCount > 0 ? "is-new" : ""}`}>
             {pendingCount > 0
-              ? `${pendingCount} ready to analyze`
+              ? `${pendingCount} 条待分析`
               : sessionCount === 0
-                ? "No recordings yet"
-                : `${sessionCount} recording${sessionCount === 1 ? "" : "s"}`}
+                ? "暂无录制"
+                : `${sessionCount} 条录制`}
           </span>
         </span>
         <span className="sessions-open-chevron" aria-hidden>
@@ -688,9 +704,9 @@ export function Recorder() {
       {doctor && (
         <div className="doctor">
           <Row
-            label="GitHub Copilot"
-            status={doctor.copilotCli.ok ? "good" : "bad"}
-            note={doctor.copilotCli.ok ? "found" : "missing"}
+            label="AI 模型"
+            status={doctor.aiProvider.ok ? "good" : "bad"}
+            note={doctor.aiProvider.ok ? "已配置" : "请在下方配置"}
           />
           {narrate && narrationStatus && (
             <VoiceModelRow
@@ -709,7 +725,10 @@ export function Recorder() {
         </div>
       )}
 
-      <p className="hint">{TOGGLE_SHORTCUT} toggles from anywhere</p>
+      <BrowserSettingsPanel />
+      {!recording && <AiSettingsPanel onSaved={() => void window.skillRecorder.doctor().then(setDoctor)} />}
+
+      <p className="hint">{TOGGLE_SHORTCUT} 随时开始或结束录制</p>
 
       {showRecordingWarning && (
         <RecordingPrivacyWarning
@@ -771,26 +790,26 @@ function VoiceModelRow({
   onDownload: () => void;
 }) {
   if (status.phase === "downloading") {
-    const progress = status.progress == null ? "downloading" : `${status.progress}%`;
-    return <Row label="voice transcription" status="warn" note={progress} />;
+    const progress = status.progress == null ? "下载中" : `${status.progress}%`;
+    return <Row label="语音转写" status="warn" note={progress} />;
   }
   if (status.phase === "loading") {
-    return <Row label="voice transcription" status="warn" note="preparing" />;
+    return <Row label="语音转写" status="warn" note="准备中" />;
   }
   if (status.model === "ready") {
-    return <Row label="voice transcription" status="good" note="on-device · multilingual" />;
+    return <Row label="语音转写" status="good" note="SenseVoice · 本地处理" />;
   }
   return (
     <Row
-      label="voice transcription"
+      label="语音转写"
       status="warn"
       note={
         status.model === "error"
-          ? "download failed"
+          ? "下载失败"
           : `${NARRATION_MODEL_DOWNLOAD_LABEL} · multilingual`
       }
       action={{
-        label: status.model === "error" ? "retry" : "download",
+        label: status.model === "error" ? "重试" : "下载",
         disabled: recording,
         onClick: onDownload,
       }}
@@ -812,19 +831,19 @@ function SensitiveModelRow({
 }) {
   if (!status.enabled) return null;
   if (status.ocr === "downloading") {
-    const note = status.progress == null ? "downloading" : `${Math.round(status.progress)}%`;
-    return <Row label="advanced protection" status="warn" note={note} />;
+    const note = status.progress == null ? "下载中" : `${Math.round(status.progress)}%`;
+    return <Row label="隐私保护" status="warn" note={note} />;
   }
   if (status.ocr === "ready") {
-    return <Row label="advanced protection" status="good" note="on-device" />;
+    return <Row label="隐私保护" status="good" note="本地处理" />;
   }
   const failed = status.ocr === "error";
   return (
     <Row
-      label="advanced protection"
+      label="隐私保护"
       status="bad"
-      note={failed ? "download failed" : "not downloaded"}
-      action={{ label: failed ? "retry" : "download", disabled: recording, onClick: onDownload }}
+      note={failed ? "下载失败" : "尚未下载"}
+      action={{ label: failed ? "重试" : "下载", disabled: recording, onClick: onDownload }}
     />
   );
 }

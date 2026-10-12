@@ -1133,8 +1133,6 @@ function collectProductionPackages(rootDir, lock) {
 }
 
 function validateReviewedVersions(packages, lock, policy, rootDir) {
-  assertInstalledVersion(packages, "@github/copilot-sdk", policy.copilotSdk);
-  assertReviewedCopilotCliVersions(lock, policy.copilotCli);
   assertInstalledVersion(packages, "sharp", policy.sharp);
   for (const name of [
     "@secretlint/core",
@@ -1277,14 +1275,8 @@ function buildLicenseInventory(rootDir, packages, policy) {
       };
     }
 
-    if (pkg.name === "@github/copilot-sdk") {
-      if (pkg.version !== policy.copilotSdk) {
-        throw new Error(`No reviewed Copilot SDK license override exists for ${pkg.version}.`);
-      }
-      return overrideEntry(
-        pkg,
-        path.join(rootDir, "third_party", "package-licenses", "github-copilot-sdk-MIT.txt"),
-      );
+    if (pkg.name.startsWith("sherpa-onnx")) {
+      return overrideEntry(pkg, path.join(rootDir, "third_party", "package-licenses", "sherpa-onnx-Apache-2.0.txt"));
     }
 
     if (pkg.name.startsWith("onnxruntime-")) {

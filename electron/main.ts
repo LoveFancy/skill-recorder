@@ -1,3 +1,5 @@
+import path from "node:path";
+import { BrowserBridge } from "./browser/bridge";
 import {
   app,
   BrowserWindow,
@@ -6,6 +8,7 @@ import {
   ipcMain,
   Menu,
   screen,
+  shell,
 } from "electron";
 
 import { FULL_CAPTURE } from "../common/config";
@@ -99,9 +102,11 @@ async function finishRecordedTerminal(): Promise<void> {
   }
 }
 
+const browserBridge = new BrowserBridge(app.getPath("userData"), app.isPackaged ? process.resourcesPath : app.getAppPath());
+
 const recorder = new RecorderController({
   resolveConfig: () => ({ ...FULL_CAPTURE }),
-  buildCollectors: createCollectors,
+  buildCollectors: config => [...createCollectors(config), browserBridge],
   createVideoRecorder: () => new VideoRecorder(),
   createAudioRecorder: (onCaptureEnded) =>
     microphones.createSession(onCaptureEnded),
@@ -134,6 +139,8 @@ async function startRecording(): Promise<StartResult> {
       ...microphones.startOptions(),
       ...screenOptions,
     });
+  } catch (error) {
+    return { ok:false,error:error instanceof Error ? error.message : "无法开始录制" };
   } finally {
     recordingStartPending = false;
   }
@@ -356,7 +363,28 @@ function clampControlsToDisplay(): void {
 }
 
 app.whenReady().then(async () => {
+  let browserInitError: string | null = null;
+  try { await browserBridge.initialize(); } catch (error) { browserInitError=String(error); log.warn("Browser bridge unavailable:",error); }
+  ipcMain.handle("browser:status",()=>({...browserBridge.status(),error:browserInitError??browserBridge.status().error}));
+  ipcMain.handle("browser:reveal",()=>{shell.showItemInFolder(path.join(browserBridge.extensionDir,"manifest.json"));});
+  app.on("will-quit",()=>browserBridge.close());
   if (process.platform === "win32") Menu.setApplicationMenu(null);
+  else Menu.setApplicationMenu(Menu.buildFromTemplate([
+    ...(process.platform === "darwin" ? [{ label: "技能录制器", submenu: [
+      { label: "关于技能录制器", role: "about" as const },
+      { type: "separator" as const }, { label: "隐藏", role: "hide" as const },
+      { label: "退出", role: "quit" as const },
+    ] }] : []),
+    { label: "文件", submenu: [{ label: "关闭窗口", role: "close" }] },
+    { label: "编辑", submenu: [
+      { label: "撤销", role: "undo" }, { label: "重做", role: "redo" },
+      { type: "separator" }, { label: "剪切", role: "cut" },
+      { label: "复制", role: "copy" }, { label: "粘贴", role: "paste" },
+      { label: "全选", role: "selectAll" },
+    ] },
+    { label: "视图", submenu: [{ label: "重新加载", role: "reload" }, { label: "开发者工具", role: "toggleDevTools" }] },
+    { label: "窗口", submenu: [{ label: "最小化", role: "minimize" }, { label: "缩放", role: "zoom" }] },
+  ]));
   if (dock && app.dock) app.dock.setIcon(dock);
 
   narration.initialize();
@@ -560,10 +588,10 @@ app.on("before-quit", (event) => {
     if (terminal.busy) {
       const { response } = await dialog.showMessageBox({
         type: "warning",
-        buttons: ["Keep recording", "Close terminal and quit"],
+        buttons: ["继续录制", "关闭终端并退出"],
         defaultId: 0,
         cancelId: 0,
-        message: "A terminal command is still running.",
+        message: "终端命令仍在运行。",
         detail: terminal.command
           ? `Closing Skill Recorder will interrupt: ${terminal.command}`
           : "Closing Skill Recorder will interrupt the active terminal session.",

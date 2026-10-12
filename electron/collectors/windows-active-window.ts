@@ -154,3 +154,17 @@ function findUwpOwner(root: unknown, frameHostProcessId: number): unknown | null
   }
   return null;
 }
+
+/** Locate the exact recorded HWND, not whichever window the toolbar focused. */
+export function readWindowsWindowBounds(id: number, activate = false): ActiveWindowResult["bounds"] {
+  const hwnd = BigInt(id);
+  const isWindow = user32.func("IsWindow", "int32", ["void *"]);
+  const isIconic = user32.func("IsIconic", "int32", ["void *"]);
+  if (!isWindow(hwnd) || isIconic(hwnd)) return undefined;
+  if (activate) {
+    user32.func("SetForegroundWindow", "int32", ["void *"])(hwnd);
+    const foreground = getForegroundWindow();
+    if (!foreground || Number(koffi.address(foreground)) !== id) throw new Error("请先将所选录制窗口切到最前面，再使用截图或标注工具");
+  }
+  return windowBounds(hwnd);
+}

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { approveAll, type CopilotSession } from "@github/copilot-sdk";
+import type { AgentSession } from "../ai/client";
 
 import {
   AutomationPlanSchema,
@@ -22,7 +22,7 @@ import { createReadTools } from "../builders/read-tools";
 import { loadPersistedAnalysis } from "../describer/describer";
 import { createLogger } from "../logger";
 import { isValidSessionId, sessionDir } from "../recorder/session-store";
-import { AUTOMATION_BUILDER_INSTRUCTIONS } from "./instructions";
+import { AUTOMATION_BUILDER_INSTRUCTIONS, OUTPUT_LANGUAGE_INSTRUCTIONS } from "./instructions";
 import { createAutomationBuilderTools } from "./tools";
 
 const log = createLogger("AutomationBuilder");
@@ -46,7 +46,7 @@ function automationsRoot(): string {
 interface LiveBuild extends BaseLive {
   sessionDir: string;
   architecture: SkillArchitecture;
-  copilot: CopilotSession;
+  agent: AgentSession;
   holder: { plan: AutomationPlan | undefined };
   /** Last plan proposed this build (kept so create can reference it). */
   lastPlan: AutomationPlan | null;
@@ -71,7 +71,7 @@ export function loadPersistedAutomation(sessionId: string): BuiltAutomation | nu
 }
 
 /**
- * Drives the multi-turn GitHub Copilot CLI agent that turns a recording's analysis
+ * Drives the multi-turn model agent that turns a recording's analysis
  * into a generalized Scout **automation** (a trigger + ordered prompt-steps). Shares
  * the {@link AgentBuilder} pool (one live conversation per recording) so the plan →
  * refine → create flow stays in a single session. Streams progress out via a callback
@@ -93,7 +93,7 @@ export class AutomationBuilder extends AgentBuilder<LiveBuild> {
     this.active.add(sessionId);
     try {
       const refining = Boolean(feedback && feedback.trim());
-      this.emit(sessionId, "start", refining ? "Refining the plan…" : "Planning the automation…");
+      this.emit(sessionId, "start", refining ? "正在完善计划…" : "正在生成自动化计划…");
       let live = this.live.get(sessionId);
       if (!refining || !live) {
         await this.disposeLive(sessionId); // fresh conversation for a fresh plan
@@ -130,12 +130,12 @@ export class AutomationBuilder extends AgentBuilder<LiveBuild> {
 
     this.active.add(sessionId);
     try {
-      this.emit(sessionId, "drafting", "Writing the automation…");
+      this.emit(sessionId, "drafting", "正在生成自动化…");
       const built = toBuiltAutomation(sessionId, plan.architecture, submission, plan);
       const exportPath = this.exportAutomation(built);
       const finalAutomation: BuiltAutomation = { ...built, exportedPath: exportPath, exportedAt: Date.now() };
       this.persist(sessionDir(sessionId), finalAutomation);
-      this.emit(sessionId, "done", `Automation exported to ${exportPath}`);
+      this.emit(sessionId, "done", `自动化已导出至 ${exportPath}`);
       return { automation: finalAutomation, path: exportPath };
     } finally {
       this.active.delete(sessionId);
@@ -170,16 +170,12 @@ export class AutomationBuilder extends AgentBuilder<LiveBuild> {
     ];
 
     const catalogue = requireCatalogue(architecture, "automation").content;
-    const systemContent = `${AUTOMATION_BUILDER_INSTRUCTIONS}\n\n${catalogue}`.trim();
+    const systemContent = `${AUTOMATION_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
 
     const client = await this.ensureClient();
-    const copilot = await client.createSession({
+    const agent = await client.createSession({
       systemMessage: { mode: "append", content: systemContent },
       tools,
-      onPermissionRequest: approveAll,
-      workingDirectory: dir,
-      enableHostGitOperations: false,
-      infiniteSessions: { enabled: false },
       availableTools: tools.map((t) => t.name),
       ...(this.model ? { model: this.model } : {}),
     });
@@ -188,7 +184,7 @@ export class AutomationBuilder extends AgentBuilder<LiveBuild> {
       sessionId,
       sessionDir: dir,
       architecture,
-      copilot,
+      agent,
       holder,
       lastPlan: null,
     };
@@ -198,17 +194,17 @@ export class AutomationBuilder extends AgentBuilder<LiveBuild> {
 
   private async runProposeTurn(live: LiveBuild, prompt: string): Promise<AutomationPlan> {
     live.holder.plan = undefined;
-    this.emit(live.sessionId, "working", "Thinking…");
+    this.emit(live.sessionId, "working", "正在思考…");
     try {
-      await live.copilot.sendAndWait(prompt, TURN_TIMEOUT_MS);
+      await live.agent.sendAndWait(prompt, TURN_TIMEOUT_MS);
     } catch (err) {
-      await live.copilot.abort().catch(() => undefined);
+      await live.agent.abort().catch(() => undefined);
       throw new Error(`Planning failed: ${msg(err)}`);
     }
     const plan = live.holder.plan;
     if (!plan) throw new Error("The agent finished without proposing a plan.");
     live.lastPlan = plan;
-    this.emit(live.sessionId, "done", "Plan ready for your review.");
+    this.emit(live.sessionId, "done", "计划已生成，请检查。");
     return plan;
   }
 

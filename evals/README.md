@@ -1,7 +1,7 @@
 # Skill Recorder — Evals
 
 Repeatable evals for the part of the system with real variance: the multi-turn
-**Copilot describer** that turns captured signals into an *overall intent* + an
+**model describer** that turns captured signals into an *overall intent* + an
 *ordered list of steps*. Each eval feeds the describer a fixed, synthetic
 recording and scores its analysis against a rubric.
 
@@ -27,7 +27,8 @@ npm run eval -- --keep             # print the temp sessions dir (artifacts kept
 npm run eval -- --model=<model-id> # override the describer model
 ```
 
-Requires GitHub Copilot CLI to be signed in (same auth the app uses). Exit code
+Requires configured model settings or SKILL_RECORDER_BASE_URL, SKILL_RECORDER_MODEL
+and SKILL_RECORDER_API_KEY environment variables (key optional for local endpoints). Exit code
 is non-zero if any scenario fails. Full results are written to
 `evals/results/<timestamp>.json` (git-ignored).
 
@@ -68,7 +69,7 @@ For each scenario the harness:
 
 A forbidden-noise hit fails the scenario outright; otherwise pass = ≥80% of checks.
 
-`--judge` adds an optional second opinion: a separate Copilot agent grades
+`--judge` adds an optional second opinion: a separate model session grades
 faithfulness 0–5 against the scenario's ground truth (`judge.ts`). Off by default
 to keep runs deterministic.
 

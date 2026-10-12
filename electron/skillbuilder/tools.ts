@@ -1,4 +1,4 @@
-import type { Tool } from "@github/copilot-sdk";
+import type { Tool } from "../ai/client";
 
 import {
   SkillPlanSchema,
@@ -135,7 +135,7 @@ export function createSkillBuilderTools(ctx: SkillToolContext): Tool[] {
           resultType: "failure",
         };
       }
-      progress("Proposed a plan for your review.");
+      progress("计划已生成，请检查。");
       onPlan(parsed.data);
       return "Plan recorded and shown to the user. Stop now and wait for their review or refinement.";
     },
@@ -174,7 +174,7 @@ export function createSkillBuilderTools(ctx: SkillToolContext): Tool[] {
           resultType: "failure",
         };
       }
-      progress("Received the finished skill.");
+      progress("已收到技能文件。");
       onSubmit(parsed.data);
       return "Skill recorded. You may stop now.";
     },

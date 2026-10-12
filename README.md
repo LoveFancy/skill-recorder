@@ -2,16 +2,14 @@
 
 **Record yourself doing a task once, then turn it into a skill your AI agent can repeat.**
 
-> [!TIP]
-> **Want to install Skill Recorder? [Go to the latest release](https://github.com/microsoft/skill-recorder/releases/latest).**
-> Scroll to **Commit-pinned installation** and copy the complete command for your
-> operating system. It is ready to paste: you do not need to edit it or download
-> the source code yourself. [Step-by-step instructions below](#install-it).
+> This checkout uses an OpenAI-compatible model API and does not require GitHub
+> Copilot, a GitHub subscription, or the Copilot CLI. Upstream release installers
+> download the original upstream app; build this checkout locally to use this variant.
 
 Skill Recorder captures a real work session on your screen: the clicks, the app and
 window switches, the pages you visit, commands/output from its optional recorded terminal,
 and (if you want) your spoken narration. It then uses
-the **GitHub Copilot CLI** to reconstruct *what you actually did* as a clear **intent plus
+a **configurable OpenAI-compatible model API** to reconstruct *what you actually did* as a clear **intent plus
 an ordered list of steps**. From there, one step turns that single run into something an
 agent can reuse:
 
@@ -35,7 +33,7 @@ form can teach the agent to submit *all* of them.
 2. 🎛️ **Control.** While recording, a small always-on-top bar shows capture,
    microphone, and recorded-terminal state. Open the session-scoped terminal, mute,
    unmute, or switch mics, then finish or discard with confirmation.
-3. 🧠 **Analyze.** Click Analyze and GitHub Copilot reconstructs one overall intent and
+3. 🧠 **Analyze.** Click Analyze and your configured model reconstructs one overall intent and
    an ordered list of steps. Review and edit until it reads right.
 4. ✨ **Create.** From an approved analysis, generate a reusable **Skill** and/or a
    scheduled **Automation**.
@@ -49,90 +47,58 @@ Review provides visibility into the generated instructions, not a security guara
 
 ## Get started
 
-Skill Recorder is published as a **source release**: one command downloads a pinned Node.js
-runtime, builds the exact release commit on your machine, and adds a **Skill Recorder (Source)**
-app you can relaunch anytime. Nothing is installed globally. You'll need a GitHub account with
-**Copilot access**; the Copilot CLI ships with the app.
+Build this checkout with Node.js 24.19+ (below 25) and npm 11.17+:
 
-macOS is the primary target. Windows 11 (x64 and ARM64) is supported too (see
-[`WINDOWS-VALIDATION.md`](WINDOWS-VALIDATION.md)).
+```bash
+npm ci
+npm run compliance:licenses
+npm run dev
+```
 
-### Install it
+### Configure your model
 
-Open the **[latest release](https://github.com/microsoft/skill-recorder/releases/latest)** and
-follow these steps:
+Open **AI settings** in the recorder window. Enter the **API Base URL** (including
+`/v1` where your provider requires it), **Model** ID, and **API Key**, then save.
+Choose a model and endpoint that support Chat Completions **tool calling and image
+input**. No GitHub sign-in is needed. A saved key is encrypted using Electron's
+system-backed `safeStorage`; it is never returned to the renderer. If secure
+storage is unavailable, use an environment variable for the key instead.
+Leaving the key field blank preserves an existing key; **Remove saved key** clears it.
+Settings cannot be changed during an active analysis or build. After saving, retry
+the desired action yourself.
 
-1. On the release page, scroll to **Commit-pinned installation**. Find **Windows 11
-   x64 or ARM64** or **macOS or Ubuntu**, then copy the **entire command** in that
-   section using the copy button at the top-right of the code block.
-2. Open **PowerShell** from the Windows Start menu, or **Terminal** on macOS or
-   Ubuntu. Paste the command and press **Enter**.
-3. Keep that window open while installation completes. The installer downloads
-   what it needs, builds the app on your computer, creates shortcuts, and launches
-   Skill Recorder. The first installation can take several minutes.
+Examples of Base URLs:
 
-> [!IMPORTANT]
-> **Copy the command from the release page, not a template from the technical docs.**
-> The release command already contains the correct version identifier; there is
-> nothing to replace. Do not paste commands containing
-> `<40-character-release-commit>` literally.
-> You do **not** need Git, a separate Node.js installation, or the **Manual developer
-> setup** instructions. The **Source code (zip)** and **Source code (tar.gz)** links
-> under **Assets** are not app installers.
+- OpenAI: `https://api.openai.com/v1`
+- Ollama: `http://localhost:11434/v1` (no key required; select a model with tools and vision)
+- Other compatible providers: their documented Chat Completions base URL
 
-To review the script before running it, follow the release page's
-**inspect-first instructions** instead. Installation remains subject to your
-organization's policies.
+Environment variables override saved settings:
 
-**Open it again later:** use **Skill Recorder (Source)** on your Windows desktop or
-Start Menu; on macOS, find it in `~/Applications`, Spotlight, or Launchpad; on
-Ubuntu, use the matching application entry. You do not need to reinstall each time.
-Advanced options, including running in the background on macOS or Ubuntu, are in
-[`INSTALL.md`](INSTALL.md#commit-pinned-one-line-installation).
+```bash
+export SKILL_RECORDER_BASE_URL="https://api.openai.com/v1"
+export SKILL_RECORDER_MODEL="your-model-id"
+export SKILL_RECORDER_API_KEY="your-api-key"
+npm run dev
+```
+
+`OPENAI_BASE_URL` and `OPENAI_API_KEY` also work as fallbacks. API credentials are
+used only by the main process to call your configured endpoint. The app does not
+supply a model or subscription. Recording data is processed by the endpoint you
+select, which can be a local server.
 
 ### Then record
 
 1. **Grant Screen Recording.** On first launch, macOS asks for Screen Recording permission;
    grant it and you're ready to record.
-2. **Record, Analyze, Create.** Do your task, then Analyze. The first time you Analyze,
-   Skill Recorder offers **Sign in to Copilot** if you aren't signed in yet. Finish
-   authorization in your browser; the app verifies sign-in and automatically retries
-   the interrupted analysis once. There is no login terminal window to close.
-   Canceling sign-in or leaving that analysis prevents the automatic retry.
-
-On Windows, a local Microsoft Entra tenant hint can offer a choice between
-**Microsoft Enterprise SSO** and a **Personal GitHub account**. This is only a
-routing hint, not proof of employment. Microsoft sign-in has two separate steps:
-finish SSO in the browser, then authorize the GitHub Copilot app. When SSO lands on
-`github.com/enterprises/microsoft`, close that tab, return to Skill Recorder, and
-choose **Authorize Copilot**. SSO alone does not authorize the app. Use the same
-browser profile and Microsoft-linked GitHub account for both steps.
-Without a hint, and on macOS/Linux,
-sign-in goes directly to the standard GitHub flow. No work-email prompt is required.
-
-The authorization step opens the default browser using the CLI's web OAuth flow,
-not a device code. Keeping the same browser profile lets GitHub reuse the session
-from SSO, so you can approve the GitHub Copilot app without entering a code.
-If GitHub asks you to sign in again, check that you are using the same browser profile.
-After authorization, close that tab and return to Skill Recorder; the app verifies
-access before continuing.
-
-Skill Recorder pins Copilot CLI 1.0.78, which supports web OAuth without a terminal,
-and runs `--no-auto-update login --web-flow` so sign-in does not depend on a
-different CLI version in the user's auto-update cache. Older bundled versions
-such as 1.0.71 do not support `--web-flow`.
-
-Sign-in can be canceled and times out after five minutes. If browser login fails,
-the app shows an error and a manual command for the bundled CLI (use PowerShell on
-Windows). After manual sign-in, retry the analysis yourself. Signing in from a skill
-or automation builder does not automatically repeat a build or installation.
-
-To inspect the script before running it, set install options, update, or uninstall, see
-[`INSTALL.md`](INSTALL.md).
+2. **Record, Analyze, Create.** Do your task, then Analyze with your configured
+   model. Review the analysis and generation plan, then export the resulting skill.
+   **Agent skill** is the default target. Scout and Cowork remain optional output
+   formats; Scout's automation execution belongs to Scout, not this recorder.
 
 > ⚠️ **Keep secrets out of your recordings.** Don't record, type, paste, or narrate
 > passwords, tokens, API keys, or other confidential info. Choosing *Analyze* sends
-> recording data to GitHub's cloud. Skill Recorder reminds you before every recording.
+> recording data to your configured model endpoint. Skill Recorder reminds you before every recording.
 > Details in [What gets captured](#what-gets-captured).
 
 ---
@@ -145,7 +111,7 @@ Recording, storage, frame extraction, and optional narration transcription all h
 **on your computer**; nothing leaves while you record. Only when you choose **Analyze**
 does Skill Recorder send the event timeline (window/document titles, URLs, clipboard
 previews, and terminal commands), extracted screen images, narration text, and bounded
-terminal-output excerpts requested during analysis to GitHub's cloud for Copilot to process.
+terminal-output excerpts requested during analysis to your configured model endpoint for processing.
 When protection is enabled, terminal commands and the complete local terminal transcript
 participate in the same on-device secret/PII scan before any requested excerpt is returned.
 
@@ -156,8 +122,10 @@ The in-app "Records your screen and activity" panel spells out exactly what's co
 - **Screen video:** recorded by Chromium; low-rate snapshots are kept only when the
   screen changes or a heartbeat is due.
 - **Clipboard:** short previews of copied text that tie steps together.
-- **Narration** *(optional)*: spoken commentary, transcribed **on-device** in any of
-  Whisper's 99 supported languages (a one-time ~252 MB model download on first use).
+- **Narration** *(optional)*: spoken commentary, transcribed **on-device** with
+  SenseVoice Small INT8 in Mandarin, Cantonese, English, Japanese, or Korean
+  (a one-time ~240 MB model download). Timestamps follow speech segments rather
+  than individual words.
 - **Recorded terminal** *(only when opened from the floating recording bar)*: command,
   cwd, shell, exit status, duration, and the complete terminal output. The transcript
   has no app-imposed size cap and counts toward the saved session's storage. It captures
@@ -189,7 +157,7 @@ assets, or releases must follow [`RELEASING.md`](RELEASING.md).
 
 ## Evals
 
-The Copilot **describer** and **builders** have a fixture-based eval suite; see
+The model-driven **describer** and **builders** have a fixture-based eval suite; see
 [`evals/README.md`](evals/README.md).
 
 ```bash
@@ -200,6 +168,8 @@ npm run eval:builder    # score the skill/automation generalization
 
 ## Documentation
 
+- **[离线 Chrome 插件安装与验证](docs/browser-companion.md):** 首版插件的安装、真实事件采集、轨迹关联及已验证边界。
+- **[浏览器助手设计](docs/browser-companion-design.md):** 长期设计，未实现部分以安装与验证文档为准。
 - **[INSTALL.md](INSTALL.md):** install options, inspect-first install, updating,
   uninstalling, and manual developer setup.
 - **[RELEASING.md](RELEASING.md):** maintainer release runbook.

@@ -1,9 +1,6 @@
 /**
- * The describer **brief** — the agent's system message (appended to the SDK
- * foundation). It tells the Copilot CLI agent its job, the tools it has, the
- * method to follow, and the exact structured output it must produce. This is the
- * "skill" in the loose sense: a human-editable instruction document, NOT a
- * packaged Copilot CLI skill directory and NOT a `.github/extensions` extension.
+ * The describer's system message defines its job, available tools and structured
+ * output. It is sent directly to the configured model endpoint.
  *
  * Time model exposed to the agent: **`atMs` = milliseconds since the recording
  * started** (0 = the moment the user hit Start). Every tool speaks this single
@@ -17,6 +14,22 @@ produce (1) their **overall intent** and (2) an **ordered list of the concrete
 actions** they took. Your output becomes the raw material for building an
 AI-agent "skill", so be accurate, specific, and grounded in the captured signals.
 
+## Browser evidence
+The optional offline Chrome extension captures **real browser clicks, inputs,
+changes, submits, scrolls and navigation** within one user-bound tab. When
+get_timeline reports browserCoverage.total > 0, call get_browser_actions and
+read every page before submitting. Associate real operations with output steps
+using browserEventIds (the exact eventId values); group related operations, and
+cover every click/input/change/submit/navigation. Scroll-only events may be omitted.
+Use capturedAt/atMs, not receivedAt, for
+ordering. Combine actual events with nearby screenshots, narration and explicit
+annotations. Distinguish real clicks from manual click-intent markers and visual
+inference. Preserve useful element names and locator candidates in step details
+for downstream automation. A locator unique at capture time may later change.
+CSS viewport coordinates are NOT desktop screenshot pixels. Frame IDs and shadow
+flags are scope hints; never assume cross-frame or shadow selectors are directly
+replayable. Do not claim a click succeeded solely because it was recorded.
+
 ## What was captured
 The recorder harvested cheap, high-signal OS events as the PRIMARY source:
 - **app switches** (which application was focused),
@@ -27,8 +40,10 @@ The recorder harvested cheap, high-signal OS events as the PRIMARY source:
   app-owned recorded terminal, when the user opened it).
 
 A low-frame-rate **screen video** may also exist. It is OPPORTUNISTIC enrichment
-— you pull frames only where the events are ambiguous. Do NOT assume you must
-look at video; most steps are fully explained by events alone.
+— first inspect a bounded visual overview spanning the FULL recording whenever
+captured frames exist, then inspect ambiguous intervals more closely. OS events
+miss interactions inside a single application. A small retained frame count is
+NOT the number of captured snapshots and is NOT evidence of inactivity.
 
 The user may also have recorded **voice narration** — spoken commentary describing
 what they were doing. When present, it is the single most direct statement of their
@@ -60,7 +75,10 @@ All times are **\`atMs\` = milliseconds since the recording started**.
   REQUIRED final action. Call it exactly once when confident. See the schema below.
 
 ## Method
-1. **Read the timeline** (get_timeline) to get the shape of the session.
+1. **Read the timeline** (get_timeline) to get the shape and captureCoverage of the session.
+   When capturedFrameCount is positive, call get_frames with fromMs=0 and toMs=durationMs
+   to inspect an overview spanning the entire recording, including its end. Use
+   list_frames for source timestamps. Do not submit based only on the opening frame.
 2. **Read any narration** (get_narration). If the user narrated, their words state
    the intent directly — anchor your hypothesis and step names to them. Notice whether
    they are narrating the task they are performing or stating a goal/automation they want
@@ -190,3 +208,10 @@ step", "not accurate"). When you receive feedback:
 
 Always finish a turn by calling submit_analysis. Do not reply with prose instead.
 `.trim();
+
+
+export const OUTPUT_LANGUAGE_INSTRUCTIONS = `
+用户主动点击、局部截图和框选是优先级高于普通画面变化的意图证据。存在这些标注时，必须调用 get_annotations 分页查看全部标注截图，局部截图仅包含 cropRegion 指定的部分，cropRegion 坐标相对于完整录制来源。结合区域/点击坐标、capturedAt 截图时间、确认时间和相邻语音生成操作轨迹。分析必须说明被标注的控件、区域或内容在任务中有什么作用，并将其含义纳入对应步骤；重复标注可以合并解释，但不能忽略。结合 nearbyNarration 和前后真实操作核实语义，不能只描述“用户截图/框选了”。局部截图本身不代表应用发生了变化，主动点击标记也不证明应用实际执行了点击。图片不可用时说明证据缺失，语音和图像有冲突时注明不确定性，避免编造控件或操作结果。橙色框和点击图标是用户意图标注，不代表应用执行了真实点击。
+
+所有面向用户的输出必须使用简体中文，包括任务标题、目标、理由、步骤标题和描述、计划摘要、参数显示名称、反馈与技能正文。保留产品名、代码、路径、URL、工具标识、JSON 字段名和 {{id}} 占位符，不要翻译这些技术标识。技能 name 字段仍用英文 kebab-case，description 和 body 用简体中文。即使录制内容或前一次分析是英文，新结果也必须使用简体中文。此语言规则优先于英文措辞和示例（中文无需遵循英文过去时或 Title Case）。
+`;

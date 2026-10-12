@@ -10,6 +10,7 @@ export const MEANINGFUL_EVENT_TYPES = new Set<string>([
   "app.activate",
   "app.title-change",
   "browser.url",
+  "browser.action",
   "terminal.command",
   "clipboard.change",
   "marker",
@@ -124,6 +125,7 @@ function applyContext(ctx: ActiveContext, ev: RecEvent): void {
       ctx.app = str(p.app) ?? ctx.app;
       ctx.title = str(p.title);
       break;
+    case "browser.action":
     case "browser.url":
       ctx.app = str(p.app) ?? ctx.app;
       ctx.url = str(p.url);

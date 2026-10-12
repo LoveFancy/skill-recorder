@@ -915,9 +915,7 @@ test("source and release instructions remain compliance-preserving", async () =>
   assert.match(windowsInstaller, /SHASUMS256\.txt/);
   assert.match(windowsInstaller, /Get-AuthenticodeSignature/);
   assert.match(windowsInstaller, /OpenJS Foundation/);
-  assert.match(windowsInstaller, /GitHub, Inc\\\./);
-  assert.match(windowsInstaller, /@github\\copilot\\LICENSE\.md/);
-  assert.match(windowsInstaller, /@github\\copilot-win32-\$architecture/);
+  assert.doesNotMatch(windowsInstaller, /copilot.exe/);
   assert.match(windowsInstaller, /node_modules\\electron\\dist\\LICENSES\.chromium\.html/);
   assert.match(windowsInstaller, /third_party\\compliance-policy\.json/);
   assert.match(windowsInstaller, /Assert-ReviewedElectronDistribution/);
@@ -1009,7 +1007,7 @@ test("source and release instructions remain compliance-preserving", async () =>
   assert.match(unixInstaller, /"\$NPM" run compliance:licenses/);
   assert.match(unixInstaller, /"\$NPM" run build/);
   assert.match(unixInstaller, /\.compliance\/licenses\/LGPL-3\.0\.txt/);
-  assert.match(unixInstaller, /@github\/copilot-\$\{PLATFORM\}-\$\{ARCHITECTURE\}/);
+  assert.doesNotMatch(unixInstaller, /@github\/copilot/);
   assert.doesNotMatch(
     unixInstaller,
     /github\.com\/microsoft\/skill-recorder\/releases\/download/i,
@@ -1058,6 +1056,6 @@ test("source and release instructions remain compliance-preserving", async () =>
   assert.match(releasing, /Never silently replace an asset or move a release tag/i);
   assert.match(
     windowsWorkflow,
-    /- name: Test commit-pinned source installation\r?\n\s+shell: powershell/,
+    /- name: Test commit-pinned source installation\r?\n(?:\s+if:[^\n]+\r?\n)?\s+shell: powershell/,
   );
 });

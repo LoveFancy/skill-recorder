@@ -3,7 +3,7 @@
 // (`--judge`); the deterministic rubric in scoring.ts is the primary signal. This
 // adds a qualitative, human-like second opinion for the overnight report.
 
-import { approveAll, CopilotClient, type Tool } from "@github/copilot-sdk";
+import { AgentClient, type Tool } from "../electron/ai/client";
 
 import type { Analysis } from "../common/analysis";
 import type { Scenario } from "./scenario";
@@ -44,7 +44,7 @@ export async function judgeAnalysis(
   analysis: Analysis,
   model?: string,
 ): Promise<JudgeResult> {
-  const client = new CopilotClient();
+  const client = new AgentClient();
   await client.start();
   try {
     const holder: { result: JudgeResult | undefined } = { result: undefined };
@@ -76,9 +76,6 @@ export async function judgeAnalysis(
     const session = await client.createSession({
       systemMessage: { mode: "append", content: JUDGE_INSTRUCTIONS },
       tools: [submit],
-      onPermissionRequest: approveAll,
-      enableHostGitOperations: false,
-      infiniteSessions: { enabled: false },
       ...(model ? { model } : {}),
     });
     await session.sendAndWait(renderPrompt(scenario, analysis), 120_000);

@@ -4,18 +4,18 @@ import type { SensitiveModelStatus } from "../common/ipc";
 
 /** Human-readable status for the on-device protection model shown in the sheet. */
 function protectionModelNote(status: SensitiveModelStatus | null): string {
-  if (!status) return "Checking…";
+  if (!status) return "正在检查…";
   switch (status.ocr) {
     case "ready":
-      return "On-device model ready";
+      return "本地模型已就绪";
     case "downloading":
       return status.progress == null
-        ? "Setting up the on-device model…"
-        : `Setting up the on-device model… ${Math.round(status.progress)}%`;
+        ? "正在设置本地模型…"
+        : `正在设置本地模型… ${Math.round(status.progress)}%`;
     case "error":
-      return "Couldn't set up the model";
+      return "无法设置本地模型";
     default:
-      return "On-device model not set up yet";
+      return "本地模型尚未设置";
   }
 }
 
@@ -88,111 +88,69 @@ export function WhatsRecorded({
               />
             </svg>
           </span>
-          <h2 id="whats-recorded-title">What's recorded</h2>
+          <h2 id="whats-recorded-title">采集内容</h2>
         </header>
 
-        <p className="sheet-lead">
-          This tool records your screen and activity so it can turn what you did into a reusable
-          skill. Here is exactly what it captures and what leaves your computer.
-        </p>
+        <p className="sheet-lead">本工具记录屏幕和操作活动，将操作转换为可复用技能。以下说明具体采集内容及可能发送的数据。</p>
 
         <section className="sheet-block">
-          <h3>While you're recording</h3>
-          <p className="sheet-note">Only between Start and Stop.</p>
+          <h3>录制期间</h3>
+          <p className="sheet-note">仅在开始和结束录制之间采集。</p>
           <ul>
-            <li>Which apps you switch to, and their window and document titles.</li>
-            <li>Web addresses of the pages you open.</li>
-            <li>A short preview of text you copy, up to 120 characters.</li>
-            <li>A silent video of the screen you select, at a low frame rate.</li>
-            <li>
-              If you open the recorded terminal from the floating bar: its commands, working
-              folders, exit status, timing, and complete terminal output.
-            </li>
+            <li>切换到的应用及其窗口、文档标题。</li>
+            <li>打开页面的网址。</li>
+            <li>复制文本的简短预览，最多 120 个字符。</li>
+            <li>以低帧率录制所选屏幕的无声视频。</li>
+            <li>打开悬浮栏中的录制终端后，会采集命令、工作目录、退出状态、时间和完整输出。</li>
           </ul>
-          <p className="sheet-caution">
-            Do not type, paste, display, copy, or narrate passwords, access tokens, API keys,
-            credentials, secrets, or other sensitive or confidential information. Anything visible
-            on screen can appear in the recording, and copied text previews and narration are
-            captured too.
-          </p>
+          <p className="sheet-caution">请勿输入、粘贴、展示、复制或口述密码、令牌、API 密钥等敏感信息。屏幕上可见的内容、复制文本预览与旁白都可能被录制。</p>
         </section>
 
         <section className="sheet-block">
-          <h3>Recorded terminal (only if you open it)</h3>
+          <h3>录制终端（仅在打开时）</h3>
           <ul>
-            <li>Only the terminal opened from the floating recording bar is captured.</li>
-            <li>
-              Its full output stays with this recording and has no app-imposed size limit, so
-              long-running or noisy commands can make the saved recording much larger.
-            </li>
-            <li>
-              Skill Recorder does not edit shell profiles, install global hooks, watch existing
-              terminals, or keep recording commands after this recording ends.
-            </li>
+            <li>仅采集从悬浮录制栏打开的终端。</li>
+            <li>完整终端输出随录制保存，没有应用设置的大小限制。长时间运行或大量输出的命令可能增大录制体积。</li>
+            <li>本应用不会修改终端配置、安装全局监听、监控已有终端，也不会在录制结束后继续记录命令。</li>
           </ul>
         </section>
 
         <section className="sheet-block">
-          <h3>Voice narration (only if you turn it on)</h3>
-          <p className="sheet-note">
-            Off by default. Choose the initial state and microphone with Narrate, then use the
-            floating recording bar.
-          </p>
+          <h3>语音旁白（仅在启用时）</h3>
+          <p className="sheet-note">默认关闭。可在旁白设置中选择麦克风和初始状态，再通过悬浮录制栏控制。</p>
           <ul>
-            <li>
-              Enabling Narrate briefly opens and releases the microphone so the app can request
-              permission and show the available inputs. No audio is saved during this check.
-            </li>
-            <li>Your microphone audio is saved only while it is on and a recording is running.</li>
-            <li>
-              Turning the microphone off ends that voice segment and releases the device. Turning it
-              on again, or switching inputs, starts a new segment linked to the same recording
-              timeline.
-            </li>
-            <li>
-              The recording can be turned into text on this computer using an on-device model. The
-              transcript stays in the language you select from Whisper's 99 supported choices. The
-              first transcription needs a one-time ~252 MB download that you choose when to start.
-            </li>
-            <li>Leave Narrate and the recording-bar microphone off and no microphone is opened.</li>
+            <li>启用旁白时会短暂打开并释放麦克风，用于请求权限和检测输入设备，此检查不会保存音频。</li>
+            <li>仅在录制进行且麦克风开启时保存声音。</li>
+            <li>关闭麦克风会结束当前语音片段并释放设备。再次开启或切换输入会创建新的片段，仍关联同一录制时间线。</li>
+            <li>语音通过本地模型转写为文本，使用所选语言，使用 SenseVoice Small INT8，支持中文、粤语、英语、日语和韩语。首次转写需下载约 240 MB 的模型，由你决定何时开始。</li>
+            <li>关闭旁白与录制栏麦克风后，不会打开麦克风。</li>
           </ul>
         </section>
 
         <section className="sheet-block">
-          <h3>Where it's stored</h3>
+          <h3>存储位置</h3>
           <ul>
-            <li>Everything is saved on this computer, in the app's own session folder.</li>
-            <li>Recordings stay until you delete them. You can delete any recording from Sessions.</li>
+            <li>所有内容都保存在本机的应用录制目录中。</li>
+            <li>录制内容会保留，直到你从录制记录中删除它。</li>
           </ul>
         </section>
 
         <section className="sheet-block">
-          <h3>What's sent for analysis</h3>
+          <h3>发送用于分析的内容</h3>
           <ul>
-            <li>Nothing leaves your computer while you record.</li>
+            <li>录制期间不会向外发送数据。</li>
             <li>
-              When you choose Analyze, the event timeline (window and document titles, URLs, and
-              clipboard previews and recorded-terminal commands), plus screen images, narration
-              text, and only the bounded terminal-output excerpts needed for analysis, are sent
-              to GitHub&apos;s cloud service and processed by GitHub Copilot.
+              选择分析后，事件时间线、屏幕截图、旁白文本及分析所需的有限终端输出片段会发送到配置的 AI 服务。
             </li>
-            <li>
-              By default, before anything is sent, this computer hides sensitive details like
-              passwords, keys, emails, and card or ID numbers from that text and from your screen
-              images. You can turn this off below.
-            </li>
+            <li>默认会在本机隐藏文本和截图中的密码、密钥、邮箱、银行卡号和证件号码等敏感信息，可在下方关闭。</li>
           </ul>
         </section>
 
         <section className={`sheet-block sheet-advp ${advancedOn ? "on" : ""}`}>
           <div className="sheet-advp-head">
             <div className="sheet-advp-copy">
-              <h3>Advanced protection</h3>
-              <p className="sheet-note">
-                On by default. Before your recording is analyzed, it checks the text and your screen
-                images on this computer and hides sensitive details. Turn it off to send everything
-                as recorded.
-              </p>
+              <h3>隐私保护</h3>
+              <p className="sheet-note">默认开启。分析前在本机检查文本和截图，并隐藏敏感信息。关闭后将按原样发送录制内容。</p>
             </div>
             <button
               type="button"
@@ -200,7 +158,7 @@ export function WhatsRecorded({
               role="switch"
               aria-checked={advancedOn}
               aria-busy={advancedPending}
-              aria-label="Advanced protection"
+              aria-label="隐私保护"
               disabled={advancedPending}
               onClick={onToggleAdvanced}
             >
@@ -212,45 +170,33 @@ export function WhatsRecorded({
           {advancedOn && (
             <>
               <ul>
-                <li>
-                  It hides sensitive details like                   passwords, keys, emails, and card or ID numbers, both in the text that is sent
-                  (including narration and terminal output) and in your screen images.
-                </li>
-                <li>
-                  Turning it off sends your recording as recorded. That can make the analysis more
-                  accurate, but nothing is hidden, so only do it when the recording has nothing
-                  sensitive.
-                </li>
-                <li>It all runs on this computer.</li>
+                <li>隐藏发送文本（包括旁白和终端输出）及截图中的密码、密钥、邮箱、银行卡号和证件号码等敏感信息。</li>
+                <li>关闭后会原样发送录制内容，可能提高分析准确度，但不会隐藏信息。仅在录制不含敏感内容时关闭。</li>
+                <li>所有保护处理均在本机执行。</li>
               </ul>
               <div className={`sheet-advp-status ${showModelError ? "is-error" : ""}`}>
                 <span className="sheet-advp-model">{protectionModelNote(sensitive)}</span>
                 {showDownloadAction && (
                   <button type="button" className="sheet-advp-download" onClick={onDownload}>
-                    {sensitive?.ocr === "error" ? "Retry" : "Set up now"}
+                    {sensitive?.ocr === "error" ? "重试" : "立即设置"}
                   </button>
                 )}
               </div>
-              <p className="sheet-caution">
-                No method is 100% effective. It can miss details or mask the wrong ones. Treat it as
-                a safety net, not a guarantee, and still avoid capturing anything secret.
-              </p>
+              <p className="sheet-caution">保护可能漏检或误判，无法保证完全有效。请仍然避免录制任何机密信息。</p>
             </>
           )}
         </section>
 
         <section className="sheet-block">
-          <h3>What it never does</h3>
+          <h3>不会采集的内容</h3>
           <ul>
-            <li>It does not log your keystrokes.</li>
-            <li>It does not capture commands from Terminal, PowerShell, or other terminal apps.</li>
-            <li>It only captures while a recording is running. Nothing runs in the background.</li>
+            <li>不会记录键盘按键。</li>
+            <li>不会采集系统终端、PowerShell 或其他终端应用的命令。</li>
+            <li>仅在录制期间采集，不会在后台持续监控。</li>
           </ul>
         </section>
 
-        <button className="sheet-close" onClick={onReviewed}>
-          Got it
-        </button>
+        <button className="sheet-close" onClick={onReviewed}>知道了</button>
       </div>
     </div>
   );

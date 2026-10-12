@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, rm, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -66,7 +66,7 @@ test("microphone toggles are serialized and finalized on save", async () => {
 
     const started = await controller.start();
     assert.equal(started.ok, true);
-    assert.equal(audio.narrationLanguage, "en");
+    assert.equal(audio.narrationLanguage, "zh");
     assert.equal(controller.status().microphone.state, "off");
 
     assert.equal((await controller.setMicrophoneEnabled(true)).ok, true);
@@ -556,3 +556,52 @@ async function withSessionsRoot(
     await rm(root, { recursive: true, force: true });
   }
 }
+
+test("window recording passes the source identity and persists manual region markers", async () => {
+  await withSessionsRoot(async root => {
+    let videoSource: string | undefined;
+    let snapshots = 0;
+    const controller = new RecorderController({
+      resolveConfig: () => ({ ...FULL_CAPTURE }),
+      buildCollectors: () => [],
+      createVideoRecorder: () => ({
+        start: async (_dir, sourceId) => { videoSource = sourceId; },
+        stop: async () => null,
+        captureSnapshot: () => { snapshots++; },
+      }),
+      deleteSession: async () => undefined,
+    });
+    const box = { x:0.1,y:0.2,width:0.3,height:0.4 };
+    assert.equal(controller.annotate(box).ok,false);
+    const start = await controller.start({ screenSourceId:"window:42:0" });
+    assert.equal(start.ok,true);
+    assert.equal(videoSource,"window:42:0");
+    assert.equal(controller.recordingSelection()?.sourceId,"window:42:0");
+    assert.equal(controller.annotate(box).ok,true);
+    assert.equal(snapshots,1);
+    assert.equal(controller.annotate({ ...box, width:2 }).ok,false);
+    await controller.stop();
+    const events = (await readFile(path.join(root,start.sessionId!,"events.jsonl"),"utf8")).trim().split("\n").map(line => JSON.parse(line));
+    assert.deepEqual(events.find(event => event.type === "marker").payload.region,box);
+    assert.equal(controller.recordingSelection(),null);
+  });
+});
+
+test("annotation confirmation requires a saved screenshot and preserves explicit click intent", async () => {
+  await withSessionsRoot(async root => {
+    const controller = new RecorderController({resolveConfig:()=>({...FULL_CAPTURE}),buildCollectors:()=>[],deleteSession:async()=>undefined});
+    const start = await controller.start();
+    const annotation = {note:"用户主动标记点击位置",click:{x:0.4,y:0.6}};
+    assert.equal(controller.saveAnnotation(annotation,Buffer.from("screenshot"),1234).ok,true);
+    const dir = path.join(root,start.sessionId!);
+    await rm(path.join(dir,"frames"),{recursive:true,force:true});
+    assert.equal(controller.saveAnnotation(annotation,Buffer.from("screenshot"),5678).ok,false);
+    await controller.stop();
+    const events = (await readFile(path.join(dir,"events.jsonl"),"utf8")).trim().split("\n").map(line=>JSON.parse(line)).filter(e=>e.type==="marker");
+    assert.equal(events.length,1,"failed screenshot writes must not confirm annotations");
+    assert.deepEqual(events[0].payload.click,annotation.click);
+    assert.equal(events[0].payload.capturedAt,1234);
+    assert.match(events[0].payload.screenshot,/^frames\/annotation_.*\.png$/);
+    assert.equal(controller.saveAnnotation(annotation,Buffer.from("screenshot"),9999).ok,false);
+  });
+});

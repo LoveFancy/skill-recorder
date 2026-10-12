@@ -1,5 +1,4 @@
 import {
-  DEFAULT_NARRATION_LANGUAGE,
   isNarrationLanguage,
   type NarrationLanguage,
 } from "./narration";
@@ -80,7 +79,7 @@ export function readAudioSources(value: unknown): AudioSource[] {
 /** Read the session's transcription language, preserving English for older recordings. */
 export function readAudioNarrationLanguage(value: unknown): NarrationLanguage {
   if (!isAudioManifestV2(value) || value.narrationLanguage === undefined) {
-    return DEFAULT_NARRATION_LANGUAGE;
+    return "en";
   }
   if (!isNarrationLanguage(value.narrationLanguage)) {
     throw new Error("Narration metadata contains an unsupported transcription language.");

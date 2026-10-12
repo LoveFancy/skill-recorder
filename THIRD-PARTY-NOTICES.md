@@ -45,15 +45,15 @@ Those components remain under their own terms; the generated
 
 ## Bundled runtime components
 
-### GitHub Copilot CLI — `@github/copilot` (+ platform binary `@github/copilot-<platform>-<arch>`)
-- License: **GitHub Copilot CLI License** (proprietary) — see
-  `node_modules/@github/copilot/LICENSE.md`.
-- Pulled in by `@github/copilot-sdk` (MIT) and spawned as a separate process.
-- Redistribution is permitted **only** as an unmodified copy bundled as part of
-  this application, with the license and all copyright/attribution notices
-  retained. The license explicitly states it does not restrict this
-  application's own license, including distribution under an open-source (MIT)
-  license.
+### Chrome Native Messaging helper — Go runtime and standard library
+- The standalone helper is built from this repository's `native/browser-host`
+  source (MIT) with the official Go toolchain, without external Go modules.
+- Linked Go runtime and standard-library code is **BSD-3-Clause**. Its license is
+  included at `resources/native/bin/LICENSE-Go.txt` and in
+  `third_party/package-licenses/go-BSD-3-Clause.txt`.
+- End users do not need Go, Node.js or Python to run the helper.
+
+
 
 ### Electron / Chromium media codecs
 - License: Electron is **MIT**. Its Chromium runtime includes `ffmpeg.dll`

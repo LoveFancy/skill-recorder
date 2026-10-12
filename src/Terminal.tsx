@@ -96,18 +96,18 @@ export function Terminal() {
 
   const stateLabel =
     switching
-      ? "Switching shell"
+      ? "正在切换终端环境"
       : status?.state === "running"
-      ? "Command running"
+      ? "命令运行中"
       : status?.state === "idle"
-        ? "Ready"
+        ? "就绪"
         : status?.state === "starting"
-          ? "Starting"
+          ? "启动中"
           : status?.state === "error"
-            ? "Capture error"
+            ? "采集出错"
             : status?.state === "exited"
-              ? "Shell exited"
-              : "Recorded terminal";
+              ? "终端已退出"
+              : "录制终端";
 
   return (
     <main className="terminal-page">
@@ -116,11 +116,11 @@ export function Terminal() {
           <span className={`terminal-state-dot ${status?.state ?? "closed"}`} aria-hidden />
           <span>
             <strong>{stateLabel}</strong>
-            <small>Output is saved only with this recording</small>
+            <small>输出仅保存在本次录制中</small>
           </span>
         </div>
         <label className="terminal-shell-picker">
-          <span>Shell</span>
+          <span>终端环境</span>
           <select
             value={status?.shell?.id ?? ""}
             disabled={switching || status?.busy || shells.length === 0}
@@ -139,16 +139,14 @@ export function Terminal() {
           type="button"
           className="terminal-hide"
           onClick={() => void window.skillRecorder.hideTerminal()}
-        >
-          Hide
-        </button>
+        >收起</button>
       </header>
       {(actionError || status?.error) && (
         <div className="terminal-error" role="alert">
           {actionError ?? status?.error}
         </div>
       )}
-      <div ref={hostRef} className="terminal-viewport" aria-label="Recorded terminal" />
+      <div ref={hostRef} className="terminal-viewport" aria-label="录制终端" />
     </main>
   );
 }

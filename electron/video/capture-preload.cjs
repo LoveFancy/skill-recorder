@@ -281,6 +281,11 @@ function cleanup() {
   frameErrorReported = false;
 }
 
+ipcRenderer.on("video:snapshot", () => {
+  // Let the selection overlay disappear and allow the next screen frame to arrive.
+  setTimeout(() => { if (recordingStarted) void maybeEmitFrame(currentEpoch(), true).catch(reportFrameError); }, 1200);
+});
+
 ipcRenderer.on("video:start", async (_event, opts) => {
   const { sourceId, fps, bitsPerSecond, maxWidth, maxHeight } = opts;
   try {

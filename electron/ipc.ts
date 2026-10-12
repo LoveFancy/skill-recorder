@@ -1,5 +1,7 @@
+import { renderAnnotation } from "./video/annotation-image";
+import { isCaptureRegion } from "../common/capture-region";
+import { selectRegion } from "./video/region-selector";
 import {
-  app,
   BrowserWindow,
   dialog,
   ipcMain,
@@ -8,6 +10,7 @@ import {
   type SaveDialogOptions,
   type WebContents,
 } from "electron";
+import { getStepScreenshots } from "./frames/step-screenshots";
 import os from "node:os";
 import path from "node:path";
 
@@ -34,7 +37,8 @@ import type { NarrationLanguage } from "../common/narration";
 import type { SensitiveReport } from "../common/sensitive";
 import type { SkillPlan } from "../common/skill";
 import { AutomationBuilder, loadPersistedAutomation } from "./automationbuilder/builder";
-import { cancelCopilotSignIn, disposeCopilotSignIn, openCopilotSignIn } from "./copilot-signin";
+import { getAiSettings, saveAiSettings } from "./ai/settings";
+import type { AiSettingsInput } from "../common/ai";
 import { buildDebugInfo, writeDebugBundle } from "./debug-bundle";
 import { Describer, loadPersistedAnalysis } from "./describer/describer";
 import type { RedactionContext } from "./describer/tools";
@@ -106,6 +110,39 @@ export function registerIpc(
       return microphones.setNarrationEnabled(enabled);
     },
   );
+  let sourcePickerPending = false;
+  ipcMain.handle(IPC.pickRecordingSource, async () => {
+    if (sourcePickerPending || recorder.status().state === "recording" || isRecordingStartPending()) return { ok:false,status:screens.settings(),error:"请在开始录制前选择录制内容" };
+    sourcePickerPending = true;
+    try { return await screens.pickSource(); }
+    catch (error) { return { ok:false,status:screens.settings(),error:error instanceof Error ? error.message : "无法选择录制内容" }; }
+    finally { sourcePickerPending = false; }
+  });
+  ipcMain.handle(IPC.annotateRegion, async (_event, mode: unknown) => {
+    if (mode !== undefined && mode !== "region" && mode !== "click" && mode !== "crop") return { ok:false,error:"无效的标注模式" };
+    const context = recorder.recordingSelection();
+    const sessionId = recorder.status().sessionId;
+    if (!context) return { ok:false,error:"请先开始录制" };
+    const selectedMode = mode ?? "region";
+    try {
+      const bounds = await screens.annotationBounds(context.sourceId, context.displayId, true);
+      const result = await selectRegion(bounds, selectedMode, async selection => {
+        if (sessionId !== recorder.status().sessionId) return { ok:false,error:"录制已结束" };
+        const currentBounds = await screens.annotationBounds(context.sourceId, context.displayId);
+        if (["x","y","width","height"].some(key => currentBounds[key as keyof typeof bounds] !== bounds[key as keyof typeof bounds])) throw new Error("录制窗口位置或尺寸已改变，请重新标注");
+        const preview = await screens.windowPreview(context.sourceId);
+        const capturedAt = Date.now();
+        const screenshot = await renderAnnotation(Buffer.from(preview.dataUrl.split(",")[1],"base64"),selection,selectedMode);
+        if (sessionId !== recorder.status().sessionId) return { ok:false,error:"录制已结束" };
+        const annotation = selectedMode === "crop" && isCaptureRegion(selection)
+          ? {note:"用户截取局部画面",cropRegion:selection}
+          : isCaptureRegion(selection) ? {note:"用户框选重点区域",region:selection}
+          : {note:"用户主动标记点击位置（不是自动捕获的真实点击）",click:selection};
+        return recorder.saveAnnotation(annotation,screenshot,capturedAt);
+      });
+      return result ?? {ok:true};
+    } catch (error) { return { ok:false,error:error instanceof Error ? error.message : "无法保存标注截图" }; }
+  });
   ipcMain.handle(IPC.screenSettings, () => screens.refresh());
   ipcMain.handle(
     IPC.screenSource,
@@ -153,7 +190,7 @@ export function registerIpc(
         return {
           ok: false,
           status: microphones.settings(),
-          error: switched.error ?? "Could not switch microphones.",
+          error: switched.error ?? "无法切换麦克风。",
         };
       }
       return { ok: true, status: microphones.settings() };
@@ -162,26 +199,22 @@ export function registerIpc(
   ipcMain.handle(IPC.narrationLanguage, (_event, language: NarrationLanguage) =>
     recorder.setNarrationLanguage(language),
   );
+  ipcMain.handle(IPC.stepScreenshots, (_event, id: string, start?: number, end?: number) => getStepScreenshots(id, start, end));
   ipcMain.handle(IPC.status, () => recorder.status());
   ipcMain.handle(IPC.marker, (_event, note: string) => recorder.marker(note));
   ipcMain.handle(IPC.doctor, () => runDoctor());
-  app.once("before-quit", disposeCopilotSignIn);
-  ipcMain.handle(IPC.copilotSignIn, async (event, attemptId: unknown) => {
-    if (typeof attemptId !== "string" || !/^[a-zA-Z0-9-]{1,64}$/.test(attemptId)) {
-      return { ok: false, status: "failed", error: "Invalid sign-in attempt." };
-    }
-    const owner = event.sender.id;
-    const cancel = () => cancelCopilotSignIn(attemptId, owner);
-    event.sender.once("destroyed", cancel);
+  ipcMain.handle(IPC.aiSettings, () => getAiSettings());
+  ipcMain.handle(IPC.aiSettingsSave, async (_event, input: AiSettingsInput) => {
     try {
-      return await openCopilotSignIn(attemptId, owner, BrowserWindow.fromWebContents(event.sender));
-    } finally {
-      event.sender.removeListener("destroyed", cancel);
+      if (describer.isBusy() || builder.isBusy() || automationBuilder.isBusy()) {
+        return { ok: false, error: "Wait for analysis and builds to finish before changing AI settings." };
+      }
+      const settings = saveAiSettings(input);
+      await Promise.all([describer.dispose(), builder.dispose(), automationBuilder.dispose()]);
+      return { ok: true, settings };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "无法保存 AI 设置。" };
     }
-  });
-  ipcMain.handle(IPC.copilotSignInCancel, (event, attemptId: unknown) => {
-    if (typeof attemptId !== "string") throw new Error("Invalid sign-in attempt.");
-    cancelCopilotSignIn(attemptId, event.sender.id);
   });
   ipcMain.handle(IPC.narrationStatus, () => narration.status());
   ipcMain.handle(IPC.narrationDownload, () => narration.downloadModel());
@@ -393,7 +426,7 @@ export function registerIpc(
       }
       const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
       const opts: SaveDialogOptions = {
-        title: "Download session details",
+        title: "下载录制详情",
         defaultPath: path.join(
           os.homedir(),
           "Downloads",
@@ -475,7 +508,7 @@ export function registerIpc(
           // ready-to-use <name>/SKILL.md inside it. A dismissed dialog is a cancel, not an error.
           const win = BrowserWindow.fromWebContents(event.sender) ?? undefined;
           const opts: OpenDialogOptions = {
-            title: "Export skill to folder",
+            title: "导出技能到文件夹",
             defaultPath: path.join(os.homedir(), "Downloads"),
             properties: ["openDirectory", "createDirectory"],
           };

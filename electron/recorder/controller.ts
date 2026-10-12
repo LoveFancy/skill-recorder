@@ -1,10 +1,13 @@
+import { isCaptureRegion, type CaptureRegion } from "../../common/capture-region";
+import { writeFileSync } from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { app } from "electron";
 
 import type { CaptureConfig } from "../../common/config";
 import { EventType } from "../../common/events";
-import type { TerminalCommandPayload } from "../../common/events";
+import type { TerminalCommandPayload, MarkerPayload } from "../../common/events";
 import type {
   DiscardResult,
   MarkerResult,
@@ -49,6 +52,7 @@ export interface SessionVideoRecorder {
     displayId?: string,
   ): Promise<void>;
   stop(): Promise<unknown>;
+  captureSnapshot?(): void;
 }
 
 /** Microphone sidecar that can create multiple capture intervals per session. */
@@ -97,6 +101,7 @@ type FinishResult = StopResult & DiscardResult;
  */
 export class RecorderController {
   private store: SessionStore | null = null;
+  private recordingScreen: { displayId: string; sourceId: string } | null = null;
   private readonly listeners = new Set<(status: RecorderStatus) => void>();
   private readonly bus = new EventBus();
   private readonly host: CollectorHost;
@@ -287,6 +292,27 @@ export class RecorderController {
 
   // Marker capture is intentionally retained even though the "Add marker" HUD
   // button was removed in favor of voice narration (see docs/future-features.md).
+  recordingSelection() {
+    return this.store && this.transition === "none" ? this.recordingScreen : null;
+  }
+
+  annotate(region: CaptureRegion): MarkerResult {
+    if (!this.store || this.transition !== "none" || !isCaptureRegion(region)) return { ok:false, error:"当前未在录制" };
+    this.bus.publish({ type: EventType.Marker, source:"user", payload:{ note:"用户框选重点区域", region } });
+    this.video?.captureSnapshot?.();
+    return { ok:true };
+  }
+
+  saveAnnotation(annotation: MarkerPayload, screenshot: Buffer, capturedAt: number): MarkerResult {
+    if (!this.store || this.transition !== "none") return { ok:false, error:"录制已结束" };
+    const file = `frames/annotation_${randomUUID()}.png`;
+    try {
+      writeFileSync(path.join(this.store.dir, file), screenshot);
+      this.bus.publish({ type: EventType.Marker, source:"user", payload:{ ...annotation, screenshot:file, capturedAt } });
+      return { ok:true, saved:true };
+    } catch { return { ok:false, error:"标注截图保存失败，请重试" }; }
+  }
+
   marker(note: string): MarkerResult {
     if (!this.store || this.transition !== "none") {
       return { ok: false, error: "Not recording" };
@@ -307,6 +333,7 @@ export class RecorderController {
 
   private async startInternal(options?: StartOptions): Promise<StartResult> {
     if (this.store) return { ok: false, error: "Already recording" };
+    this.recordingScreen = { displayId: options?.screenDisplayId ?? "", sourceId: options?.screenSourceId ?? "" };
     if (
       options?.narrationLanguage !== undefined &&
       !isNarrationLanguage(options.narrationLanguage)

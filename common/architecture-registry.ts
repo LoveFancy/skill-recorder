@@ -83,20 +83,20 @@ export const ARCHITECTURE_MANIFEST = defineArchitectures([
     id: "scout",
     label: "Scout",
     installTargetLabel: "Scout",
-    note: "Microsoft Scout: native WorkIQ, browser, files, and built-in skills.",
+    note: "Microsoft Scout：支持 WorkIQ、浏览器、文件和内置技能。",
     targets: [
       {
         kind: "skill",
-        label: "Scout skill",
+        label: "Scout 技能",
         enabled: true,
-        note: "An on-demand skill Scout runs when its description matches the task.",
+        note: "Scout 按需执行的技能，根据描述匹配任务。",
         placements: ["install", "export"],
       },
       {
         kind: "automation",
-        label: "Scout automation",
+        label: "Scout 自动化",
         enabled: true,
-        note: "A scheduled, multi-step automation Scout runs on a trigger.",
+        note: "Scout 按计划或触发条件执行的多步骤自动化。",
         placements: ["install"],
       },
     ],
@@ -106,32 +106,32 @@ export const ARCHITECTURE_MANIFEST = defineArchitectures([
     label: "Cowork",
     installTargetLabel: "Microsoft 365 Copilot",
     note:
-      "Microsoft 365 Copilot (Cowork): native Teams, Outlook, Calendar, " +
-      "SharePoint, files, and built-in skills.",
+      "Microsoft 365 Copilot（Cowork）：支持 Teams、Outlook、日历、" +
+      "SharePoint、文件和内置技能。",
     targets: [
       {
         kind: "skill",
-        label: "Cowork skill",
+        label: "Cowork 技能",
         enabled: true,
-        note: "An on-demand skill for Microsoft 365 Copilot (Cowork) you export and install.",
+        note: "导出并安装到 Microsoft 365 Copilot（Cowork）的按需技能。",
         placements: ["export"],
       },
     ],
   },
   {
     id: "agent-skill",
-    label: "Agent skill",
+    label: "通用智能体技能",
     // Export-only, so this label is never surfaced; kept non-blank for the manifest
     // invariant and as a sensible fallback if the target ever gains an install path.
-    installTargetLabel: "your agent",
-    note: "Any skill-capable agent. Not tuned to specific tools. You verify it can perform the tasks.",
+    installTargetLabel: "你的智能体",
+    note: "适用于支持技能的智能体，不依赖特定工具，请确认目标智能体能执行这些任务。",
     targets: [
       {
         kind: "skill",
-        label: "Agent skill",
+        label: "通用智能体技能",
         enabled: true,
         note:
-          "Any skill-capable agent. Not tuned to specific tools. You verify it can perform the tasks.",
+          "适用于支持技能的智能体，不依赖特定工具，请确认目标智能体能执行这些任务。",
         placements: ["export"],
       },
     ],
@@ -140,13 +140,13 @@ export const ARCHITECTURE_MANIFEST = defineArchitectures([
     id: "copilot-studio",
     label: "Copilot Studio",
     installTargetLabel: "Copilot Studio",
-    note: "Coming soon.",
+    note: "即将推出。",
     targets: [
       {
         kind: "skill",
         label: "Copilot Studio",
         enabled: false,
-        note: "Coming soon.",
+        note: "即将推出。",
         placements: ["export"],
       },
     ],
@@ -238,7 +238,7 @@ export function requireTargetPlacement(
   return target;
 }
 
-const defaultTarget = TARGETS.find((target) => target.enabled);
+const defaultTarget = TARGETS.find((target) => target.enabled && target.architecture === "agent-skill");
 if (!defaultTarget) {
   throw new Error("Architecture manifest must contain at least one enabled target.");
 }

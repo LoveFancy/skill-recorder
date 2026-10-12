@@ -22,6 +22,9 @@ function copyStaticAssets(): void {
     copyFileSync(path.join(iconSrc, file), path.join(icons, file));
   }
   copyFileSync(path.join(rootDir, "electron", "preload.cjs"), path.join(out, "preload.cjs"));
+  for (const file of ["region.html", "region-preload.cjs", "source-picker.html", "source-picker-preload.cjs"]) {
+    copyFileSync(path.join(rootDir, "electron", "video", file), path.join(out, "video", file));
+  }
   copyFileSync(
     path.join(rootDir, "electron", "video", "capture.html"),
     path.join(out, "video", "capture.html"),
@@ -63,7 +66,6 @@ export default defineConfig({
               // large CJS dependency graph, so it's required at runtime too.
               external: [
                 "electron",
-                "@github/copilot-sdk",
                 "archiver",
                 "get-windows",
                 "koffi",
@@ -71,6 +73,7 @@ export default defineConfig({
                 "sharp",
                 "@huggingface/transformers",
                 "onnxruntime-node",
+                "sherpa-onnx-node",
                 "tesseract.js",
               ],
             },

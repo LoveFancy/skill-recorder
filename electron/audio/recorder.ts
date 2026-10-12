@@ -27,7 +27,7 @@ import {
   type MicrophoneDevice,
   type MicrophonePreference,
 } from "../../common/microphone";
-import type { NarrationLanguage } from "../../common/narration";
+import { DEFAULT_NARRATION_LANGUAGE, type NarrationLanguage } from "../../common/narration";
 import { createLogger } from "../logger";
 import type {
   AudioCaptureEnded,
@@ -108,7 +108,7 @@ export class AudioRecorder {
 
   private dir = "";
   private sessionStartedAt = 0;
-  private narrationLanguage: NarrationLanguage = "en";
+  private narrationLanguage: NarrationLanguage = DEFAULT_NARRATION_LANGUAGE;
   private sequence = 0;
   private active: PendingSegment | null = null;
   private disableTask: Promise<AudioSegment | null> | null = null;

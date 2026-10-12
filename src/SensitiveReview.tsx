@@ -4,26 +4,26 @@ import type { SensitiveFinding, SensitiveReport } from "../common/ipc";
 import { sourceLabel } from "../common/sensitive";
 
 const SEVERITY_LABEL: Record<SensitiveFinding["severity"], string> = {
-  high: "High risk",
-  medium: "Possibly sensitive",
-  low: "Low confidence",
+  high: "高风险",
+  medium: "可能敏感",
+  low: "低置信度",
 };
 
 function headline(report: SensitiveReport): string {
   const t = report.totalFindings;
   const regions = report.images?.regionsBlurred ?? 0;
-  const details = `${t} sensitive ${t === 1 ? "detail" : "details"}`;
-  const areas = `${regions} on-screen ${regions === 1 ? "area" : "areas"}`;
-  if (t > 0 && regions > 0) return `Hid ${details} and blurred ${areas} before sending`;
-  if (t > 0) return `Hid ${details} before sending`;
-  if (regions > 0) return `Blurred ${areas} in screen images before sending`;
-  return "Checked for sensitive details before sending";
+  const details = `${t} 项敏感信息`;
+  const areas = `${regions} 处屏幕区域`;
+  if (t > 0 && regions > 0) return `发送前已隐藏 ${details}，并模糊处理 ${areas}`;
+  if (t > 0) return `发送前已隐藏 ${details}`;
+  if (regions > 0) return `发送前已模糊处理 ${areas}`;
+  return "发送前已检查敏感信息";
 }
 
 /**
  * Informational, non-blocking result of the on-device pre-send scan. Collapsed to a
  * single indication line by default (a shield + what was hidden); the details are
- * behind a "Review" disclosure so the summary never crowds the analysis. Everything
+ * behind a "查看" disclosure so the summary never crowds the analysis. Everything
  * shown is masked / counted upstream in the scanner, so this component never sees a
  * raw secret and image regions are reported as counts only. The user can dismiss it.
  */
@@ -71,12 +71,10 @@ export function SensitiveReview({
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
           >
-            {open ? "Hide" : "Review"}
+            {open ? "收起" : "查看"}
           </button>
         )}
-        <button className="sensitive-dismiss linky" onClick={onDismiss} aria-label="Dismiss">
-          Dismiss
-        </button>
+        <button className="sensitive-dismiss linky" onClick={onDismiss} aria-label="关闭提示">关闭提示</button>
       </div>
 
       {open && (
@@ -111,13 +109,11 @@ export function SensitiveReview({
                 <span className="sensitive-dot sev-high" aria-hidden="true" />
                 <div className="sensitive-item-body">
                   <div className="sensitive-item-head">
-                    <span className="sensitive-label">Blurred on-screen details</span>
-                    <span className="sensitive-source">Screen images</span>
+                    <span className="sensitive-label">已模糊处理的屏幕信息</span>
+                    <span className="sensitive-source">屏幕截图</span>
                   </div>
                   <span className="sensitive-snippet">
-                    {regions === 1 ? "1 area" : `${regions} areas`} covered across{" "}
-                    {frames === 1 ? "1 image" : `${frames} images`}. The on-screen text is not kept,
-                    so it can&apos;t be listed here.
+                    已在 {frames} 张截图中模糊处理 {regions} 处区域。屏幕原文未保留，因此无法在此列出。
                   </span>
                 </div>
               </div>
@@ -125,10 +121,7 @@ export function SensitiveReview({
           </div>
 
           <p className="sensitive-caveat">
-            This ran on your computer and hid these before anything was sent to GitHub Copilot. It
-            covers secrets and personal details in the text that is sent (window titles, URLs,
-            clipboard, terminal commands, notes, and voice) and in your screen images. It is on by
-            default; you can turn it off in What&apos;s recorded.
+            这些敏感信息已在本机隐藏后才发送到配置的 AI 服务，保护覆盖文本和截图。默认开启，可在“采集内容”中关闭。
           </p>
         </div>
       )}

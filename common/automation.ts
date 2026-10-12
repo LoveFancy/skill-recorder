@@ -282,10 +282,10 @@ export function describeSchedule(schedule: AutomationSchedule): string {
   const time = `${String(t.hour).padStart(2, "0")}:${String(t.minute).padStart(2, "0")}`;
   switch (schedule.kind) {
     case "single":
-      return `Once a day at ${time}`;
+      return `每天 ${time} 执行一次`;
     case "interval":
-      return `Every ${schedule.intervalMinutes} min from ${time}`;
+      return `从 ${time} 开始，每 ${schedule.intervalMinutes} 分钟执行`;
     case "multi":
-      return `${schedule.times.length}× a day`;
+      return `每天执行 ${schedule.times.length} 次`;
   }
 }

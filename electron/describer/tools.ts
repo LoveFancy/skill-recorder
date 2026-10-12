@@ -1,7 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 
-import type { Tool } from "@github/copilot-sdk";
+import type { Tool } from "../ai/client";
 
 import { AnalysisSubmissionSchema, type AnalysisSubmission } from "../../common/analysis";
 import { MEANINGFUL_EVENT_TYPES } from "../../common/correlation";
@@ -73,7 +73,7 @@ function readNarration(sessionDir: string): NarrationTranscript | null {
 }
 
 /**
- * Build the custom in-process tools exposed to one Copilot session. Handlers run
+ * Build the custom in-process tools exposed to one model session. Handlers run
  * in the Electron main process (dispatched over JSON-RPC by the SDK), read the
  * session's captured signals, and — for frames — return the JPEGs **inline** so
  * the model can see the screen without any `view`/`bash` tool. `submit_analysis`
@@ -93,13 +93,76 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
     return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
   };
 
+  const readBrowserActions = (): RecEvent[] => {
+    try { return readEvents(path.join(sessionDir,"events.jsonl")).filter(e=>e.type==="browser.action").sort((a,b)=>a.epoch-b.epoch); }
+    catch { return []; }
+  };
+  const inspectedBrowserActions = new Set<number>();
+  const getBrowserActions: Tool = {
+    name: "get_browser_actions",
+    description: "Read real browser operations from the offline Chrome extension, including element locator candidates and CSS viewport coordinates. Read all pages before submission. These are actual browser events; user click annotations only express intent. Locators are candidates, not guaranteed replay selectors.",
+    parameters: { type:"object", properties:{offset:{type:"integer",minimum:0}},additionalProperties:false },
+    handler: raw => {
+      const offset = (raw as {offset?:number}|null)?.offset ?? 0;
+      if(!Number.isInteger(offset)||offset<0) return "Invalid offset";
+      const all=readBrowserActions(), rows=all.slice(offset,offset+100);
+      for(const e of rows) inspectedBrowserActions.add(e.seq);
+      return redact(JSON.stringify({total:all.length,nextOffset:offset+rows.length<all.length?offset+rows.length:null,
+        scope:"User explicitly bound one Chrome tab. Browser viewport coordinates cannot be overlaid onto desktop frames without verified mapping. Cross-origin frames may not be covered.",
+        events:rows.map(e=>({seq:e.seq,atMs:rel(e.epoch),...e.payload}))},null,2));
+    },
+  };
+
+  const readAnnotations = () => readEvents(path.join(sessionDir,"events.jsonl"))
+    .filter(e => e.type === "marker" && typeof e.payload.screenshot === "string");
+  const inspectedAnnotations = new Set<string>();
+  const annotationKind = (e: RecEvent) => e.payload.cropRegion ? "crop" : e.payload.click ? "click" : "region";
+
+  const getAnnotations: Tool = {
+    name: "get_annotations",
+    description: "View saved user cropped screenshots and region/click annotation screenshots, with coordinates and capture/confirmation times. Always call when markers are present; combine these images with narration and events. Click annotations are user intent, not proof of an actual application click. Supports pagination.",
+    parameters: { type:"object", properties:{ offset:{type:"integer",minimum:0} }, additionalProperties:false },
+    handler: async raw => {
+      const offset = Math.max(0, Math.floor(Number((raw as {offset?:number})?.offset) || 0));
+      const annotations = readAnnotations();
+      const page = annotations.slice(offset, offset+MAX_IMAGES_PER_CALL);
+      progress(`正在查看用户重点标注 ${offset+1}–${offset+page.length} / ${annotations.length}…`);
+      const narration = readNarration(sessionDir);
+      const available = new Set<string>();
+      const redactor = ctx.redaction.current?.frameRedactor;
+      const images: {data:string; mimeType:string; type:"image"; description:string}[] = [];
+      for (const e of page) {
+        const file = e.payload.screenshot as string;
+        if (!/^frames\/annotation_[A-Za-z0-9-]+\.png$/.test(file)) continue;
+        if (redactor?.active && !redactor.ready) continue;
+        try {
+          const fullPath = realpathSync(path.join(sessionDir,file));
+          const relative = path.relative(realpathSync(sessionDir), fullPath);
+          if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) continue;
+          const bytes = redactor?.active ? await redactor.redactFrame(fullPath) : readFileSync(fullPath);
+          if (!bytes) continue;
+          available.add(file);
+          images.push({data:bytes.toString("base64"),mimeType:redactor?.active ? "image/jpeg" : "image/png",type:"image",description:`${file} (${annotationKind(e)}) 用户标注，确认于 ${rel(e.epoch)}ms；截图时间 ${rel(Number(e.payload.capturedAt) || e.epoch)}ms`});
+        } catch { /* Missing or unreadable screenshots are reported by the image count. */ }
+      }
+      for (const e of page) inspectedAnnotations.add(e.payload.screenshot as string);
+      const rows = page.map(e => {
+        const capturedAtMs = rel(Number(e.payload.capturedAt) || e.epoch);
+        const atMs = rel(e.epoch);
+        const nearbySpeech = narration?.segments.filter(segment => segment.endMs >= Math.min(atMs,capturedAtMs)-10000 && segment.atMs <= Math.max(atMs,capturedAtMs)+10000) ?? [];
+        return {...e.payload,kind:annotationKind(e),atMs,capturedAtMs,imageAvailable:available.has(e.payload.screenshot as string),nearbyNarration:nearbySpeech.slice(0,8),nearbyNarrationTruncated:nearbySpeech.length>8};
+      });
+      return { resultType:"success", textResultForLlm:redact(JSON.stringify({total:annotations.length,nextOffset:offset+page.length < annotations.length ? offset+page.length : null,imagesReturned:images.length,guidance:"These are explicit user focus signals. Explain the marked control/region using nearby narration and surrounding events. A click marker is intent, not proof of a real click. If imageAvailable=false, report the missing visual evidence and avoid inventing content.",annotations:rows})),binaryResultsForLlm:images };
+    },
+  };
+
   const getTimeline: Tool = {
     name: "get_timeline",
     description:
       "Return the segmented session timeline: ordered steps with their start time (atMs, ms since recording start), duration, app, urls, titles, commands, clipboard counts and markers. Call this first.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     handler: () => {
-      progress("Reading the timeline…");
+      progress("正在读取时间线…");
       const bundle = readBundle(sessionDir);
       if (!bundle) {
         return "No timeline is available yet (bundle.json missing). Use get_events to read the raw event stream instead.";
@@ -108,6 +171,22 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
         durationMs: bundle.session.durationMs,
         platform: bundle.session.platform,
         stats: bundle.stats,
+        browserCoverage: {
+          total:readBrowserActions().length,
+          guidance:"Call get_browser_actions with offset=0 and follow nextOffset until null. Ground steps in actual click/input/navigation and preserve locator candidates for subsequent browser automation; correlate with nearby screenshots and narration.",
+        },
+        annotationCoverage: {
+          total: readAnnotations().length,
+          counts: readAnnotations().reduce((counts,e) => { counts[annotationKind(e)]++; return counts; },{region:0,click:0,crop:0} as Record<string,number>),
+          guidance:"User annotations are priority evidence. Call get_annotations with offset=0 and follow nextOffset until null before submitting; include their meaning in the appropriate steps. This is required even when no video frames are available.",
+        },
+        captureCoverage: {
+          capturedFrameCount: extractor?.capturedManifest.length ?? 0,
+          retainedFrameCount: extractor?.manifest.length ?? 0,
+          firstFrameAtMs: extractor?.capturedManifest[0] ? rel(extractor.capturedManifest[0].tMs) : null,
+          lastFrameAtMs: extractor?.capturedManifest.at(-1) ? rel(extractor.capturedManifest.at(-1)!.tMs) : null,
+          guidance: "Retained frames are only an extracted subset, NOT all recorded images. Inspect get_frames across the full duration before concluding there were no later interactions.",
+        },
         steps: bundle.steps.map((s) => ({
           index: s.index,
           atMs: rel(s.startMs),
@@ -120,6 +199,8 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
           commands: s.commands,
           clipboardCount: s.clipboardCount,
           markers: s.markers,
+          browserEventIds: s.browserEventIds,
+          browserActionCount: readBrowserActions().filter(e=>s.eventSeqs.includes(e.seq)).length,
           frameCount: s.frames.length,
           summary: s.summary,
         })),
@@ -285,13 +366,11 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       "List the screen frames already available for this session (file, atMs, source, reason). Returns an empty list when no video was recorded. Use get_frames to actually view frames.",
     parameters: { type: "object", properties: {}, additionalProperties: false },
     handler: () => {
-      progress("Listing available frames…");
+      progress("正在读取截图列表…");
       if (!extractor) return JSON.stringify({ hasVideo: false, frames: [] });
-      const frames = extractor.manifest.map((f) => ({
+      const frames = extractor.capturedManifest.map((f) => ({
         file: f.file,
         atMs: rel(f.tMs),
-        source: f.source,
-        reason: f.reason,
       }));
       return JSON.stringify({ hasVideo: true, frames }, null, 2);
     },
@@ -336,7 +415,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       }
       const fromMs = typeof args.fromMs === "number" ? args.fromMs : 0;
       const toMs = typeof args.toMs === "number" ? Math.max(fromMs, args.toMs) : fromMs + 3000;
-      progress(`Looking at ${sec(fromMs)}–${sec(toMs)}s…`);
+      progress(`正在查看 ${sec(fromMs)}–${sec(toMs)} 秒画面…`);
       try {
         await extractor.extractWindow({
           startMs: abs(fromMs),
@@ -344,6 +423,8 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
           fps: args.fps,
           crop: args.crop,
           reason: args.reason ?? "describer:get_frames",
+          maxFrames: MAX_IMAGES_PER_CALL,
+          preserveTimeline: true,
         });
       } catch (err) {
         log.warn("get_frames extract failed:", err instanceof Error ? err.message : err);
@@ -408,7 +489,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
         }
       }
       const listing = inWindow.map((f) => `- ${sec(rel(f.tMs))}s ${f.file} (${f.source})`).join("\n");
-      progress(`Attached ${binaryResultsForLlm.length} frame image(s) from ${sec(fromMs)}–${sec(toMs)}s.`);
+      progress(`已读取 ${sec(fromMs)}–${sec(toMs)} 秒的 ${binaryResultsForLlm.length} 张截图。`);
       const protectNote = protect
         ? ` On-device Advanced protection blurred any detected sensitive on-screen text${withheld ? `; ${withheld} frame(s) were withheld because redaction failed` : ""}.`
         : "";
@@ -441,7 +522,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       if (!transcript || transcript.segments.length === 0) {
         return "The user did not record any voice narration for this session.";
       }
-      progress(args.query ? `Searching narration for “${args.query}”…` : "Reading the voice narration…");
+      progress(args.query ? `正在搜索旁白“${args.query}”…` : "正在读取语音旁白…");
       const q = args.query?.trim().toLowerCase();
       const lines = transcript.segments
         .filter((s) => (q ? s.text.toLowerCase().includes(q) : true))
@@ -488,6 +569,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
               endMs: { type: "number", description: "Step end (atMs)." },
               apps: { type: "array", items: { type: "string" } },
               evidence: { type: "array", items: { type: "string" } },
+              browserEventIds: { type: "array", items: { type: "string" }, description:"IDs from get_browser_actions represented by this step. Group related real operations; every substantive browser operation must be represented." },
               confidence: { type: "string", enum: ["high", "medium", "low"] },
             },
             required: ["id", "title", "detail"],
@@ -499,6 +581,14 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       additionalProperties: false,
     },
     handler: (raw) => {
+      const annotations = readAnnotations();
+      const firstMissing = annotations.findIndex(e => !inspectedAnnotations.has(e.payload.screenshot as string));
+      if (firstMissing !== -1) return {
+        resultType:"failure",
+        textResultForLlm:`submit_analysis rejected: user annotations have not all been inspected. Call get_annotations with offset=${firstMissing} and follow nextOffset until null. Combine each click, crop, and region with nearby narration and surrounding events before submitting.`,
+      };
+      const missingBrowser = readBrowserActions().findIndex(e=>!inspectedBrowserActions.has(e.seq));
+      if(missingBrowser>=0) return {resultType:"failure",textResultForLlm:`submit_analysis rejected: real browser actions have not all been inspected. Call get_browser_actions with offset=${missingBrowser} and follow nextOffset until null; use their controls, locators, values and timing in the trajectory.`};
       const parsed = AnalysisSubmissionSchema.safeParse(raw);
       if (!parsed.success) {
         return {
@@ -508,7 +598,13 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
           resultType: "failure",
         };
       }
-      progress("Received analysis draft.");
+      const browserActions = readBrowserActions();
+      const referenced = new Set(parsed.data.steps.flatMap(s=>s.browserEventIds ?? []));
+      const validIds = new Set(browserActions.map(e=>e.payload.eventId as string));
+      if([...referenced].some(id=>!validIds.has(id))) return {resultType:"failure",textResultForLlm:"Unknown browserEventIds. Use exact IDs from get_browser_actions."};
+      const unrepresented = browserActions.filter(e=>e.payload.action!=="scroll" && !referenced.has(e.payload.eventId as string));
+      if(unrepresented.length) return {resultType:"failure",textResultForLlm:`Browser operations are missing from the trajectory. Add browserEventIds to appropriate steps, grouping related operations. Remaining IDs: ${unrepresented.slice(0,100).map(e=>e.payload.eventId).join(", ")}`};
+      progress("已收到分析草稿。");
       onSubmit(parsed.data);
       return "Analysis recorded. You may stop now.";
     },
@@ -516,6 +612,8 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
 
   return [
     getTimeline,
+    getBrowserActions,
+    getAnnotations,
     getEvents,
     listTerminalCommandsTool,
     searchTerminalOutputTool,

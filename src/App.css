@@ -3569,3 +3569,40 @@ button:focus-visible,
   color: var(--brand-ink);
   background: var(--signal-dim);
 }
+/* Model configuration shares the app's compact form styling. */
+.ai-settings { font-size: 12px; width: 100%; }
+.ai-settings summary { cursor: pointer; padding: 8px 0; }
+.ai-settings form { display: grid; gap: 10px; padding-bottom: 12px; }
+.ai-settings p { margin: 0; line-height: 1.5; }
+.ai-settings label { display: grid; gap: 5px; }
+.ai-settings input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #ccc; border-radius: 5px; background: white; color: #222; }
+.ai-settings .ai-clear-key { display: flex; align-items: center; gap: 6px; }
+
+.step-screenshots { margin-top: 14px; }
+.step-screenshot-label { display: block; font-size: 12px; color: #777; margin-bottom: 8px; }
+.step-screenshot-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.step-screenshot { padding: 0; width: min(240px, 100%); overflow: hidden; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; cursor: zoom-in; }
+.step-screenshot img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #eee; }
+.step-screenshot span { display: block; padding: 5px 8px; font-size: 12px; color: #666; }
+.screenshot-overlay { position: fixed; inset: 0; z-index: 10000; background: #000b; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.screenshot-dialog { width: min(1280px, 100%); max-height: 95vh; overflow: auto; background: #faf9f7; border-radius: 12px; }
+.screenshot-dialog-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; }
+.screenshot-dialog img { display: block; width: 100%; max-height: 82vh; object-fit: contain; }
+.capture-range-settings { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:14px 0; padding:12px 16px; border:1px solid var(--hud-line, #ddd); border-radius:12px; }
+.capture-range-settings > div { flex:1; min-width:120px; }
+.capture-range-settings strong { display:block; font-size:14px; }
+.capture-range-settings span { display:block; color:#777; font-size:12px; margin-top:4px; }
+.capture-range-settings p { width:100%; margin:0; }
+.recording-annotate { padding:9px 10px; border:1px solid var(--hud-line, #ddd); border-radius:9px; background:transparent; color:inherit; white-space:nowrap; cursor:pointer; }
+.screenshot-image { position:relative; line-height:0; }
+.step-screenshot .screenshot-image img, .screenshot-dialog .screenshot-image img { width:100%; height:auto; max-height:none; aspect-ratio:auto; display:block; }
+.screenshot-image .screenshot-region { position:absolute; display:block; padding:0; border:2px solid #f04424; box-sizing:border-box; background:#f0442412; pointer-events:none; }
+
+.recording-action-error { margin:0 12px 8px; padding:12px; color:#ae2e18; background:#fff1ed; border-radius:8px; font-size:13px; -webkit-app-region:no-drag; }
+
+.recording-capture-tools { display:flex; align-items:center; gap:2px; padding:2px; border:1px solid var(--hud-line); border-radius:10px; background:var(--hud-surface-2); -webkit-app-region:no-drag; }
+.recording-capture-tools .recording-annotate { display:flex; align-items:center; justify-content:center; width:34px; height:34px; padding:6px; border:0; border-radius:7px; }
+.recording-capture-tools .recording-annotate svg { width:18px; height:18px; }
+.recording-capture-tools .recording-annotate:hover:not(:disabled) { background:var(--hud-line); }
+.recording-capture-tools .recording-annotate:disabled { opacity:0.45; cursor:wait; }
+.recording-capture-feedback { position:absolute; left:50%; top:4px; transform:translateX(-50%); padding:4px 9px; border-radius:6px; background:var(--hud-surface); color:var(--hud-text); font-size:11px; pointer-events:none; }

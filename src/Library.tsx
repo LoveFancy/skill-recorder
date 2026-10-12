@@ -4,7 +4,6 @@ import type { Analysis, AnalysisStep } from "../common/analysis";
 import type {
   AnalyzeProgress,
   AutomationBuildProgress,
-  CopilotSignInResult,
   NarrationStatus,
   SensitiveReport,
   SessionSummary,
@@ -12,7 +11,7 @@ import type {
   SkillPlacement,
   SkillPreview,
 } from "../common/ipc";
-import { isCopilotSignedOutError } from "../common/ipc";
+import { AiSettingsPanel } from "./AiSettingsPanel";
 import type {
   BuildTarget,
   BuiltSkill,
@@ -43,7 +42,7 @@ import { skillPlacementModel, skillTargetFor } from "./skill-placement";
 import { SkillReviewModal } from "./SkillReviewModal";
 import { initialSkillReviewState, SkillOperationGuard, skillReviewBusy, skillReviewReducer } from "./skill-review-state";
 import { SensitiveReview } from "./SensitiveReview";
-import { AnalysisRecovery, completeSignIn, type AnalysisRun } from "./analysis-recovery";
+import { AnalysisRecovery, type AnalysisRun } from "./analysis-recovery";
 
 export function Library() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
@@ -78,7 +77,7 @@ export function Library() {
     setNotice(null);
     const res = await window.skillRecorder.deleteSession(id);
     if (!res.ok) {
-      setNotice(res.error ?? "Could not delete this recording.");
+      setNotice(res.error ?? "无法删除这条录制。");
       return;
     }
     setSessions((prev) => {
@@ -99,11 +98,11 @@ export function Library() {
     <div className="lib">
       <aside className="lib-list">
         <div className="lib-list-head">
-          <span className="eyebrow">Sessions</span>
+          <span className="eyebrow">录制记录</span>
           <span className="pill">{sessions.length}</span>
         </div>
         {notice && (
-          <button className="sess-notice" onClick={() => setNotice(null)} title="Dismiss">
+          <button className="sess-notice" onClick={() => setNotice(null)} title="关闭提示">
             {notice}
           </button>
         )}
@@ -127,8 +126,8 @@ export function Library() {
           />
         ) : (
           <div className="detail-empty">
-            <span className="eyebrow">No session selected</span>
-            <p>Pick a recording on the left to review its reconstructed intent and steps.</p>
+            <span className="eyebrow">未选择录制</span>
+            <p>选择左侧录制，查看分析出的任务目标和操作步骤。</p>
           </div>
         )}
       </main>
@@ -154,34 +153,30 @@ function SessionsList({
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   if (sessions.length === 0) {
-    return <p className="sessions-empty">{loaded ? "No recordings yet." : "Loading…"}</p>;
+    return <p className="sessions-empty">{loaded ? "暂无录制。" : "正在加载…"}</p>;
   }
   return (
     <ul className="sess-list">
       {sessions.map((s) =>
         confirmId === s.id ? (
           <li key={s.id}>
-            <div className="sess-confirm" role="alertdialog" aria-label="Confirm delete">
+            <div className="sess-confirm" role="alertdialog" aria-label="确认删除">
               <div className="sess-confirm-text">
-                <span className="sess-confirm-title">Delete this recording?</span>
+                <span className="sess-confirm-title">删除这条录制？</span>
                 <span className="sess-confirm-sub">
                   This cannot be undone.
-                  {s.sizeBytes != null && ` Frees ${formatBytes(s.sizeBytes)} from this device.`}
+                  {s.sizeBytes != null && ` 可释放 ${formatBytes(s.sizeBytes)} 本机空间。`}
                 </span>
               </div>
               <div className="sess-confirm-actions">
-                <button className="linky" onClick={() => setConfirmId(null)}>
-                  Cancel
-                </button>
+                <button className="linky" onClick={() => setConfirmId(null)}>取消</button>
                 <button
                   className="danger"
                   onClick={() => {
                     setConfirmId(null);
                     void onDelete(s.id);
                   }}
-                >
-                  Delete
-                </button>
+                >删除</button>
               </div>
             </div>
           </li>
@@ -195,44 +190,44 @@ function SessionsList({
                 <div className="sess-top">
                   <span className="sess-when">{formatWhen(s.startedAt)}</span>
                   <span className="sess-tags">
-                    {s.hasSkill && <span className="tag ok">skill</span>}
-                    {s.hasAutomation && <span className="tag auto">automation</span>}
+                    {s.hasSkill && <span className="tag ok">技能</span>}
+                    {s.hasAutomation && <span className="tag auto">自动化</span>}
                     {!s.hasSkill && !s.hasAutomation && s.analysis && (
-                      <span className="tag an">analyzed</span>
+                      <span className="tag an">已分析</span>
                     )}
                     {!s.hasSkill && !s.hasAutomation && !s.analysis && !s.processed && (
-                      <span className="tag warn">processing</span>
+                      <span className="tag warn">处理中</span>
                     )}
                     {!s.hasSkill && !s.hasAutomation && !s.analysis && s.processed && (
-                      <span className="tag recorded">recorded</span>
+                      <span className="tag recorded">已录制</span>
                     )}
                   </span>
                 </div>
                 <div className="sess-intent">
                   {s.analysis
                     ? s.analysis.title?.trim() || shortLabel(s.analysis.intent)
-                    : "Not analyzed yet"}
+                    : "尚未分析"}
                 </div>
                 <div className="sess-sub">
                   {s.durationMs != null && <span>{formatDur(s.durationMs)}</span>}
                   {s.sizeBytes != null && (
                     <span
                       className="sess-size"
-                      title={`${s.sizeBytes.toLocaleString()} bytes used by this recording`}
+                      title={`本条录制占用 ${s.sizeBytes.toLocaleString()} 字节`}
                     >
                       {formatBytes(s.sizeBytes)}
                     </span>
                   )}
                   {s.analysis && <span>{s.analysis.stepCount} steps</span>}
-                  {s.hasVideo && <span>video</span>}
-                  {s.hasAudio && !s.hasNarration && <span>voice pending</span>}
-                  {s.hasNarration && <span>voice</span>}
+                  {s.hasVideo && <span>视频</span>}
+                  {s.hasAudio && !s.hasNarration && <span>旁白待转写</span>}
+                  {s.hasNarration && <span>旁白</span>}
                 </div>
               </button>
               <button
                 className="sess-del"
-                aria-label={`Delete recording from ${formatWhen(s.startedAt)}`}
-                title="Delete recording"
+                aria-label={`删除 ${formatWhen(s.startedAt)} 的录制`}
+                title="删除录制"
                 onClick={() => setConfirmId(s.id)}
               >
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
@@ -287,7 +282,7 @@ const SavedGlyph = () => (
 );
 
 /**
- * Subtle, per-recording "download a debug bundle" affordance shown in the session
+ * Subtle, per-recording "下载诊断包" affordance shown in the session
  * header. A quiet download icon packages the whole session (private capture data)
  * into a `.zip` the user can hand to us; a privacy-warning modal gates the actual
  * download. It says nothing about where to send the file — that's shared separately.
@@ -304,12 +299,12 @@ function DebugDownload({ sessionId }: { sessionId: string }) {
     if (res.ok) setPhase("saved");
     else if (res.canceled) setPhase("idle");
     else {
-      setErrorMsg(res.error ?? "Couldn't create the debug bundle.");
+      setErrorMsg(res.error ?? "无法创建诊断包。");
       setPhase("error");
     }
   }, [sessionId]);
 
-  // Let the "Saved" acknowledgement fade back to the quiet icon on its own.
+  // Let the "已保存" acknowledgement fade back to the quiet icon on its own.
   useEffect(() => {
     if (phase !== "saved") return;
     const t = setTimeout(() => setPhase("idle"), 3200);
@@ -329,17 +324,15 @@ function DebugDownload({ sessionId }: { sessionId: string }) {
 
   const label =
     phase === "saving"
-      ? "Preparing debug bundle…"
+      ? "正在生成诊断包…"
       : phase === "saved"
-        ? "Debug bundle saved"
-        : "Download details for debugging";
+        ? "诊断包已保存"
+        : "下载诊断详情";
 
   return (
     <div className="debug-dl">
       {phase === "error" && (
-        <span className="debug-dl-note" title={errorMsg}>
-          Couldn't save
-        </span>
+        <span className="debug-dl-note" title={errorMsg}>保存失败</span>
       )}
       <button
         className={`debug-dl-icon${phase === "saved" ? " is-saved" : ""}`}
@@ -390,22 +383,14 @@ function DebugDownload({ sessionId }: { sessionId: string }) {
                   <circle cx="10" cy="12.4" r="1.1" fill="currentColor" />
                 </svg>
               </span>
-              <h2 id="debug-dl-title">Includes private information</h2>
+              <h2 id="debug-dl-title">包含隐私信息</h2>
             </header>
 
-            <p className="sheet-lead" id="debug-dl-desc">
-              This bundle is everything captured in this recording — screen video, screenshots,
-              visited URLs, clipboard contents, and any voice narration and transcript. Share it
-              only with people you trust.
-            </p>
+            <p className="sheet-lead" id="debug-dl-desc">此诊断包包含本次录制的全部内容：视频、截图、访问网址、剪贴板、语音和转写。请仅分享给可信的人。</p>
 
             <div className="sheet-actions">
-              <button className="linky" onClick={() => setPhase("idle")}>
-                Cancel
-              </button>
-              <button className="record-cta" onClick={() => void download()}>
-                Download .zip
-              </button>
+              <button className="linky" onClick={() => setPhase("idle")}>取消</button>
+              <button className="record-cta" onClick={() => void download()}>下载 .zip</button>
             </div>
           </div>
         </div>
@@ -414,136 +399,8 @@ function DebugDownload({ sessionId }: { sessionId: string }) {
   );
 }
 
-/**
- * Error banner for the Copilot-backed panels. When the CLI has no credentials the app
- * waits for verified authentication. Only analysis supplies a recovery callback;
- * building, creating and installing always require another explicit user action.
- */
-function AnalysisError({
-  error,
-  onAuthenticated,
-  onSignInStart,
-  onSignInEnd,
-}: {
-  error: string;
-  onAuthenticated?: () => void | Promise<void>;
-  onSignInStart?: () => boolean;
-  onSignInEnd?: (canceled: boolean) => void;
-}) {
-  const [signIn, setSignIn] = useState<CopilotSignInResult | null>(null);
-  const [waiting, setWaiting] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const attempt = useRef<string | null>(null);
-  const generation = useRef(0);
-  const live = useRef(false);
-  const endCallback = useRef(onSignInEnd);
-  endCallback.current = onSignInEnd;
-
-  useEffect(() => {
-    live.current = true;
-    setWaiting(false);
-    setSignIn(null);
-    setFailure(null);
-    return () => {
-      live.current = false;
-      generation.current++;
-      const id = attempt.current;
-      attempt.current = null;
-      if (id) {
-        endCallback.current?.(true);
-        void window.skillRecorder.cancelCopilotSignIn(id).catch(() => {
-          console.warn("Could not cancel Copilot sign-in during panel cleanup.");
-        });
-      }
-    };
-  }, [error]);
-
-  const cancelSignIn = async () => {
-    const id = attempt.current;
-    if (!id) return;
-    const canceledGeneration = generation.current;
-    attempt.current = null;
-    onSignInEnd?.(true);
-    setWaiting(false);
-    setFailure(onAuthenticated
-      ? "Sign-in canceled. Analysis will not retry automatically."
-      : "Sign-in canceled.");
-    try {
-      await window.skillRecorder.cancelCopilotSignIn(id);
-    } catch (err) {
-      if (live.current && generation.current === canceledGeneration) {
-        setFailure(`Could not cancel sign-in: ${String(err)}`);
-      }
-    }
-  };
-
-  const openSignIn = async () => {
-    if (attempt.current) return;
-    const id = crypto.randomUUID();
-    generation.current++;
-    attempt.current = id;
-    setWaiting(true);
-    setSignIn(null);
-    setFailure(null);
-    let canceledResult = false;
-    try {
-      // A false return suppresses stale recovery without suppressing sign-in itself.
-      const recover = onSignInStart?.() ?? true;
-      const result = await completeSignIn(
-        window.skillRecorder.copilotSignIn(id),
-        () => live.current && attempt.current === id,
-        recover ? onAuthenticated : undefined,
-      );
-      if (result && live.current && attempt.current === id) {
-        canceledResult = !result.ok && result.status === "canceled";
-        setSignIn(result);
-      }
-    } catch (err) {
-      if (live.current && attempt.current === id) setFailure(String(err));
-    } finally {
-      if (live.current && attempt.current === id) {
-        attempt.current = null;
-        onSignInEnd?.(canceledResult);
-        setWaiting(false);
-      }
-    }
-  };
-
-  if (!isCopilotSignedOutError(error)) return <div className="analysis-error">{error}</div>;
-
-  return (
-    <div className="analysis-error">
-      <p>{error}</p>
-      <div className="signin-row">
-        <button className="row-action" onClick={() => void openSignIn()} disabled={waiting}>
-          {waiting ? "Waiting for browser sign-in…" : "Sign in to Copilot"}
-        </button>
-        {waiting && (
-          <>
-            <span role="status">Follow the app prompts and finish signing in in your browser.</span>
-            <button className="linky" onClick={() => void cancelSignIn()}>Cancel sign-in</button>
-          </>
-        )}
-        {signIn?.ok && (
-          <span>Signed in to Copilot. Try your action again when ready.</span>
-        )}
-        {signIn && !signIn.ok && (
-          <span>{signIn.error ?? (
-            signIn.status === "canceled" ? "Sign-in canceled." :
-            signIn.status === "timed-out" ? "Sign-in timed out. Try again." :
-            "Couldn't sign in to Copilot."
-          )}</span>
-        )}
-        {failure && <span role="alert">{failure}</span>}
-      </div>
-      {signIn && !signIn.ok && signIn.command && (
-        <>
-          <p className="signin-manual">Or run this command yourself:</p>
-          <code className="signin-command">{signIn.command}</code>
-        </>
-      )}
-    </div>
-  );
+function AnalysisError({ error }: { error: string }) {
+  return <div className="analysis-error"><p>{error}</p><AiSettingsPanel /></div>;
 }
 
 function AnalysisWorkspace({
@@ -575,11 +432,7 @@ function AnalysisWorkspace({
 
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [signInPending, setSignInPending] = useState(false);
-  const signInPendingRef = useRef(false);
-  const pendingRecovery = useRef<AnalysisRun | null>(null);
   const recovery = useRef(new AnalysisRecovery());
-  const [failedRun, setFailedRun] = useState<AnalysisRun | null>(null);
   const latestRun = useRef<AnalysisRun | null>(null);
   const workspaceLive = useRef(false);
   const [statusLine, setStatusLine] = useState("");
@@ -600,7 +453,7 @@ function AnalysisWorkspace({
   stepsRef.current = steps;
   // The final stage: pick a target, then build a skill or an automation. A recording
   // that is already exactly one kind opens straight to it; otherwise it opens to the
-  // analysis, where "Create…" starts the target picker.
+  // analysis, where "创建…" starts the target picker.
   const initialLaunch: LaunchTarget =
     summary.hasSkill && !summary.hasAutomation
       ? "skill"
@@ -614,8 +467,6 @@ function AnalysisWorkspace({
     return () => {
       workspaceLive.current = false;
       recovery.current.invalidate();
-      signInPendingRef.current = false;
-      pendingRecovery.current = null;
     };
   }, [sessionId]);
 
@@ -684,9 +535,7 @@ function AnalysisWorkspace({
       setReview(null);
       setError(null);
       setAnalyzing(true);
-      setFailedRun(null);
-      setStatusLine("Starting…");
-      let signedOut = false;
+      setStatusLine("正在启动…");
       try {
         const res = await window.skillRecorder.analyze(sessionId);
         if (!workspaceLive.current || !recovery.current.accepts(token)) return;
@@ -697,29 +546,24 @@ function AnalysisWorkspace({
           // Preserve the existing narration/redaction pipeline and result handling.
           setReview(res.review ?? null);
         } else {
-          const message = res.error ?? "Analysis failed";
-          signedOut = isCopilotSignedOutError(message);
+          const message = res.error ?? "分析失败";
           setError(message);
-          setFailedRun(token);
         }
       } catch (err) {
         if (workspaceLive.current && recovery.current.accepts(token)) {
           const message = String(err);
-          signedOut = isCopilotSignedOutError(message);
           setError(message);
-          setFailedRun(token);
         }
       } finally {
         if (workspaceLive.current && recovery.current.isCurrent(token)) {
-          recovery.current.finishRun(token, signedOut);
+          recovery.current.finishRun(token);
           setAnalyzing(false);
           try {
             await onChanged();
           } catch (err) {
             // A refresh failure must not be mistaken for an interrupted analysis.
             if (workspaceLive.current && latestRun.current === token) {
-              setFailedRun(null);
-              setError(`Could not refresh recordings: ${String(err)}`);
+                      setError(`无法刷新录制记录： ${String(err)}`);
             }
           }
         }
@@ -729,46 +573,19 @@ function AnalysisWorkspace({
   );
 
   const run = useCallback(async () => {
-    if (signInPendingRef.current) return;
     const token = recovery.current.beginRun();
     if (token) await executeRun(token);
   }, [executeRun]);
 
-  const onSignInStart = useCallback(() => {
-    signInPendingRef.current = true;
-    setSignInPending(true);
-    setConfirmReanalysis(false);
-    const recover = failedRun != null && recovery.current.beginSignIn(failedRun);
-    pendingRecovery.current = recover ? failedRun : null;
-    return recover;
-  }, [failedRun]);
-
-  const onSignInEnd = useCallback((canceled: boolean) => {
-    signInPendingRef.current = false;
-    if (pendingRecovery.current) recovery.current.endSignIn(pendingRecovery.current, canceled);
-    pendingRecovery.current = null;
-    if (workspaceLive.current) setSignInPending(false);
-  }, []);
-
-  const retryAfterSignIn = useCallback(async () => {
-    if (!workspaceLive.current || !failedRun) return;
-    const token = recovery.current.retry(failedRun);
-    if (!token) return;
-    signInPendingRef.current = false;
-    setSignInPending(false);
-    await executeRun(token);
-  }, [failedRun, executeRun]);
-
   const cancel = useCallback(async () => {
     const token = latestRun.current;
     recovery.current.cancelRun();
-    setStatusLine("Stopping…");
+    setStatusLine("正在停止…");
     try {
       await window.skillRecorder.cancelAnalysis(sessionId);
     } catch (err) {
       if (workspaceLive.current && latestRun.current === token) {
-        setFailedRun(null);
-        setError(`Could not cancel analysis: ${String(err)}`);
+        setError(`无法取消分析： ${String(err)}`);
       }
     }
   }, [sessionId]);
@@ -778,7 +595,6 @@ function AnalysisWorkspace({
     setDraftTitle(analysis.title ?? "");
     setDraftIntent(analysis.intent);
     setError(null);
-    setFailedRun(null);
     setEditing(true);
   }, [analysis]);
 
@@ -792,8 +608,7 @@ function AnalysisWorkspace({
       setAnalysis(res.analysis);
       setEditing(false);
     } else {
-      setFailedRun(null);
-      setError(res.error ?? "Could not save your changes");
+      setError(res.error ?? "无法保存修改");
     }
     void onChanged();
   }, [sessionId, draftTitle, draftIntent, onChanged]);
@@ -845,10 +660,15 @@ function AnalysisWorkspace({
     <section className="ws">
       <div className="ws-head">
         <div className="ws-titles">
-          <span className="eyebrow">Analysis</span>
+          <span className="eyebrow">分析</span>
           <span className="ws-when">{formatWhen(summary.startedAt)}</span>
         </div>
-        <DebugDownload sessionId={sessionId} />
+        <div className="ws-foot-actions">
+          {analysis && !analyzing && summary.processed && (
+            <button className="secondary" onClick={() => setConfirmReanalysis(true)}>重新分析</button>
+          )}
+          <DebugDownload sessionId={sessionId} />
+        </div>
       </div>
 
       <div className="ws-body">
@@ -859,66 +679,51 @@ function AnalysisWorkspace({
           </p>
         )}
 
-        {voiceStale && !analyzing && !signInPending && (
+        {analysis && !analyzing && (voiceStale || confirmReanalysis) && (
           <div className="voice-card">
             <div className="voice-card-copy">
-              <strong>Voice transcript added after this analysis</strong>
-              <span>Re-analyze to include it. This replaces the current summary and any edits.</span>
+              <strong>{confirmReanalysis ? "重新分析这条录制？" : "分析后新增了语音转写"}</strong>
+              <span>录制内容将再次发送到配置的 AI 服务。分析成功后将替换当前摘要、步骤和编辑内容。</span>
             </div>
             {confirmReanalysis ? (
               <div className="voice-card-actions">
-                <button className="linky" onClick={() => setConfirmReanalysis(false)}>
-                  Cancel
-                </button>
+                <button className="linky" onClick={() => setConfirmReanalysis(false)}>取消</button>
                 <button
                   className="secondary"
                   onClick={() => {
                     setConfirmReanalysis(false);
+                    setEditing(false);
                     void run();
                   }}
-                >
-                  Replace analysis
-                </button>
+                >替换分析</button>
               </div>
             ) : (
-              <button className="secondary" onClick={() => setConfirmReanalysis(true)}>
-                Re-analyze with voice
-              </button>
+              <button className="secondary" onClick={() => setConfirmReanalysis(true)}>加入旁白重新分析</button>
             )}
           </div>
         )}
 
         {!summary.processed && (
-          <p className="ws-note">Still processing this recording… try again in a moment.</p>
+          <p className="ws-note">录制仍在处理，请稍后再试。</p>
         )}
 
         {summary.processed && !analysis && !analyzing && (
           <div className="ws-empty">
-            <p className="ws-empty-lead">See what you did in this recording, step by step.</p>
-            <button className="record-cta" onClick={() => void run()} disabled={signInPending}>
-              Analyze recording
-            </button>
+            <p className="ws-empty-lead">逐步查看这条录制中的操作。</p>
+            <button className="record-cta" onClick={() => void run()}>分析录制</button>
             <details className="analyze-disclosure">
-              <summary>What gets sent to GitHub Copilot</summary>
+              <summary>哪些内容会发送给 AI 服务</summary>
               <p>
-                When you choose Analyze, the event timeline (window and document titles, URLs, and
-                clipboard previews), plus screen images, narration text, and other content you
-                provide, are sent to GitHub&apos;s cloud service for processing by GitHub Copilot.{" "}
-                <span className="cloud-analysis-caution">
-                  Do not analyze a recording that may contain passwords, access tokens, API keys,
-                  credentials, secrets, or other sensitive or confidential information.
-                </span>{" "}
-                By default, before anything is sent, this computer hides sensitive details like
-                passwords, keys, emails, and card or ID numbers from the text and your screen
-                images. You can turn this off in What&apos;s recorded for more accurate analysis. It
-                can miss things, so it is a safety net, not a guarantee.
+                选择分析后，事件时间线、窗口标题、网址、剪贴板预览、屏幕截图、语音文本等内容将发送到配置的 AI 服务进行处理。{" "}
+                <span className="cloud-analysis-caution">请勿分析可能包含密码、令牌、API 密钥、凭据或其他敏感机密信息的录制。</span>{" "}
+                默认会先在本机隐藏文本和截图中的密码、密钥、邮箱及证件号码等敏感信息。可在“采集内容”中关闭保护，但它可能漏检，不能保证完全安全。
               </p>
             </details>
             {voicePending && (
               <p className="voice-analysis-note">
                 {narrationStatus?.model === "ready"
-                  ? `Your ${voiceLanguage} voice is transcribed in the same language first, then analyzed.`
-                  : `Your ${voiceLanguage} voice is transcribed in the same language first, then analyzed. The first run downloads a ${NARRATION_MODEL_DOWNLOAD_LABEL} voice model once.`}
+                  ? `先将 ${voiceLanguage} 旁白转写为原语言文本，再进行分析。`
+                  : `先将 ${voiceLanguage} 旁白转写为原语言文本，再进行分析。首次需下载 ${NARRATION_MODEL_DOWNLOAD_LABEL} 语音模型。`}
               </p>
             )}
           </div>
@@ -932,49 +737,40 @@ function AnalysisWorkspace({
           <div className="status-line">
             <span className="spinner" />
             <span className="status-text">
-              {voiceBusy ? narrationWorkLabel(narrationStatus) : statusLine || "Working…"}
+              {voiceBusy ? narrationWorkLabel(narrationStatus) : statusLine || "正在处理…"}
             </span>
-            <button className="linky status-cancel" onClick={cancel}>
-              Cancel
-            </button>
+            <button className="linky status-cancel" onClick={cancel}>取消</button>
           </div>
         )}
 
         {analyzing && narrationStatus?.phase === "downloading" && (
-          <p className="voice-analysis-note">
-            First analysis downloads the ~250 MB voice model once — later runs skip this.
-          </p>
+          <p className="voice-analysis-note">首次分析需下载约 250 MB 的语音模型，之后无需重复下载。</p>
         )}
 
         {error && (
           <AnalysisError
             error={error}
-            onSignInStart={onSignInStart}
-            onSignInEnd={onSignInEnd}
-            onAuthenticated={failedRun && !failedRun.retried ? retryAfterSignIn : undefined}
           />
         )}
 
-        {analysis && !analyzing && !signInPending && (
+        {analysis && !analyzing && (
           <div className="ws-read">
             <div className="summary">
               <div className="summary-head">
-                <span className="eyebrow">What you did</span>
+                <span className="eyebrow">操作概述</span>
                 {!editing && (
-                  <button className="linky" onClick={startEdit}>
-                    Edit
-                  </button>
+                  <button className="linky" onClick={startEdit}>编辑</button>
                 )}
               </div>
 
               {editing ? (
                 <div className="summary-edit">
                   <label className="edit-field">
-                    <span className="edit-label">Name</span>
+                    <span className="edit-label">名称</span>
                     <input
                       className="edit-title"
                       value={draftTitle}
-                      placeholder="Short name, e.g. Research habit articles"
+                      placeholder="简短名称，例如：整理研究资料"
                       autoFocus
                       onChange={(e) => setDraftTitle(e.target.value)}
                       onKeyDown={(e) => {
@@ -984,14 +780,14 @@ function AnalysisWorkspace({
                         } else if (e.key === "Escape") setEditing(false);
                       }}
                     />
-                    <span className="edit-hint">Appears in your sessions list</span>
+                    <span className="edit-hint">显示在录制记录列表中</span>
                   </label>
                   <label className="edit-field">
-                    <span className="edit-label">Goal</span>
+                    <span className="edit-label">目标</span>
                     <textarea
                       className="edit-intent"
                       value={draftIntent}
-                      placeholder="One sentence: what were you trying to do?"
+                      placeholder="用一句话描述任务目标"
                       onChange={(e) => setDraftIntent(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Escape") setEditing(false);
@@ -999,12 +795,8 @@ function AnalysisWorkspace({
                     />
                   </label>
                   <div className="edit-actions">
-                    <button className="linky" onClick={() => setEditing(false)}>
-                      Cancel
-                    </button>
-                    <button className="secondary" onClick={() => void saveEdit()}>
-                      Save
-                    </button>
+                    <button className="linky" onClick={() => setEditing(false)}>取消</button>
+                    <button className="secondary" onClick={() => void saveEdit()}>保存</button>
                   </div>
                 </div>
               ) : (
@@ -1019,39 +811,35 @@ function AnalysisWorkspace({
 
             <div className="story-edit">
               <div className="summary-head">
-                <span className="eyebrow">Steps</span>
-                <span className="edit-hint">Click any step to edit · reorder, add or remove — saved automatically</span>
+                <span className="eyebrow">步骤</span>
+                <span className="edit-hint">点击步骤可编辑、排序、添加或删除，修改自动保存</span>
               </div>
-              <AnalysisStepTiles steps={steps} onChange={onStepsChange} />
+              <AnalysisStepTiles sessionId={sessionId} steps={steps} onChange={onStepsChange} />
             </div>
           </div>
         )}
       </div>
 
-      {analysis && !analyzing && !signInPending && (
+      {analysis && !analyzing && (
         <div className="ws-foot">
           <span className="foot-status">{launchFootStatus(summary)}</span>
           <div className="ws-foot-actions">
             {summary.hasSkill && (
-              <button className="secondary" onClick={() => setLaunch("skill")} title="Open the skill built from this recording">
-                Open skill →
-              </button>
+              <button className="secondary" onClick={() => setLaunch("skill")} title="打开基于这条录制创建的技能">打开技能 →</button>
             )}
             {summary.hasAutomation && (
               <button
                 className="secondary"
                 onClick={() => setLaunch("automation")}
-                title="Open the automation built from this recording"
-              >
-                Open automation →
-              </button>
+                title="打开基于这条录制创建的自动化"
+              >打开自动化 →</button>
             )}
             <button
               className="record-cta"
               onClick={() => setLaunch("picker")}
-              title="Turn this recording into a skill or an automation"
+              title="将这条录制转换为技能或自动化"
             >
-              {summary.hasSkill || summary.hasAutomation ? "Create another →" : "Create…"}
+              {summary.hasSkill || summary.hasAutomation ? "再次创建 →" : "创建…"}
             </button>
           </div>
         </div>
@@ -1061,15 +849,15 @@ function AnalysisWorkspace({
 }
 
 function narrationWorkLabel(status: NarrationStatus | null): string {
-  if (!status) return "Working…";
-  if (status.phase === "transcribing") return "Transcribing voice…";
-  if (status.phase === "loading") return "Preparing voice model…";
+  if (!status) return "正在处理…";
+  if (status.phase === "transcribing") return "正在转写旁白…";
+  if (status.phase === "loading") return "正在准备语音模型…";
   if (status.phase === "downloading") {
     return status.progress == null
-      ? "Downloading voice model…"
-      : `Downloading voice model… ${status.progress}%`;
+      ? "正在下载语音模型…"
+      : `正在下载语音模型… ${status.progress}%`;
   }
-  return "Working…";
+  return "正在处理…";
 }
 
 /* --- Final stage: target picker + builders -------------------------------- */
@@ -1078,13 +866,13 @@ function narrationWorkLabel(status: NarrationStatus | null): string {
 type LaunchTarget = "none" | "picker" | "skill" | "automation";
 
 function launchFootStatus(summary: SessionSummary): string {
-  if (summary.hasSkill && summary.hasAutomation) return "Skill & automation created";
-  if (summary.hasSkill) return "Skill created";
-  if (summary.hasAutomation) return "Automation created";
+  if (summary.hasSkill && summary.hasAutomation) return "技能与自动化已创建";
+  if (summary.hasSkill) return "技能已创建";
+  if (summary.hasAutomation) return "自动化已创建";
   return "";
 }
 
-/** "What do you want to build?" — picks both kind and architecture up front. */
+/** "你希望创建什么？" — picks both kind and architecture up front. */
 function TargetPicker({
   startedAt,
   onPick,
@@ -1098,16 +886,14 @@ function TargetPicker({
     <section className="ws">
       <div className="ws-head">
         <div className="ws-titles">
-          <span className="eyebrow">Create</span>
+          <span className="eyebrow">创建</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
-        <button className="ghost" onClick={onClose} title="Back to the analysis">
-          Cancel
-        </button>
+        <button className="ghost" onClick={onClose} title="返回分析">取消</button>
       </div>
       <div className="ws-body">
         <div className="sb-arch">
-          <p className="sb-lead">What do you want to build from this recording?</p>
+          <p className="sb-lead">你希望基于这条录制创建什么？</p>
           <div className="arch-grid">
             {TARGETS.map((t) => (
               <button
@@ -1117,7 +903,7 @@ function TargetPicker({
                 onClick={() => t.enabled && onPick(t)}
               >
                 <span className="arch-name">{t.label}</span>
-                <span className="arch-note">{t.enabled ? t.note : "Coming soon"}</span>
+                <span className="arch-note">{t.enabled ? t.note : "即将推出"}</span>
               </button>
             ))}
           </div>
@@ -1173,7 +959,7 @@ function SkillBuilderView({
     const version = flowVersion.current;
     try {
       const result = await window.skillRecorder.discardSkillPreview(sessionId, id);
-      if (!result.ok) throw new Error(result.error ?? "Could not discard the preview");
+      if (!result.ok) throw new Error(result.error ?? "无法清除预览");
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
       if (reportError && mounted.current && flowVersion.current === version) {
@@ -1206,7 +992,7 @@ function SkillBuilderView({
       flowVersion.current++;
       if (guard.invalidate()) {
         void window.skillRecorder.cancelSkill(sessionId).then((result) => {
-          if (!result.ok) throw new Error("Could not cancel skill work");
+          if (!result.ok) throw new Error("无法取消技能生成");
         }).catch((cause: unknown) => {
           console.warn("Could not cancel skill work on departure", cause);
         });
@@ -1239,7 +1025,7 @@ function SkillBuilderView({
     }).catch((cause: unknown) => {
       if (live && flowVersion.current === version) dispatch({
         type: "settle", phase: "ready",
-        error: cause instanceof Error ? cause.message : "Could not open the skill",
+        error: cause instanceof Error ? cause.message : "无法打开技能",
       });
     });
     return () => {
@@ -1260,7 +1046,7 @@ function SkillBuilderView({
     if (!operation) return;
     invalidatePreview();
     flowVersion.current++;
-    dispatch({ type: "start", phase: "planning", message: "Planning the skill…" });
+    dispatch({ type: "start", phase: "planning", message: "正在生成技能计划…" });
     try {
       const res = await window.skillRecorder.buildSkill({ sessionId, architecture });
       if (!mounted.current || !operations.current.isCurrent(operation)) return;
@@ -1268,11 +1054,11 @@ function SkillBuilderView({
         setPlan(res.plan);
         dispatch({ type: "settle", phase: "plan" });
       } else {
-        dispatch({ type: "settle", phase: "ready", error: res.error ?? "Planning failed" });
+        dispatch({ type: "settle", phase: "ready", error: res.error ?? "计划生成失败" });
       }
     } catch (cause) {
       if (mounted.current && operations.current.isCurrent(operation)) {
-        dispatch({ type: "settle", phase: "ready", error: cause instanceof Error ? cause.message : "Planning failed" });
+        dispatch({ type: "settle", phase: "ready", error: cause instanceof Error ? cause.message : "计划生成失败" });
       }
     } finally {
       operations.current.finish(operation);
@@ -1286,7 +1072,7 @@ function SkillBuilderView({
     const operation = operations.current.begin();
     if (!operation) return;
     flowVersion.current++;
-    dispatch({ type: "start", phase: "preparing", message: "Preparing SKILL.md preview…" });
+    dispatch({ type: "start", phase: "preparing", message: "正在生成 SKILL.md 预览…" });
     try {
       const res = await window.skillRecorder.prepareSkill(sessionId, plan);
       if (!mounted.current || !operations.current.isCurrent(operation)) {
@@ -1297,11 +1083,11 @@ function SkillBuilderView({
         previewRef.current = res.preview;
         dispatch({ type: "preview", preview: res.preview });
       } else {
-        dispatch({ type: "settle", phase: "plan", error: res.error ?? "Could not prepare the preview" });
+        dispatch({ type: "settle", phase: "plan", error: res.error ?? "无法生成预览" });
       }
     } catch (cause) {
       if (mounted.current && operations.current.isCurrent(operation)) {
-        dispatch({ type: "settle", phase: "plan", error: cause instanceof Error ? cause.message : "Could not prepare the preview" });
+        dispatch({ type: "settle", phase: "plan", error: cause instanceof Error ? cause.message : "无法生成预览" });
       }
     } finally {
       operations.current.finish(operation);
@@ -1314,7 +1100,7 @@ function SkillBuilderView({
       const operation = operations.current.begin();
       if (!operation) return;
       flowVersion.current++;
-      dispatch({ type: "start", phase: "creating", message: which === "export" ? "Exporting the skill…" : "Writing the skill…" });
+      dispatch({ type: "start", phase: "creating", message: which === "export" ? "正在导出技能…" : "正在生成技能…" });
       try {
         const res = await window.skillRecorder.createSkill(sessionId, plan, which, previewRef.current?.id);
         if (!mounted.current) return;
@@ -1334,12 +1120,12 @@ function SkillBuilderView({
             type: "settle",
             phase: "plan",
             previewExpired: res.previewExpired,
-            error: res.canceled ? undefined : res.error ?? "Could not create the skill",
+            error: res.canceled ? undefined : res.error ?? "无法创建技能",
           });
         }
       } catch (cause) {
         if (mounted.current && operations.current.isCurrent(operation)) {
-          dispatch({ type: "settle", phase: "plan", error: cause instanceof Error ? cause.message : "Could not create the skill" });
+          dispatch({ type: "settle", phase: "plan", error: cause instanceof Error ? cause.message : "无法创建技能" });
         }
       } finally {
         operations.current.finish(operation);
@@ -1355,13 +1141,13 @@ function SkillBuilderView({
     stopping.current = true;
     flowVersion.current++;
     const { operation, originalSettled } = cancellation;
-    dispatch({ type: "start", phase: "stopping", message: "Stopping…" });
+    dispatch({ type: "start", phase: "stopping", message: "正在停止…" });
     let error: string | undefined;
     try {
       const res = await window.skillRecorder.cancelSkill(sessionId);
-      if (!res.ok) throw new Error("Could not cancel skill work");
+      if (!res.ok) throw new Error("无法取消技能生成");
     } catch (cause) {
-      error = cause instanceof Error ? cause.message : "Could not cancel skill work";
+      error = cause instanceof Error ? cause.message : "无法取消技能生成";
     }
     // Acknowledging cancellation only marks the backend operation. Its original
     // request may still own a model turn or an open native folder picker.
@@ -1388,16 +1174,16 @@ function SkillBuilderView({
     <section className="ws skill-builder" ref={workspaceRef} tabIndex={-1}>
       <div className="ws-head">
         <div className="ws-titles">
-          <span className="eyebrow">{phase === "done" ? "Skill" : "Create skill"}</span>
+          <span className="eyebrow">{phase === "done" ? "技能" : "创建技能"}</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
         <button
           className="ghost"
           onClick={onClose}
           disabled={busy}
-          title={phase === "done" ? "View this recording's analysis" : "Back to the analysis"}
+          title={phase === "done" ? "查看这条录制的分析" : "返回分析"}
         >
-          {phase === "done" ? "Analysis" : "Close"}
+          {phase === "done" ? "分析" : "关闭"}
         </button>
       </div>
 
@@ -1407,30 +1193,24 @@ function SkillBuilderView({
         {phase === "loading" && (
           <div className="status-line">
             <span className="spinner" />
-            <span className="status-text">Opening the skill…</span>
+            <span className="status-text">正在打开技能…</span>
           </div>
         )}
 
         {phase === "ready" && (
           <div className="sb-arch">
             <p className="sb-lead">Build a {archLabel(architecture)} skill from this recording.</p>
-            <button className="record-cta" onClick={() => void runPlan()}>
-              Plan the skill →
-            </button>
+            <button className="record-cta" onClick={() => void runPlan()}>生成技能计划 →</button>
           </div>
         )}
 
         {busy && (
           <div className="status-line" role="status">
             <span className="spinner" />
-            <span className="status-text">{statusLine || "Working…"}</span>
-            <button className="linky status-cancel" onClick={cancelRun} disabled={phase === "stopping"}>
-              Cancel
-            </button>
+            <span className="status-text">{statusLine || "正在处理…"}</span>
+            <button className="linky status-cancel" onClick={cancelRun} disabled={phase === "stopping"}>取消</button>
             {(phase === "preparing" || preview) && (
-              <button className="ghost" ref={reviewButtonRef} onClick={() => dispatch({ type: "visibility", open: true })}>
-                Review SKILL.md
-              </button>
+              <button className="ghost" ref={reviewButtonRef} onClick={() => dispatch({ type: "visibility", open: true })}>查看 SKILL.md</button>
             )}
           </div>
         )}
@@ -1442,8 +1222,8 @@ function SkillBuilderView({
                 as="div"
                 className="sb-title ed-title"
                 value={plan.title}
-                placeholder="Skill title"
-                ariaLabel="Skill title"
+                placeholder="技能标题"
+                ariaLabel="技能标题"
                 onChange={(v) => updatePlan({ title: v })}
               />
               <code className="sb-slug">{plan.name}</code>
@@ -1453,16 +1233,14 @@ function SkillBuilderView({
               multiline
               className="sb-desc ed-desc"
               value={plan.description}
-              placeholder="One-line description of what this skill does"
-              ariaLabel="Skill description"
+              placeholder="用一句话描述技能的用途"
+              ariaLabel="技能描述"
               onChange={(v) => updatePlan({ description: v })}
             />
 
             <div className="sb-sec">
-              <span className="eyebrow">What the skill will do</span>
-              <p className="sb-refine-hint">
-                Click any step to edit, or a highlighted value to change it. Reorder, add or remove as needed.
-              </p>
+              <span className="eyebrow">技能将执行的操作</span>
+              <p className="sb-refine-hint">点击步骤或高亮值进行编辑，也可排序、添加或删除。</p>
               <SkillStepTiles
                 steps={plan.steps}
                 onChange={(steps) => updatePlan({ steps })}
@@ -1479,13 +1257,13 @@ function SkillBuilderView({
               ✓
             </div>
             <h2 className="sb-title">
-              {placement === "install" ? placementModel.installDoneTitle : "Skill exported"}
+              {placement === "install" ? placementModel.installDoneTitle : "技能已导出"}
             </h2>
             <p>
               <code className="sb-slug">{builtName}</code>{" "}
               {placement === "install"
                 ? placementModel.installDoneMessage
-                : `is built for ${archLabel(architecture)}. Install it wherever ${archLabel(architecture)} loads skills.`}
+                : `适用于 ${archLabel(architecture)}。请安装到该智能体的技能目录。`}
             </p>
             {exportedPath && <p className="sb-path">{exportedPath}</p>}
           </div>
@@ -1496,9 +1274,7 @@ function SkillBuilderView({
         <div className="ws-foot">
           <span className="foot-status" />
           <div className="ws-foot-actions">
-            <button className="ghost" ref={reviewButtonRef} onClick={() => void review()}>
-              Review SKILL.md
-            </button>
+            <button className="ghost" ref={reviewButtonRef} onClick={() => void review()}>查看 SKILL.md</button>
             {placementModel.actions.map((action) => (
               <button
                 key={action.placement}
@@ -1515,12 +1291,10 @@ function SkillBuilderView({
 
       {phase === "done" && (
         <div className="ws-foot">
-          <span className="foot-status">Skill created</span>
+          <span className="foot-status">技能已创建</span>
           <div className="ws-foot-actions">
             {exportedPath && (
-              <button className="record-cta" onClick={() => void window.skillRecorder.revealSkill(sessionId)}>
-                Reveal file
-              </button>
+              <button className="record-cta" onClick={() => void window.skillRecorder.revealSkill(sessionId)}>在文件夹中显示</button>
             )}
           </div>
         </div>
@@ -1618,7 +1392,7 @@ function AutomationBuilderView({
     canceled.current = false;
     inFlight.current = true;
     setError(null);
-    setStatusLine("Planning the automation…");
+    setStatusLine("正在生成自动化计划…");
     setPhase("planning");
     const res = await window.skillRecorder.buildAutomation({ sessionId, architecture });
     inFlight.current = false;
@@ -1626,7 +1400,7 @@ function AutomationBuilderView({
       setPlan(res.plan);
       setPhase("plan");
     } else if (!canceled.current) {
-      setError(res.error ?? "Planning failed");
+      setError(res.error ?? "计划生成失败");
       setPhase("ready");
     }
   }, [sessionId, architecture]);
@@ -1636,7 +1410,7 @@ function AutomationBuilderView({
     canceled.current = false;
     inFlight.current = true;
     setError(null);
-    setStatusLine("Writing the automation…");
+    setStatusLine("正在生成自动化…");
     setPhase("creating");
     const res = await window.skillRecorder.createAutomation(sessionId, plan);
     inFlight.current = false;
@@ -1645,7 +1419,7 @@ function AutomationBuilderView({
       setExportedPath(res.path ?? res.automation.exportedPath ?? "");
       setPhase("done");
     } else if (!canceled.current) {
-      setError(res.error ?? "Could not create the automation");
+      setError(res.error ?? "无法创建自动化");
       setPhase("plan");
     }
   }, [sessionId, plan]);
@@ -1653,7 +1427,7 @@ function AutomationBuilderView({
   const cancelRun = useCallback(async () => {
     canceled.current = true;
     inFlight.current = false;
-    setStatusLine("Stopping…");
+    setStatusLine("正在停止…");
     await window.skillRecorder.cancelAutomation(sessionId);
     setPhase(plan ? "plan" : "ready");
   }, [sessionId, plan]);
@@ -1664,16 +1438,16 @@ function AutomationBuilderView({
     <section className="ws">
       <div className="ws-head">
         <div className="ws-titles">
-          <span className="eyebrow">{phase === "done" ? "Automation" : "Create automation"}</span>
+          <span className="eyebrow">{phase === "done" ? "自动化" : "创建自动化"}</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
         <button
           className="ghost"
           onClick={onClose}
           disabled={busy}
-          title={phase === "done" ? "View this recording's analysis" : "Back to the analysis"}
+          title={phase === "done" ? "查看这条录制的分析" : "返回分析"}
         >
-          {phase === "done" ? "Analysis" : "Close"}
+          {phase === "done" ? "分析" : "关闭"}
         </button>
       </div>
 
@@ -1683,26 +1457,22 @@ function AutomationBuilderView({
         {phase === "loading" && (
           <div className="status-line">
             <span className="spinner" />
-            <span className="status-text">Opening the automation…</span>
+            <span className="status-text">正在打开自动化…</span>
           </div>
         )}
 
         {phase === "ready" && (
           <div className="sb-arch">
             <p className="sb-lead">Build a {archLabel(architecture)} automation from this recording.</p>
-            <button className="record-cta" onClick={() => void runPlan()}>
-              Plan the automation →
-            </button>
+            <button className="record-cta" onClick={() => void runPlan()}>生成自动化计划 →</button>
           </div>
         )}
 
         {busy && (
           <div className="status-line">
             <span className="spinner" />
-            <span className="status-text">{statusLine || "Working…"}</span>
-            <button className="linky status-cancel" onClick={cancelRun}>
-              Cancel
-            </button>
+            <span className="status-text">{statusLine || "正在处理…"}</span>
+            <button className="linky status-cancel" onClick={cancelRun}>取消</button>
           </div>
         )}
 
@@ -1713,8 +1483,8 @@ function AutomationBuilderView({
                 as="div"
                 className="sb-title ed-title"
                 value={plan.title}
-                placeholder="Automation title"
-                ariaLabel="Automation title"
+                placeholder="自动化标题"
+                ariaLabel="自动化标题"
                 onChange={(v) => updatePlan({ title: v })}
               />
               <code className="sb-slug">{plan.name}</code>
@@ -1724,16 +1494,14 @@ function AutomationBuilderView({
               multiline
               className="sb-desc ed-desc"
               value={plan.description}
-              placeholder="One-line description of what this automation does"
-              ariaLabel="Automation description"
+              placeholder="用一句话描述自动化的用途"
+              ariaLabel="自动化描述"
               onChange={(v) => updatePlan({ description: v })}
             />
 
             <div className="sb-sec">
-              <span className="eyebrow">When it runs</span>
-              <p className="sb-refine-hint">
-                A recording has no schedule of its own — set when this automation should run.
-              </p>
+              <span className="eyebrow">执行时间</span>
+              <p className="sb-refine-hint">录制本身没有执行计划，请设置自动化的执行时间。</p>
               <ScheduleEditor
                 schedule={plan.trigger.schedule}
                 onChange={(schedule) => updatePlan({ trigger: { ...plan.trigger, schedule } })}
@@ -1744,10 +1512,8 @@ function AutomationBuilderView({
             </div>
 
             <div className="sb-sec">
-              <span className="eyebrow">What the automation will do</span>
-              <p className="sb-refine-hint">
-                Click any step to edit, or a highlighted value to change it. Reorder, add or remove as needed.
-              </p>
+              <span className="eyebrow">自动化将执行的操作</span>
+              <p className="sb-refine-hint">点击步骤或高亮值进行编辑，也可排序、添加或删除。</p>
               <AutomationStepTiles
                 steps={plan.steps}
                 onChange={(steps) => updatePlan({ steps })}
@@ -1763,7 +1529,7 @@ function AutomationBuilderView({
             <div className="sb-check" aria-hidden>
               ✓
             </div>
-            <h2 className="sb-title">Automation ready</h2>
+            <h2 className="sb-title">自动化已就绪</h2>
             <p>
               <code className="sb-slug">{builtName}</code> is built for {archLabel(architecture)}.
             </p>
@@ -1784,25 +1550,21 @@ function AutomationBuilderView({
             <button
               className="record-cta"
               onClick={() => void create()}
-              title="Create and export the automation bundle"
-            >
-              Create &amp; export automation
-            </button>
+              title="创建并导出自动化配置"
+            >创建并导出自动化</button>
           </div>
         </div>
       )}
 
       {phase === "done" && (
         <div className="ws-foot">
-          <span className="foot-status">Automation created</span>
+          <span className="foot-status">自动化已创建</span>
           <div className="ws-foot-actions">
             {exportedPath && (
               <button
                 className="record-cta"
                 onClick={() => void window.skillRecorder.revealAutomation(sessionId)}
-              >
-                Reveal bundle
-              </button>
+              >在文件夹中显示</button>
             )}
           </div>
         </div>

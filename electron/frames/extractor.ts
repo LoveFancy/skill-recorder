@@ -57,6 +57,8 @@ export interface WindowRequest {
   maxFrames?: number;
   crop?: { x: number; y: number; w: number; h: number };
   reason?: string;
+  /** Preserve temporal evidence even when small UI changes share a perceptual hash. */
+  preserveTimeline?: boolean;
 }
 
 export interface CapturedFrameSample<T extends CapturedVideoFrame = CapturedVideoFrame> {
@@ -101,7 +103,7 @@ export function sampleCapturedFrames<T extends CapturedVideoFrame>(
   const cap = Number.isFinite(maxFrames)
     ? Math.max(1, Math.min(Math.floor(maxFrames), DEFAULTS.maxFrames))
     : DEFAULT_WINDOW_MAX_FRAMES;
-  const stepMs = 1000 / density;
+  const stepMs = Math.max(1000 / density, cap > 1 ? (end - start) / (cap - 1) : end - start + 1);
   const samples: CapturedFrameSample<T>[] = [];
   const used = new Set<string>();
 
@@ -153,6 +155,10 @@ export class FrameExtractor {
 
   get manifest(): readonly FrameRecord[] {
     return [...this.frames].sort((a, b) => a.tMs - b.tMs);
+  }
+
+  get capturedManifest(): readonly CapturedVideoFrame[] {
+    return this.sourceFrames.map(({ absolutePath: _path, ...frame }) => frame);
   }
 
   offsetForEpoch(epochMs: number): number {
@@ -223,6 +229,7 @@ export class FrameExtractor {
           this.offsetForEpoch(sample.frame.tMs),
           "probe",
           req.reason ?? "probe:window",
+          req.preserveTimeline,
         );
         if (record) added.push(record);
       } catch (err) {
@@ -311,13 +318,14 @@ export class FrameExtractor {
     offsetSec: number,
     source: FrameSource,
     reason?: string,
+    preserveTimeline = false,
   ): Promise<FrameRecord | null> {
     if (this.frames.length >= this.opts.maxFrames) {
       await unlink(file).catch(() => undefined);
       return null;
     }
     const phash = await dhash(file);
-    if (phash) {
+    if (phash && !preserveTimeline) {
       for (const existing of this.frames) {
         if (hamming(existing.phash, phash) <= this.opts.dedupeThreshold) {
           await unlink(file).catch(() => undefined);

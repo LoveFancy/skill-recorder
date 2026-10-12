@@ -67,7 +67,6 @@ requirements, and upstream provenance first.
 
 | Change | Required review |
 | --- | --- |
-| GitHub Copilot SDK or CLI | Re-read that exact version's terms and notices; confirm unmodified bundling remains permitted; update the reviewed policy version. |
 | Electron or Chromium | Review the Electron archive and checksums, Chromium notices, FFmpeg revision/source/patches, and every supported platform hash. |
 | Sharp or sharp-libvips | Review package licenses, native dependency versions, build repositories, patches, source archives, and relinking instructions. |
 | ONNX Runtime | Review the exact release/development revision, license, notices, native packages, and source reference. |

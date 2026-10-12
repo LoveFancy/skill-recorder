@@ -1,0 +1,12 @@
+import {createWriteStream,mkdirSync} from 'node:fs';
+import path from 'node:path';
+import {ZipArchive} from 'archiver';
+const root=path.resolve(import.meta.dirname,'..');
+mkdirSync(path.join(root,'release'),{recursive:true});
+const target=path.join(root,'release','skill-recorder-chrome-extension-0.1.0.zip');
+const archive=new ZipArchive({zlib:{level:9}});
+const out=createWriteStream(target);
+const done=new Promise((resolve,reject)=>{out.on('close',resolve);out.on('error',reject);archive.on('error',reject);});
+archive.pipe(out);archive.directory(path.join(root,'browser-extension'),'chrome-extension');
+archive.file(path.join(root,'docs/browser-companion.md'),{name:'安装与验证.md'});
+await archive.finalize();await done;console.log(target);

@@ -97,19 +97,16 @@ export function SkillReviewModal({
         tabIndex={-1}
       >
         <div className="sheet-head">
-          <h2 id={titleId}>Review SKILL.md</h2>
-          <button className="ghost" onClick={onClose}>Close</button>
+          <h2 id={titleId}>查看 SKILL.md</h2>
+          <button className="ghost" onClick={onClose}>关闭</button>
         </div>
-        <p className="sheet-lead" id={descriptionId}>
-          Read-only file preview, including frontmatter. Nothing is installed or exported until you choose an action below.
-          Closing this window keeps the preview; editing the plan discards it.
-        </p>
+        <p className="sheet-lead" id={descriptionId}>只读文件预览，包含元数据。选择下方操作后才会安装或导出。关闭窗口保留预览，修改计划会清除旧预览。</p>
         {error && <p className="sheet-caution" role="alert">{error}</p>}
         {busy && (
           <div className="status-line" role="status">
             <span className="spinner" aria-hidden="true" />
-            <span className="status-text">{statusLine || "Working…"}</span>
-            <button className="linky status-cancel" onClick={onCancel} disabled={stopping}>Cancel</button>
+            <span className="status-text">{statusLine || "正在处理…"}</span>
+            <button className="linky status-cancel" onClick={onCancel} disabled={stopping}>取消</button>
           </div>
         )}
         {preview && (
@@ -118,7 +115,7 @@ export function SkillReviewModal({
           </pre>
         )}
         {!preview && !busy && (
-          <button className="ghost" onClick={onPrepare}>Prepare preview</button>
+          <button className="ghost" onClick={onPrepare}>生成预览</button>
         )}
         <div className="sheet-actions skill-review-actions">
           {placementModel.actions.map((action) => (

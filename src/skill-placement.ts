@@ -34,21 +34,21 @@ export function skillPlacementModel(target: BuildTarget): SkillPlacementModel {
     const primary = placement === defaultPlacement;
     const label =
       placement === "install"
-        ? `Add to ${target.installTargetLabel}`
+        ? `添加到 ${target.installTargetLabel}`
         : primary
-          ? "Export skill"
-          : "Export…";
+          ? "导出技能"
+          : "导出…";
     const title =
       placement === "install"
-        ? `Add the skill to ${target.installTargetLabel} so it loads automatically`
-        : "Download the skill to a folder you choose";
+        ? `将技能添加到 ${target.installTargetLabel} 以自动加载`
+        : "将技能导出到所选文件夹";
     return { placement, primary, label, title };
   });
 
   return {
     defaultPlacement,
     actions,
-    installDoneTitle: `Added to ${target.installTargetLabel}`,
-    installDoneMessage: `is now in ${target.installTargetLabel} — it loads automatically.`,
+    installDoneTitle: `已添加到 ${target.installTargetLabel}`,
+    installDoneMessage: `已添加到 ${target.installTargetLabel}，将自动加载。`,
   };
 }
