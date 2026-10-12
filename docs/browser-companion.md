@@ -57,7 +57,7 @@
 
 ## 开发和验证
 
-需要 Go ≥1.23，仅构建者需要。`SKILL_RECORDER_GO` 可指定 Go 可执行文件；本机开发也支持缓存路径 `~/.cache/skill-recorder/toolchains/go/bin/go`。
+需要 Go ≥1.26.1，仅构建者需要。`SKILL_RECORDER_GO` 可指定 Go 可执行文件；本机开发也支持缓存路径 `~/.cache/skill-recorder/toolchains/go/bin/go`。
 
 ```sh
 npm run build             # 构建三种原生助手以及应用

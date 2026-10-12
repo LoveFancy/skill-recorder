@@ -11,5 +11,5 @@ const targets=process.argv.includes('--all')?[['darwin','arm64'],['darwin','amd6
 for(const [os,arch] of targets){
  const out=path.join(root,'native/bin',`${os}-${arch}`);mkdirSync(out,{recursive:true});
  const r=spawnSync(go,['build','-trimpath','-ldflags=-s -w','-o',path.join(out,os==='windows'?'browser-host.exe':'browser-host'),'.'],{cwd:path.join(root,'native/browser-host'),env:{...process.env,GOOS:os,GOARCH:arch,CGO_ENABLED:'0'},stdio:'inherit'});
- if(r.error || r.status!==0) throw r.error || new Error('Native host build failed; install Go >=1.23 or set SKILL_RECORDER_GO.');
+ if(r.error || r.status!==0) throw r.error || new Error('Native host build failed; install Go >=1.26.1 or set SKILL_RECORDER_GO.');
 }
