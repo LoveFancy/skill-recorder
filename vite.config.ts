@@ -71,7 +71,6 @@ export default defineConfig({
                 "koffi",
                 "node-pty",
                 "sharp",
-                "@huggingface/transformers",
                 "onnxruntime-node",
                 "sherpa-onnx-node",
                 "tesseract.js",

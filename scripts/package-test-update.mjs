@@ -1,0 +1,12 @@
+import archiver from 'archiver';
+import { createWriteStream } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+await mkdir('release',{recursive:true});
+const output=createWriteStream('release/Skill-Recorder-windows-x64-test-update.zip');
+const archive=archiver('zip',{zlib:{level:9}});
+const done=new Promise((resolve,reject)=>{output.on('close',resolve);output.on('error',reject);archive.on('error',reject);});
+archive.pipe(output);
+archive.glob('**/*',{cwd:path.resolve('release/win-unpacked'),dot:true,ignore:['resources/models/**']});
+archive.append('测试更新包（不含语音模型）\n\n首次请安装完整安装包。更新前退出 Skill Recorder，将本 ZIP 全部解压并覆盖到原安装目录；保留 resources/models 目录，即可继续离线使用 SenseVoice。\n本包不需要重复拷贝约 239 MB 的模型。\n',{name:'测试更新说明.txt'});
+await archive.finalize();await done;console.log(`Test update without model: ${archive.pointer()} bytes`);

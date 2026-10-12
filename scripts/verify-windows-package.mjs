@@ -1,3 +1,5 @@
+import { verifyModelResources } from "./prepare-sensevoice.mjs";
+import { verifyInstalledCompliance } from "./split-compliance.mjs";
 import { verifyBrowserResources } from "./verify-browser-resources.mjs";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -48,10 +50,7 @@ const expectedPayloads = [
       `/@img/sharp-win32-${arch}/lib/sharp-win32-${arch}(?:-[0-9][^/]*)?\\.node$`,
     ),
   },
-  {
-    packagePath: `/onnxruntime-node/bin/napi-v6/win32/${arch}/`,
-    executable: `/onnxruntime-node/bin/napi-v6/win32/${arch}/onnxruntime_binding.node`,
-  },
+
 ];
 for (const payload of expectedPayloads) {
   if (!normalizedFiles.some((file) => file.includes(payload.packagePath))) {
@@ -118,9 +117,11 @@ for (const notice of ["third-party-notices.md", "license"]) {
   }
 }
 
+await verifyModelResources(path.join(unpacked,"resources","models"));
+await verifyInstalledCompliance(path.join(unpacked,"resources","compliance"));
 await verifyBrowserResources(path.join(unpacked,"resources"),"win32",arch);
 await verifyComplianceDirectory(path.join(unpacked, "resources", "compliance"), {
-  requireSources: true,
+  requireSources: false,
   requireElectronNotices: true,
 });
 

@@ -1,0 +1,12 @@
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { verifyModelResources } from './prepare-sensevoice.mjs';
+const resources=path.resolve(process.argv[2]??'release/win-unpacked/resources');
+await verifyModelResources(path.join(resources,'models'));
+const require=createRequire(path.join(resources,'app.asar.unpacked/node_modules/sherpa-onnx-node/package.json'));
+const sherpa=require(path.join(resources,'app.asar.unpacked/node_modules/sherpa-onnx-node'));
+const root=path.join(resources,'models/SenseVoiceSmall-INT8');
+const recognizer=await sherpa.OfflineRecognizer.createAsync({featConfig:{sampleRate:16000,featureDim:80},modelConfig:{senseVoice:{model:path.join(root,'model.int8.onnx'),language:'zh',useInverseTextNormalization:1},tokens:path.join(root,'tokens.txt'),numThreads:2,provider:'cpu',debug:0},decodingMethod:'greedy_search'});
+const stream=recognizer.createStream();stream.acceptWaveform({samples:new Float32Array(16000),sampleRate:16000});await recognizer.decodeAsync(stream);
+if(typeof recognizer.getResult(stream).text!=='string')throw new Error('Invalid offline inference result');
+console.log('Bundled CPU SenseVoice model loaded and decoded offline.');

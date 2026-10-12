@@ -73,3 +73,13 @@ test("SenseVoice rejects incomplete downloads without leaving ready files", asyn
     assert.equal(isNarrationModelCachedAt(root),false);
   } finally { globalThis.fetch=previous;await rm(root,{recursive:true,force:true}); }
 });
+
+test("bundled offline model is selected when user cache is empty", async () => {
+  const { resolveNarrationModelRoot } = await import("./sensevoice");
+  const root = await mkdtemp(path.join(tmpdir(), "sensevoice-bundled-"));
+  try {
+    const resources = path.join(root, "resources");
+    await seedModel(path.join(resources, "models"), NARRATION_MODEL_ID);
+    assert.equal(resolveNarrationModelRoot(path.join(root,"cache"), resources),path.join(resources,"models",NARRATION_MODEL_ID));
+  } finally { await rm(root,{recursive:true,force:true}); }
+});

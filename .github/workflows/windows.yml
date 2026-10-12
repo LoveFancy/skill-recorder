@@ -96,7 +96,7 @@ jobs:
             throw "Expected Node ${{ matrix.arch }}"
           }
           npm ci --ignore-scripts=false --dangerously-allow-all-scripts=false --strict-allow-scripts
-          node -e "require('sharp'); require('onnxruntime-node'); require('koffi')"
+          node -e "require('sharp'); require('koffi')"
           if (Select-String -Path package-lock.json -Pattern 'ffmpeg-static' -Quiet) {
             throw "ffmpeg-static remains in the lockfile"
           }
@@ -116,6 +116,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Cache bundled SenseVoice model
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: .models
+          key: sensevoice-int8-${{ hashFiles('common/sensevoice-model.ts') }}
+
       - name: Package native installer
         run: npm run ${{ matrix.dist_script }}
         env:
@@ -123,6 +129,20 @@ jobs:
 
       - name: Verify packaged architecture
         run: node scripts/verify-windows-package.mjs ${{ matrix.arch }}
+
+      - name: Verify bundled offline speech inference
+        run: node scripts/smoke-bundled-sensevoice.mjs
+
+      - name: Package smaller test update without model
+        run: node scripts/package-test-update.mjs
+
+      - name: Upload smaller test update
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-recorder-windows-x64-test-update
+          path: release/*-test-update.zip
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

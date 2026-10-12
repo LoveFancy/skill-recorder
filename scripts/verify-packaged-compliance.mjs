@@ -1,6 +1,8 @@
+import { splitInstalledCompliance } from "./split-compliance.mjs";
+import { verifyModelResources } from "./prepare-sensevoice.mjs";
 import { verifyBrowserResources } from "./verify-browser-resources.mjs";
 import { existsSync } from "node:fs";
-import { chmod, copyFile, readFile, readdir } from "node:fs/promises";
+import { chmod, copyFile, readFile, readdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 
@@ -46,6 +48,15 @@ export default async function verifyPackagedCompliance(context) {
       ? path.join(context.appOutDir, `${productFilename}.app`, "Contents", "Resources")
       : path.join(context.appOutDir, "resources");
 
+  const archName=typeof context.arch==="number" ? ["ia32","x64","armv7l","arm64","universal"][context.arch] : context.arch;
+  const target=`${platform==='win32'?'windows':platform}-${archName==='x64'?'amd64':archName}`;
+  for(const entry of await readdir(path.join(resources,"native/bin"),{withFileTypes:true})) {
+    if(entry.isDirectory() && entry.name!==target)await rm(path.join(resources,"native/bin",entry.name),{recursive:true,force:true});
+  }
+  const prebuilds=path.join(resources,"app.asar.unpacked/node_modules/node-pty/prebuilds");
+  if(existsSync(prebuilds))for(const entry of await readdir(prebuilds)) {
+    if(entry!==`${platform}-${archName}`)await rm(path.join(prebuilds,entry),{recursive:true,force:true});
+  }
   await ensureNodePtyHelpersAreExecutable(resources, platform);
   const browserArch=typeof context.arch==="number"?(["ia32","x64","armv7l","arm64","universal"][context.arch]??String(context.arch)):context.arch;
   await verifyBrowserResources(resources,platform,browserArch);
@@ -79,6 +90,9 @@ export default async function verifyPackagedCompliance(context) {
     requireSources: true,
     requireElectronNotices: true,
   });
+
+  await splitInstalledCompliance(compliance);
+  await verifyModelResources(path.join(resources,"models"));
 
   const asarPath = path.join(resources, "app.asar");
   if (!existsSync(asarPath)) throw new Error(`Packaged application is missing ${asarPath}.`);

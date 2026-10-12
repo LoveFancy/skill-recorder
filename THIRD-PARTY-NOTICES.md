@@ -6,7 +6,10 @@ Packaged/distributed builds include third-party components that are covered by
 their own license terms. This file summarizes the notable ones. Every supported
 release command generates a complete, platform-specific compliance bundle under
 `resources/compliance/` containing full package license texts, native notices,
-copyleft license texts, corresponding source, and relinking instructions.
+copyleft license texts and relinking instructions. Corresponding source archives
+are distributed separately in the matching `skill-recorder-windows-x64-compliance`
+CI attachment, rather than inside the installer. Redistributors must provide
+that attachment alongside the installer.
 Electron's exact notices are retained under `resources/compliance/electron/`;
 platforms that preserve Electron's root notice files carry those copies too.
 
@@ -15,21 +18,14 @@ Artistic-2.0, BlueOak-1.0.0) and compatible with distributing this application u
 Those components remain under their own terms; the generated
 `THIRD-PARTY-LICENSES.txt` preserves their license and attribution text.
 
-## Optional downloaded model
+## Bundled speech model
 
-### OpenAI Whisper small — `Xenova/whisper-small`
-- The multilingual model is downloaded from
-  [`Xenova/whisper-small`](https://huggingface.co/Xenova/whisper-small) only
-  after explicit user approval; its weights are not bundled with Skill Recorder.
-- The Transformers.js-compatible ONNX conversion is published by Xenova
-  (Joshua Lochner) from OpenAI's
-  [`openai/whisper-small`](https://huggingface.co/openai/whisper-small)
-  checkpoint.
-- The Hugging Face model metadata declares **Apache-2.0**. OpenAI's
-  [Whisper repository](https://github.com/openai/whisper) also states that its
-  code and model weights are released under the **MIT License**. The downloaded
-  model remains subject to its publisher's applicable terms and does not change
-  Skill Recorder's MIT license.
+### SenseVoice Small INT8
+- Bundled offline from `csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17`, revision `2365baeacb507f821a0c8120fcee3d484dba7a07`.
+- Derived from FunAudioLLM/SenseVoiceSmall. Model weights are subject to the **FunASR Model Open Source License Agreement**, separately from the code license.
+- Publisher's conversion notice and complete model license are retained in `resources/models/SenseVoiceSmall-INT8/`; PROVENANCE.json lists verified hashes.
+
+## Optional downloaded OCR data
 
 ### Tesseract English language data — `tessdata_fast/eng.traineddata`
 - Advanced protection downloads the English OCR data directly from
@@ -118,7 +114,7 @@ from each pinned source revision are included under
 - Exact upstream terms are retained under
   `resources/compliance/tesseract-core/`; fixed source archives for the build
   scripts and all nine linked projects are retained under
-  `resources/compliance/sources/`.
+  the separate compliance attachment.
 - As required by the IJG terms: **This software is based in part on the work
   of the Independent JPEG Group.**
 - OpenLibm's source tree contains LGPL-covered test files, but its static

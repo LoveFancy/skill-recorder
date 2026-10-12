@@ -15,3 +15,5 @@ evals/.cache/
 
 # Standalone Chrome native host build output
 native/bin/
+
+.models/

@@ -7,15 +7,9 @@ import { app } from "electron";
 import { SENSEVOICE_LANGUAGES } from "../../common/narration";
 import { detectSilence } from "./audio-analysis";
 
-export const NARRATION_MODEL_ID = "SenseVoiceSmall-INT8";
+import { NARRATION_MODEL_ID, MODEL_ARTIFACTS, MODEL_REPOSITORY, REVISION } from "../../common/sensevoice-model";
+export { NARRATION_MODEL_ID, NARRATION_MODEL_FILES, MODEL_ARTIFACTS, MODEL_REPOSITORY } from "../../common/sensevoice-model";
 export const LEGACY_NARRATION_MODEL_ID = "Xenova/whisper-small.en";
-export const NARRATION_MODEL_FILES = ["model.int8.onnx", "tokens.txt"] as const;
-export const MODEL_REPOSITORY = "csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17";
-const REVISION = "2365baeacb507f821a0c8120fcee3d484dba7a07";
-export const MODEL_ARTIFACTS = [
-  { file:"model.int8.onnx", size:239233841, sha256:"c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51" },
-  { file:"tokens.txt", size:315894, sha256:"f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc" },
-] as const;
 export interface ModelLoadProgress { status:string; file?:string; progress?:number; loaded?:number; total?:number }
 export interface ModelLoadOptions { allowDownload:boolean; onProgress?:(progress:ModelLoadProgress)=>void }
 export type AsrPipeline = (audio:Float32Array, options?:{ language?:string }) => Promise<{ text:string; chunks?:Array<{ timestamp:[number,number|null]; text:string }> }>;
@@ -25,7 +19,18 @@ export function isNarrationModelCachedAt(cacheDir:string, modelId=NARRATION_MODE
   const root=path.join(cacheDir,...modelId.split("/"));
   return MODEL_ARTIFACTS.every(f=> { try { const stat=statSync(path.join(root,f.file)); return stat.isFile() && stat.size===f.size; } catch { return false; } });
 }
-export function isNarrationModelCached() { return isNarrationModelCachedAt(narrationModelCacheDir()); }
+export function resolveNarrationModelRoot(cacheDir:string, resourcesDir?:string) {
+  for (const base of [cacheDir, resourcesDir && path.join(resourcesDir,"models")]) {
+    if(base && isNarrationModelCachedAt(base)) return path.join(base,NARRATION_MODEL_ID);
+  }
+  return path.join(cacheDir,NARRATION_MODEL_ID);
+}
+function currentModelRoot() {
+  return resolveNarrationModelRoot(narrationModelCacheDir(),app.isPackaged ? process.resourcesPath : undefined);
+}
+export function isNarrationModelCached() {
+  return isNarrationModelCachedAt(path.dirname(currentModelRoot()));
+}
 // Keep existing recordings and multilingual Whisper assets; remove only the already-obsolete English cache.
 export async function removeLegacyNarrationModelCache(cacheDir=narrationModelCacheDir()) { await rm(path.join(cacheDir,...LEGACY_NARRATION_MODEL_ID.split("/")),{recursive:true,force:true}); }
 
@@ -84,7 +89,7 @@ interface Recognizer {
 let loadedPipe:AsrPipeline|null=null;
 let pipePromise:Promise<AsrPipeline>|null=null;
 async function build(options:ModelLoadOptions):Promise<AsrPipeline> {
-  const root=path.join(narrationModelCacheDir(),NARRATION_MODEL_ID);
+  const root=currentModelRoot();
   if(!isNarrationModelCached()) {
     if(!options.allowDownload)throw new Error("SenseVoice Small INT8 尚未下载，请先下载语音模型");
     await downloadSenseVoiceModel(root,options.onProgress);

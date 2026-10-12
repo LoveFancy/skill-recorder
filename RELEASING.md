@@ -233,3 +233,13 @@ Never silently replace an asset or move a release tag.
   affected release as unsuitable and publish a new patch release.
 - If an asset creates a legal or security risk, remove the affected binary,
   retain an audit record, and publish corrected materials under a new version.
+
+## Windows offline and test packages
+
+Windows CI produces a full installer with verified SenseVoice Small INT8 weights,
+a separate corresponding-source compliance attachment, and a smaller test-update
+ZIP that omits only `resources/models`. For first installation use the full installer.
+For subsequent test updates, exit the app and extract the update ZIP over the existing
+installation, preserving `resources/models`. Redistribute the matching compliance
+attachment alongside either package. Model weights use the FunASR model license;
+full terms and publisher attribution ship beside the weights.
