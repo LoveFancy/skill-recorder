@@ -100,7 +100,7 @@ export function SkillReviewModal({
           <h2 id={titleId}>查看 SKILL.md</h2>
           <button className="ghost" onClick={onClose}>关闭</button>
         </div>
-        <p className="sheet-lead" id={descriptionId}>只读文件预览，包含元数据。选择下方操作后才会安装或导出。关闭窗口保留预览，修改计划会清除旧预览。</p>
+        <p className="sheet-lead" id={descriptionId}>只读文件预览，包含元数据。选择下方操作后才会安装或导出。关闭窗口保留预览，调整技能内容会清除旧预览。</p>
         {error && <p className="sheet-caution" role="alert">{error}</p>}
         {busy && (
           <div className="status-line" role="status">

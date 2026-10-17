@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   DocumentArtifactSchema, DocumentContentSchema, DocumentOutlineSchema, DocumentRequestSchema,
-  OUTPUT_TEMPLATES, renderDocument, validateDocument,
+  outputTemplate, renderDocument, validateDocument,
   type DocumentArtifact, type DocumentContent, type DocumentOutline, type DocumentRequest, type DocumentView,
 } from "../../common/output";
 import { AgentBuilder, type BaseLive } from "../builders/agent-builder";
@@ -71,7 +71,7 @@ export class DocumentBuilder extends AgentBuilder<BaseLive> {
   }
 
   private view(a: DocumentArtifact): DocumentView {
-    const template = OUTPUT_TEMPLATES[a.request.kind];
+    const template = outputTemplate(a.request.kind, a.request.templateId);
     return { artifact: a, stale: this.source(a.sessionId).fingerprint !== a.sourceFingerprint || a.templateId !== template.id || a.templateVersion !== template.version, markdown: renderDocument(a) };
   }
 
@@ -101,7 +101,7 @@ export class DocumentBuilder extends AgentBuilder<BaseLive> {
     const previous = artifactId ? this.load(id, artifactId) : null;
     if (previous && previous.request.kind !== request.kind) throw new Error("不能更改既有产物类型，请新建文档。");
     const source = this.source(id);
-    const template = OUTPUT_TEMPLATES[request.kind];
+    const template = outputTemplate(request.kind, request.templateId);
     const a: DocumentArtifact = {
       version: 1, id: previous?.id ?? randomUUID(), sessionId: id, revision: (previous?.revision ?? 0) + 1,
       request, templateId: template.id, templateVersion: template.version, sourceFingerprint: source.fingerprint,
@@ -122,9 +122,13 @@ export class DocumentBuilder extends AgentBuilder<BaseLive> {
     }
     const input = { request, facts: source.input, assets: a.assets.map(asset => ({ ...asset, capturedAt: materials.images.find(i => i.hash === asset.hash)?.capturedAt })), omitted: materials.omitted };
     if (request.kind === "manual") {
-      a.outline = (await this.runModel(id, "submit_outline", z.object({ items: DocumentOutlineSchema }), documentInstructions("manual", true), input, signal)).items;
+      a.outline = (await this.runModel(id, "submit_outline", z.object({ items: DocumentOutlineSchema }), documentInstructions("manual", true, request.templateId), input, signal)).items;
+      if (!a.outline.some(item=>item.coverage !== "planned")) throw new Error("暂无有证据支持的功能，无法生成手册。");
+      validateDocument(a);
+      signal.throwIfAborted();
+      a.content = await this.runModel(id,"submit_document",DocumentContentSchema,documentInstructions("manual",false,request.templateId),{...input,approvedOutline:a.outline},signal);
     } else {
-      a.content = await this.runModel(id, "submit_document", DocumentContentSchema, documentInstructions("sop", false), input, signal);
+      a.content = await this.runModel(id, "submit_document", DocumentContentSchema, documentInstructions("sop", false, request.templateId), input, signal);
     }
     signal.throwIfAborted();
     if (this.source(id).fingerprint !== source.fingerprint) throw new Error("生成期间来源变化，请重试。");
@@ -138,7 +142,7 @@ export class DocumentBuilder extends AgentBuilder<BaseLive> {
     if (!outline.some(i => i.coverage !== "planned")) throw new Error("至少需要一个有证据支持的功能章节。");
     const proposed = { ...a, outline, content: null };
     validateDocument(proposed);
-    const content = await this.runModel(id, "submit_document", DocumentContentSchema, documentInstructions("manual", false),
+    const content = await this.runModel(id, "submit_document", DocumentContentSchema, documentInstructions("manual", false, a.request.templateId),
       { request: a.request, facts: this.source(id).input, approvedOutline: outline, assets: a.assets }, signal);
     signal.throwIfAborted();
     this.requireCurrent(id, artifactId, revision);

@@ -4215,12 +4215,13 @@ body[data-route="recording-preparation"] .intent-goal textarea {
 
 /* Incremental workflow: keep the existing left list, cards, timeline and footer. */
 .workflow-workspace { display:flex; flex-direction:column; min-height:0; height:100%; flex:1; min-width:0; }
-.workflow-nav { display:flex; align-items:center; gap:16px; flex:none; padding:12px 28px; border-bottom:1px solid var(--line,#dededb); background:var(--surface,#fff); }
-.workflow-nav button { display:flex; align-items:center; gap:12px; border:0; background:transparent; padding:9px 12px; color:inherit; border-radius:6px; cursor:pointer; }
+.workflow-nav { display:flex; align-items:center; gap:16px; flex:none; flex-wrap:nowrap; min-width:0; max-width:100%; overflow-x:auto; padding:12px 28px; border-bottom:1px solid var(--line,#dededb); background:var(--surface,#fff); }
+.workflow-nav button { display:flex; flex-shrink:0; white-space:nowrap; align-items:center; gap:12px; border:0; background:transparent; padding:9px 12px; color:inherit; border-radius:6px; cursor:pointer; }
 .workflow-nav button[aria-current="step"] { background:#efefec; font-weight:600; }
 .workflow-nav button:disabled { opacity:.45; cursor:default; }
 .workflow-nav small { font-size:11px; font-weight:400; color:#777; }
-.workflow-nav > span { color:#aaa; font-size:13px; }
+.workflow-nav > span { flex-shrink:0; color:#aaa; font-size:13px; }
+.workflow-nav button > span, .workflow-nav small { white-space:nowrap; flex-shrink:0; }
 .workflow-stage { flex:1; min-height:0; display:flex; flex-direction:column; }
 .workflow-stage[hidden] { display:none; }
 .workflow-stage > .ws { flex:1; height:auto; }
@@ -4431,8 +4432,6 @@ body[data-route="settings"] { overflow:hidden; }
 .managed-capability-row .processing-trust span { margin-left:auto; color:var(--muted); font-size:12px; }
 
 /* Document generation shares the analysis workspace's warm, quiet surfaces. */
-.output-kind-select { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
-.output-kind-select select { min-height: 32px; padding: 4px 30px 4px 10px; border: 1px solid var(--line); border-radius: 6px; background-color: var(--surface); color: var(--text); font: inherit; }
 .document-workspace { background: var(--deck); }
 .document-workspace .doc-head { align-items: flex-start; padding: 28px 44px 24px; gap: 24px; }
 .doc-kicker { display: block; margin-bottom: 10px; color: var(--muted); font-size: 11px; letter-spacing: .08em; }
@@ -4447,8 +4446,18 @@ body[data-route="settings"] { overflow:hidden; }
 .doc-customization-fields { margin-top:22px; }
 .doc-customization-fields .doc-field:last-child { margin-bottom:0; }
 .doc-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 24px; }
-.doc-section-heading h3, .doc-source-confirmation h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.doc-section-heading h3 { margin: 0; font-size: 14px; font-weight: 600; }
 .doc-section-heading > span { color: var(--faint); font-size: 11px; }
+.output-template-description { color:var(--muted); font-size:12px; font-weight:400; line-height:1.7; }
+.doc-reading { padding:28px 32px; border:1px solid var(--line); border-radius:10px; background:var(--surface); line-height:1.85; overflow-wrap:anywhere; }
+.doc-reading h1 { margin:0 0 8px; font-size:26px; line-height:1.4; }
+.doc-reading h2 { margin:28px 0 12px; font-size:18px; }
+.doc-reading h3 { margin:20px 0 10px; font-size:15px; }
+.doc-reading p { white-space:pre-wrap; margin:10px 0; }
+.doc-reading-meta { color:var(--muted); font-size:12px; }
+.doc-edit-details > summary { cursor:pointer; font-size:13px; margin-bottom:16px; }
+.doc-setup > .output-template-field:last-child { margin-bottom:0; }
+.output-template-field { display:flex; flex-direction:column; gap:9px; font-size:12px; }
 .document-workspace .doc-field { display: flex; flex-direction: column; gap: 9px; margin: 0 0 20px; font-size: 12px; font-weight: 500; line-height: 1.6; min-width: 0; }
 .doc-field input, .doc-field select, .doc-field textarea { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; font-size: 13px; font-weight: 400; line-height: 1.6; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); transition: border-color .15s; }
 .doc-field textarea { min-height: 88px; resize: vertical; }
@@ -4458,10 +4467,6 @@ body[data-route="settings"] { overflow:hidden; }
 .doc-generation-notes { border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .doc-generation-notes summary { cursor: pointer; width: fit-content; }
 .doc-generation-notes p { margin: 10px 0 0; max-width: 70ch; }
-.doc-source-confirmation { padding: 0 2px; }
-.doc-confirmation { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; cursor: pointer; font-size: 12px; line-height: 1.8; color: var(--muted); }
-.doc-confirmation input { flex: 0 0 16px; width: 16px; height: 16px; margin: 3px 0 0; accent-color: var(--brand); cursor: pointer; }
-.doc-source-confirmation > p { margin: 12px 0 0 26px; color: var(--muted); font-size: 12px; line-height: 1.7; }
 .document-workspace .doc-foot { padding: 16px 44px; background: var(--deck); gap: 20px; }
 .doc-foot p { margin: 0; font-size: 12px; color: var(--muted); line-height: 1.6; }
 .doc-foot .record-cta { flex-shrink: 0; min-height: 40px; padding: 10px 22px; }
@@ -4487,3 +4492,64 @@ body[data-route="settings"] { overflow:hidden; }
 .output-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .output-product-grid .arch-card { min-width: 0; }
 @media (max-width: 750px) { .output-product-grid { grid-template-columns: 1fr; } }
+
+.skill-generated-result h2 { font-size: 20px; margin: 0 0 12px; }
+.skill-content-adjustments { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 18px; }
+.skill-content-adjustments > summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+
+/* Publication destination preview; adapters are intentionally not connected yet. */
+.publication-workspace { background:var(--deck); }
+.publication-head { align-items:flex-start; padding:28px 36px 24px; flex-wrap:wrap; }
+.publication-head h2 { margin:0; font-size:25px; font-weight:600; line-height:1.4; }
+.publication-head p { margin:10px 0 0; font-size:13px; color:var(--muted); line-height:1.7; }
+.publication-badge { display:inline-block; flex-shrink:0; border:1px solid var(--line); border-radius:5px; padding:4px 7px; color:var(--muted); font-size:11px; white-space:nowrap; font-weight:400; }
+.publication-body { padding:26px 36px; gap:24px; }
+.publication-workspace .doc-field { display:flex; flex-direction:column; gap:8px; font-size:12px; margin:0 0 20px; min-width:0; }
+.publication-product { max-width:660px; }
+.publication-grid { display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,280px); gap:28px; align-items:start; }
+.publication-grid > div { min-width:0; }
+.publication-workspace h3 { margin:0 0 16px; font-size:14px; font-weight:600; }
+.publication-channels { display:grid; gap:10px; margin-bottom:22px; }
+.publication-channel { display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:9px; background:var(--surface); padding:18px; color:var(--text); text-align:left; cursor:pointer; width:100%; }
+.publication-channel[aria-pressed="true"] { border-color:var(--brand); background:var(--surface); box-shadow:inset 3px 0 var(--brand); }
+.publication-channel > span:nth-child(2) { flex:1; min-width:0; }
+.publication-channel strong { display:block; font-size:14px; font-weight:600; }
+.publication-channel small { display:block; margin-top:6px; font-size:12px; color:var(--muted); line-height:1.6; }
+.publication-mark { display:grid; place-items:center; width:34px; height:34px; flex:none; border:1px solid var(--line); border-radius:8px; font-size:16px; }
+.publication-config,.publication-summary { padding:22px; border:1px solid var(--line); border-radius:9px; background:var(--surface); min-width:0; }
+.publication-connection { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:12px; }
+.publication-connection span { color:var(--muted); }
+.publication-hint,.publication-history p,.publication-empty p { color:var(--muted); font-size:12px; line-height:1.8; margin:14px 0 20px; }
+.publication-confirm { display:flex; gap:10px; font-size:12px; color:var(--muted); line-height:1.7; }
+.publication-confirm input { width:16px; height:16px; flex:none; }
+.publication-summary dl { display:grid; grid-template-columns:70px minmax(0,1fr); gap:16px 10px; font-size:12px; line-height:1.7; margin:20px 0; }
+.publication-summary dt { color:var(--muted); }
+.publication-summary dd { margin:0; overflow-wrap:anywhere; }
+.publication-summary details { border-top:1px solid var(--line); padding-top:14px; }
+.publication-summary summary,.publication-summary-mobile > summary { cursor:pointer; font-size:12px; line-height:1.7; }
+.publication-summary .doc-preview { max-height:320px; padding:12px 0; font-size:11px; }
+.publication-summary-mobile { display:none; }
+.publication-history { border-top:1px solid var(--line); padding-top:24px; }
+.publication-foot { padding:16px 36px; gap:14px; }
+.publication-foot .ws-foot-back { flex-wrap:wrap; }
+.publication-workspace :is(button,input,select,summary):focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
+@media(max-width:1000px) {
+  .workflow-nav { gap:5px; padding:10px 12px; }
+  .workflow-nav button { flex-direction:column; align-items:flex-start; gap:4px; padding:8px; }
+}
+@media(max-width:750px) {
+  .publication-grid { grid-template-columns:minmax(0,1fr); gap:20px; }
+  .publication-summary-desktop { display:none; }
+  .publication-summary-mobile { display:block; }
+  .publication-summary-mobile > summary { padding:12px 0; }
+  .publication-head { padding:22px 20px; gap:14px; }
+  .publication-body { padding:22px 20px; }
+  .publication-foot { padding:14px 20px; flex-wrap:wrap; }
+  .publication-foot .record-cta { margin-left:auto; }
+  .publication-channel { gap:10px; padding:14px; }
+}
+.publication-foot .foot-status { color:var(--muted); }
+@media(max-width:750px) {
+  .lib:has(.publication-workspace) > .lib-list { display:none; }
+  .workflow-workspace:has(.publication-workspace) .workflow-nav button { font-size:12px; padding:8px 5px; }
+}

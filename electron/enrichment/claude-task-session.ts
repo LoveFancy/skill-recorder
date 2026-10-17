@@ -20,6 +20,7 @@ import {
   type DeepAnalysisOutput,
   type EnhancementProgressEvent,
   type Evidence,
+  type EnhancementResult,
   type TaskPackage,
 } from "../../common/enhancement";
 import type { AgentWorkspace } from "../../common/agents";
@@ -179,8 +180,9 @@ function promptFor(p: TaskPackage, paths: TaskSessionPaths, evidence:Evidence[])
     "先读取 inputs/materials-index.md、inputs/task-package.json 和 inputs/evidence.jsonl，再自主决定读取哪些材料。",
     "claims.evidenceRefs 必须使用 evidence.jsonl 中真实存在的 id，不能填文件路径、JSON 锚点或自行发明编号。stepRefs 必须使用真实步骤 id。MCP 成功返回的结果可引用 mcp:<tool_use_id>，应用只会登记真实成功调用；没有证据的推断用 inferred/unknown 并保留空引用。",
     `可用证据索引：${JSON.stringify(evidence.map(({id,sourceType,sourceRef})=>({id,sourceType,sourceRef})))}`,
-    "只做只读分析；不得写文件、运行命令、修改业务系统或向用户中途提问。",
+    "只做只读分析；不得写文件、运行命令或修改业务系统。需要用户澄清时，通过结构化 questions 暂停任务，应用会收集回答并恢复同一会话；不要调用交互提问工具。",
     "区分 at-recording、current、invariant。没有真实 MCP 证据时不得生成 queried claim；只有用户明确确认且适用范围明确的规则才能是 invariant。",
+    "用户回答若未明确 appliesTo，不得升级为 invariant；只按本次录制任务解释，使用 at-recording。user-confirmed 必须引用本轮证据清单中对应已确认回答的 user 证据，不得引用录制或用户意图材料冒充用户回答。",
     "输出 claims、remainingGapRefs、summary，以及一份去重、最小化的最终 questions。review 必须为 pending。",
     "claims.text 仅写相对原步骤新增、有用且简洁的补充结论，不重复原步骤，也不把依据、分析过程放入正文；依据仍通过 evidenceRefs 保留。",
     "必须分析截图有效性：读取 inputs/screenshot-index.json 中实际提供的图片，判断是否有助于理解用户意图、操作或结果。空白、无关、无信息的加载页以及不增加信息的重复截图标为 discard；有关键状态、操作前后变化、用户标注的图片应保留，不确定时保留。仅对实际查看的图片返回 screenshotReviews，格式为 {file: 索引中的文件名, decision: keep 或 discard}。未查看的图片不得判定删除。应用会从结果展示中移除 discard 截图；你不得删除或修改原始文件。",
@@ -370,6 +372,7 @@ export async function runClaudeTaskSession(input: {
   signal: AbortSignal;
   timeoutMs: number;
   continueRun: boolean;
+  priorResult?: EnhancementResult;
   redactor?: FrameRedactor;
   onProgress?: (event: EnhancementProgressEvent) => void;
   onExternalCall?: (name: string) => void;
@@ -403,6 +406,8 @@ export async function runClaudeTaskSession(input: {
     skillRevision: fingerprint(skills), model: env.ANTHROPIC_MODEL ?? connection.model ?? "default", cliVersion: input.workspace.agentVersion ?? "unknown",
   };
   let sessionId: `${string}-${string}-${string}-${string}-${string}` = randomUUID(), resume = false;
+  if (input.continueRun && input.priorResult && !existsSync(bindingFile))
+    throw new Error("原 Claude 会话绑定丢失，无法继续澄清，请重试以重新分析。");
   if (input.continueRun && existsSync(bindingFile)) {
     const prior = BindingSchema.parse(JSON.parse(readFileSync(bindingFile, "utf8")));
     const comparable = { ...prior }; delete (comparable as Partial<ClaudeSessionBinding>).sessionId;
@@ -422,7 +427,12 @@ export async function runClaudeTaskSession(input: {
   if (!authenticated) throw new Error("Claude Code 认证不可用。请在终端运行 claude auth status 检查当前登录；深度分析会复用已有认证，无需在任务目录重新登录。");
   atomicJson(path.join(paths.control, "process.json"), { ownerPid: process.pid, startedAt: Date.now(), state: "starting" });
   input.onProgress?.({ sequence: 3, at: Date.now(), phase: "reading", status: "running", title: "正在读取并核对材料", detail: "Claude 正在自主选择相关证据" });
-  const message = JSON.stringify({ type: "user", message: { role: "user", content: [{ type: "text", text: promptFor(input.package, paths,input.evidence) }] } }) + "\n";
+  const continuation = resume ? [
+    "这是同一任务的继续执行。保留先前分析、已读取材料与工具结果，结合下方最新任务包和用户回答继续分析，必要时可继续使用允许的工具核对，最终返回完整结果。",
+    "inputs/ 中是首轮冻结材料，不包含后续回答；本消息中的任务包与证据清单是本轮最新版本，引用证据以本消息为准。已回答的问题不要重复询问；确有新的关键歧义时再通过 questions 暂停，否则返回 questions: []。",
+    JSON.stringify({taskPackage:input.package,evidence:input.evidence,priorResult:input.priorResult}),
+  ].join("\n") : "";
+  const message = JSON.stringify({ type: "user", message: { role: "user", content: [{ type: "text", text: promptFor(input.package, paths,input.evidence)+"\n"+continuation }] } }) + "\n";
   let raw: string;
   let liveSequence=100;
   let livePhase:"reading"|"finalizing"="reading";

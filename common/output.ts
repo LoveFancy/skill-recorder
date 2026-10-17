@@ -11,6 +11,18 @@ export const OUTPUT_TEMPLATES = {
   manual: { id: "manual-feature", version: 1, label: "功能使用手册", sections: ["目标与覆盖范围", "访问与前置条件", "功能说明", "常见问题与限制", "待补充内容"] },
 } as const;
 
+export const OUTPUT_TEMPLATE_OPTIONS = {
+  sop: [OUTPUT_TEMPLATES.sop, {id:"sop-checklist",version:1,label:"操作检查清单",sections:["适用场景","操作前检查","逐项操作与预期结果","完成检查" ]}],
+  skill: [OUTPUT_TEMPLATES.skill, {id:"skill-guided",version:1,label:"分步协作技能",sections:["触发场景","输入确认","分阶段执行","关键确认点","异常恢复与结果验证"]}],
+  manual: [OUTPUT_TEMPLATES.manual, {id:"manual-quickstart",version:1,label:"快速入门手册",sections:["目标与准备","首个任务","常用操作","常见问题","覆盖限制"]}],
+} as const;
+
+export function outputTemplate(kind: OutputKind, id?: string) {
+  const template = OUTPUT_TEMPLATE_OPTIONS[kind].find(t=>t.id === (id ?? OUTPUT_TEMPLATES[kind].id));
+  if (!template) throw new Error("模板不存在或不适用于当前产物类型。");
+  return template;
+}
+
 export function outputRules(kind: OutputKind | "undecided"): string {
   if (kind === "sop") return "本次产物为 SOP：忠实还原实际系统、入口、操作顺序和结果；不转换为 MCP/API/替代 CLI，不提出技能泛化计划。只澄清影响操作者复现的必要操作歧义，不追加自动化配置问题。";
   if (kind === "manual") return "本次产物为使用手册：按功能整理实际操作，只覆盖录制和确认材料支持的功能；不转换为 MCP/API/替代 CLI。只澄清读者、覆盖范围和必要操作歧义，不补造字段含义、权限或产品功能。";
@@ -58,7 +70,8 @@ export const DocumentRequestSchema = z.object({
   audience: z.string().max(500).default("业务操作者"),
   scope: z.string().max(3000).default("本次录制及已确认材料覆盖的任务与功能"),
   notes: z.string().max(3000).optional(),
-});
+  templateId: z.string().optional(),
+}).refine(request=>!request.templateId || OUTPUT_TEMPLATE_OPTIONS[request.kind].some(t=>t.id===request.templateId),{message:"模板不适用于当前文档类型",path:["templateId"]});
 export type DocumentRequest = z.infer<typeof DocumentRequestSchema>;
 export const DocumentArtifactSchema = z.object({
   version: z.literal(1),

@@ -1,5 +1,5 @@
 import { RECORDING_SEMANTICS } from "../../common/clarification";
-import { OUTPUT_TEMPLATES } from "../../common/output";
+import { outputTemplate } from "../../common/output";
 import { redactIncremental } from "../enrichment/privacy";
 import { generationContext,generationKey } from "../enrichment/generation";
 import { atomicJson, fingerprint } from "../enrichment/store";
@@ -43,10 +43,10 @@ const KICKOFF_PROMPT =
   "Read get_analysis (and get_timeline where the tool mapping needs evidence), then call " +
   "propose_plan with how you'll generalize this task, its fixed values (each an id + name + " +
   "value, referenced from steps as {{id}}), and its ordered steps (each a short title + " +
-  "description, with every concrete native tool it calls). Stop after propose_plan so the user can review it.";
+  "description, with every concrete native tool it calls). Stop after propose_plan; the application will request the skill body next.";
 
 const CREATE_PROMPT =
-  "The user reviewed and edited the plan below. Build the SKILL.md from EXACTLY this plan — do not " +
+  "The plan below is structured generation input, not evidence of user approval. Build the SKILL.md from EXACTLY this plan — do not " +
   "add, drop, reorder, or rename its values or steps. Call submit_skill with a generalized, " +
   "native-tool-first instructions body that follows these steps faithfully and references each fixed " +
   "value by its {{id}} token (never inline the literal). The name and description are already decided — " +
@@ -95,6 +95,7 @@ export class SkillPreviewExpiredError extends Error {
 interface LiveBuild extends BaseLive {
   sessionDir: string;
   architecture: SkillArchitecture;
+  templateId: string;
   agent: AgentSession;
   holder: { plan: SkillPlan | undefined; submission: SkillSubmission | undefined };
   /** Last plan proposed this build (kept so submit can reference it). */
@@ -137,6 +138,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
   /** Propose a plan (first pass) or refine the current one with NL feedback. */
   async build(input: SkillBuildInput): Promise<SkillPlan> {
     const { sessionId, architecture, feedback } = input;
+    const template = outputTemplate("skill", input.templateId);
     if (this.active.has(sessionId)) throw new Error("A build is already running for this session.");
     requireCatalogue(architecture, "skill");
     const analysis = loadPersistedAnalysis(sessionId);
@@ -146,11 +148,11 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     this.discardPreview(sessionId);
     try {
       const refining = Boolean(feedback && feedback.trim());
-      this.emit(sessionId, "start", refining ? "正在完善计划…" : "正在生成技能计划…");
+      this.emit(sessionId, "start", refining ? "正在调整技能内容…" : "正在整理技能内容…");
       let live = this.live.get(sessionId);
-      if (!refining || !live) {
+      if (!refining || !live || (input.templateId && live.templateId !== template.id)) {
         await this.disposeLive(sessionId); // fresh conversation for a fresh plan
-        live = await this.createLive(sessionId, architecture);
+        live = await this.createLive(sessionId, architecture, template.id);
       }
       const prompt = refining ? renderRefinePrompt(feedback!.trim(), live.lastPlan) : KICKOFF_PROMPT;
       this.requireActive(operation);
@@ -287,12 +289,12 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     operation: BuildOperation,
   ): Promise<PreparedSkill> {
     let live = this.live.get(sessionId);
-    if (live && live.architecture !== plan.architecture) {
+    if (live && (live.architecture !== plan.architecture || live.templateId !== outputTemplate("skill",plan.templateId).id)) {
       await this.disposeLive(sessionId);
       live = undefined;
     }
     this.requireActive(operation);
-    if (!live) live = await this.createLive(sessionId, plan.architecture);
+    if (!live) live = await this.createLive(sessionId, plan.architecture, plan.templateId);
     this.requireActive(operation);
     live.lastPlan = plan;
     atomicJson(path.join(live.sessionDir,"skill-plan.json"),plan);
@@ -350,7 +352,8 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     this.emitProgress({ sessionId, phase, message });
   }
 
-  private async createLive(sessionId: string, architecture: SkillArchitecture): Promise<LiveBuild> {
+  private async createLive(sessionId: string, architecture: SkillArchitecture, templateId?: string): Promise<LiveBuild> {
+    const template = outputTemplate("skill",templateId);
     const dir = sessionDir(sessionId);
     const analysis = loadPersistedAnalysis(sessionId);
     if (!analysis) throw new Error("There is no analysis for this recording yet.");
@@ -376,7 +379,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
 
     const catalogue = requireCatalogue(architecture, "skill").content;
     const context=generationContext(sessionId,architecture);
-    const systemContent = `${RECORDING_SEMANTICS}\nSkill template: ${JSON.stringify(OUTPUT_TEMPLATES.skill)}\n${context ? "Reviewed enrichment (authoritative):\n"+JSON.stringify(context)+"\nDo not promote current/historical/inferred values to constants. Generic targets cannot inherit project MCP names or browser dependencies. Missing portable equivalents are dependency gaps.\n" : ""}${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
+    const systemContent = `${RECORDING_SEMANTICS}\nSkill template: ${JSON.stringify(template)}\n按所选模板的章节重点组织技能，保留目标格式、审核与事实边界要求。\n${context ? "Reviewed enrichment (authoritative):\n"+JSON.stringify(context)+"\nDo not promote current/historical/inferred values to constants. Generic targets cannot inherit project MCP names or browser dependencies. Missing portable equivalents are dependency gaps.\n" : ""}${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
 
     const client = await this.ensureClient();
     const agent = await client.createSession({
@@ -393,6 +396,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
       agent,
       holder,
       lastPlan: null,
+      templateId: template.id,
     };
     this.registerLive(live);
     return live;
@@ -412,7 +416,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
       throw new Error(`Planning failed: ${msg(err)}`);
     }
     this.requireActive(operation);
-    const plan = live.holder.plan ? this.bindPlan(live.sessionId,live.holder.plan) : undefined;
+    const plan = live.holder.plan ? this.bindPlan(live.sessionId,{...(live.holder.plan as SkillPlan),templateId:live.templateId}) : undefined;
     if (!plan) throw new Error("The agent finished without proposing a plan.");
     live.lastPlan = plan;
     atomicJson(path.join(live.sessionDir,"skill-plan.json"),plan);

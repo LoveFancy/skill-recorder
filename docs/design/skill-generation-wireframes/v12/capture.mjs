@@ -11,7 +11,7 @@ const checks=[];
 try{
  const page=await browser.newPage({viewport:{width:1400,height:1060},deviceScaleFactor:1});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
- const scenes=[['setup','generation-sop'],['outline','manual-outline'],['publish','publish-feishu'],['wiki','publish-wiki'],['workmate','publish-workmate'],['success','publish-success']];
+ const scenes=[['setup','generation-sop'],['skill','skill-requirements'],['outline','manual-outline'],['publish','publish-feishu'],['wiki','publish-wiki'],['workmate','publish-workmate'],['skillhub','publish-skillhub'],['success','publish-success']];
  for(const [state,file] of scenes){
   await page.goto(pathToFileURL(`${target}/index-v12.html`).href+'?scene='+state+'#'+state);
   await page.locator('.page-head h1').waitFor();
@@ -20,7 +20,13 @@ try{
   if(sizes.scroll>sizes.width+1)throw Error('Overflow '+state);
   checks.push({state,...sizes});
  }
+ await page.goto(pathToFileURL(`${target}/index-v12.html`).href+'#skill');
+ if(!await page.getByRole('region',{name:'执行前需要准备什么'}).isVisible())throw Error('Missing execution requirements');
+ const requirement=page.locator('.requirement').first();
+ await requirement.locator('summary').click();
+ if(!await requirement.getByText('输入：订单号；输出：客户、金额与报价单。替换连接时需核对字段和输出语义。',{exact:true}).isVisible())throw Error('Missing preparation details');
  await page.goto(pathToFileURL(`${target}/index-v12.html`).href+'#setup');
+ if(await page.locator('.requirements').count())throw Error('Document should not show skill execution requirements');
  if(!await page.getByRole('button',{name:'生成 SOP',exact:true}).isEnabled())throw Error('SOP should generate directly');
  if(await page.locator('#confirm').count())throw Error('SOP should not repeat source confirmation');await page.getByRole('button',{name:'生成 SOP',exact:true}).click();
  await page.getByRole('button',{name:'演示：处理完成'}).click();
@@ -50,5 +56,5 @@ try{
  if(errors.length)throw Error(errors.join('\n'));
  console.log(JSON.stringify({checks,narrow,flow:'source gate → generate → review → destination gate → publish → success; repeated output switching; narrow summary',pageErrors:errors}));
  const thumbs=await Promise.all(scenes.map(async([state,file],i)=>({input:await sharp(`${target}/v12/${file}.png`).resize({width:600}).png().toBuffer(),left:(i%2)*620+20,top:Math.floor(i/2)*450+20})));
- await sharp({create:{width:1260,height:1370,channels:3,background:'#e9e8e5'}}).composite(thumbs).png().toFile(`${target}/v12/board.png`);
+ await sharp({create:{width:1260,height:Math.ceil(scenes.length/2)*450+20,channels:3,background:'#e9e8e5'}}).composite(thumbs).png().toFile(`${target}/v12/board.png`);
 }finally{await browser.close()}

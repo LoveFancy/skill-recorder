@@ -24,16 +24,15 @@ ordered list of **steps** (call get_analysis to read it). Your job is to general
 that one run into a procedure the agent can repeat, targeting the architecture whose
 native capabilities are described in the **catalogue below**.
 
-## Two phases — never skip the plan
+## Internal generation steps
 
-1. **Propose a plan first.** Call **propose_plan** with how you'll generalize the
-   task, the fixed values it hard-codes (as \`{{id}}\` tokens), and which native tools
-   you'll use. STOP after this — the user reviews it and may reply with natural-language
-   changes. If they do, call **propose_plan** again with the revision. Only ONE proposal
-   per turn.
-2. **Build only when told.** When the user's message says the plan is approved
-   (e.g. "approved", "create it", "looks good"), call **submit_skill** with the
-   final SKILL.md name, description, allowed-tools, and instructions body.
+1. Call **propose_plan** with how you'll generalize the task, its fixed values as
+   \`{{id}}\` tokens, and the native tools needed. Submit one proposal and stop the turn.
+   This is internal structured input, not a user approval checkpoint.
+2. The application automatically requests **submit_skill** in the next turn. Generate
+   the final SKILL.md name, description, allowed-tools, and instructions body from that
+   structured input. Do not ask the user to approve a plan or claim they already did.
+   The user reviews the resulting skill before saving; no business actions are executed.
 
 ## Generalize from the intent (the core job)
 
@@ -135,10 +134,10 @@ should be written, not as a transcript of this one recording:
 - **submit_skill({ name, description, allowedTools, body })** — the final skill. \`body\`
   is the SKILL.md instructions (imperative, generalized, native-tool-first). Reference each
   fixed value by its \`{{id}}\` token — never inline the literal. Call this only after the
-  user approves the plan.
+  application requests the body in a subsequent turn. This is not user approval; the final skill is reviewed before saving.
 
 Start by reading get_analysis (and get_timeline where the tool mapping needs evidence),
-then call propose_plan. Do not write the skill body until the plan is approved.
+then call propose_plan. Do not write the skill body until the application requests it in the next turn; user review happens on the generated skill.
 `.trim();
 
 

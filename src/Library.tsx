@@ -1,5 +1,7 @@
 import { DocumentBuilderView } from "./DocumentBuilderView";
-import { OUTPUT_TEMPLATES, type OutputKind } from "../common/output";
+import { PublishWorkspace, type PublishSelection } from "./PublishWorkspace";
+import { OUTPUT_TEMPLATES } from "../common/output";
+import { OutputTemplateSelect } from "./OutputTemplateSelect";
 import { EnhancementWorkspace,enhancementLabel } from "./EnhancementWorkspace";
 import { generationGate,type EnhancementWorkflow } from "../common/enhancement";
 import { CaptureTimeline } from "./CaptureTimeline";
@@ -485,10 +487,11 @@ function AnalysisWorkspace({
       : summary.hasAutomation && !summary.hasSkill
         ? "automation"
         : "none";
-  const [outputKind, setOutputKind] = useState<OutputKind | "undecided">(summary.requestedOutput ?? "undecided");
   const [launch, setLaunch] = useState<LaunchTarget>(initialLaunch);
   const [chosenArch, setChosenArch] = useState<SkillArchitecture>(DEFAULT_TARGET.architecture);
-  const [stage,setStage]=useState<'analysis'|'enhancement'|'generation'>(initialLaunch==='none'?'analysis':'generation');
+  const [stage,setStage]=useState<'analysis'|'enhancement'|'generation'|'publish'>(initialLaunch==='none'?'analysis':'generation');
+  const [publishSelection, setPublishSelection] = useState<PublishSelection>();
+  const openPublish = (selection?: PublishSelection) => { setPublishSelection(selection); setStage('publish'); };
   const [workflow,setWorkflow]=useState<EnhancementWorkflow|null>(null);
   const [gateReason,setGateReason]=useState('');
   useEffect(()=>{
@@ -668,9 +671,8 @@ function AnalysisWorkspace({
     return (
       <TargetPicker
         startedAt={summary.startedAt}
-        onDocument={(kind) => { setOutputKind(kind); setLaunch(kind); }}
+        onDocument={(kind) => { setLaunch(kind); }}
         onPick={(t) => {
-          setOutputKind("skill");
           setChosenArch(t.architecture);
           setLaunch(t.kind);
         }}
@@ -679,12 +681,13 @@ function AnalysisWorkspace({
     );
   }
 
-  if (launch === "sop" || launch === "manual") return <DocumentBuilderView key={`${sessionId}:${launch}`} sessionId={sessionId} kind={launch} sourceConfirmed={gate.allowed} onClose={() => setLaunch("picker")} />;
+  if (launch === "sop" || launch === "manual") return <DocumentBuilderView key={`${sessionId}:${launch}`} sessionId={sessionId} kind={launch} onClose={() => setLaunch("picker")} onPublish={openPublish} />;
 
   if (launch === "skill") {
     return (
       <SkillBuilderView
         sessionId={sessionId}
+        onPublish={() => openPublish({ kind: "skill" })}
         architecture={chosenArch}
         startedAt={summary.startedAt}
         hasSkill={summary.hasSkill}
@@ -722,12 +725,9 @@ function AnalysisWorkspace({
         <button disabled={!analysis} title={!analysis?"需先完成原始素材确认":undefined} aria-current={stage==="enhancement"?"step":undefined} onClick={()=>setStage("enhancement")}><span>2 补充分析</span><small>{enhancementLabel(workflow)}</small></button>
         <span aria-hidden="true">→</span>
         <button disabled={!analysis} title={!analysis?"需先完成分析":undefined} aria-current={stage==="generation"?"step":undefined} onClick={openGeneration}><span>3 生成</span><small>{summary.hasSkill?"已导出":gate.allowed?(gate.draft?"草稿":"待生成"):"待确认"}</small></button>
+        <span aria-hidden="true">→</span>
+        <button aria-current={stage==="publish"?"step":undefined} onClick={() => openPublish()}><span>4 发布与分享</span><small>待接入</small></button>
       </nav>
-      {stage === "generation" && launch !== "picker" && <label className="output-kind-select">本次产物 <select value={outputKind} disabled={analyzing || ["queued","running","awaiting-input"].includes(workflow?.run?.status ?? "")} onChange={e => {
-        const next = e.target.value as OutputKind | "undecided";
-        setOutputKind(next);
-        setLaunch(stage === "generation" ? (next === "sop" || next === "manual" ? next : "picker") : "none");
-      }}><option value="undecided">暂不确定</option><option value="sop">SOP 操作说明</option><option value="skill">通用 Skill</option><option value="manual">产品使用手册</option></select></label>}
       <div className="workflow-stage" hidden={stage!=="analysis"}>
     <section className="ws">
       <div className="ws-head">
@@ -931,6 +931,9 @@ function AnalysisWorkspace({
           {generationContent()}
         </>}
       </div>
+      <div className="workflow-stage" hidden={stage!=="publish"}>
+        {stage === "publish" && <PublishWorkspace sessionId={sessionId} selection={publishSelection} onBack={openGeneration} />}
+      </div>
     </div>
   );
 }
@@ -1004,12 +1007,14 @@ function SkillBuilderView({
   startedAt,
   hasSkill,
   onClose,
+  onPublish,
 }: {
   sessionId: string;
   architecture: SkillArchitecture;
   startedAt: number | null;
   hasSkill: boolean;
   onClose: () => void;
+  onPublish?: () => void;
 }) {
   const defaultPlacementFor = useCallback(
     (architecture: SkillArchitecture): SkillPlacement =>
@@ -1023,6 +1028,8 @@ function SkillBuilderView({
   );
   const [architecture, setArchitecture] = useState<SkillArchitecture>(initialArch);
   const [plan, setPlan] = useState<SkillPlan | null>(null);
+  const [templateId, setTemplateId] = useState<string>(OUTPUT_TEMPLATES.skill.id);
+  useEffect(()=>{if(plan)setTemplateId(plan.templateId ?? OUTPUT_TEMPLATES.skill.id);},[plan?.templateId]);
   const [exportedPath, setExportedPath] = useState("");
   const [builtName, setBuiltName] = useState("");
   const operations = useRef(new SkillOperationGuard());
@@ -1100,7 +1107,7 @@ function SkillBuilderView({
         if (s.plan) setPlan(s.plan);
         dispatch({ type: "done" });
       } else {
-        void window.skillRecorder.getSkillPlan(sessionId).then(draft=>{if(live&&draft){setPlan(draft);setArchitecture(draft.architecture);setPlacement(defaultPlacementFor(draft.architecture));dispatch({type:"settle",phase:"plan"});}});
+        void window.skillRecorder.getSkillPlan(sessionId).then(draft=>{if(live&&draft&&flowVersion.current===version&&!operations.current.busy&&draft.architecture===initialArch){setPlan(draft);setArchitecture(draft.architecture);setPlacement(defaultPlacementFor(draft.architecture));dispatch({type:"settle",phase:"ready"});}});
         if (hasSkill) {
         // We expected a skill but couldn't load it; fall back to the ready screen.
         dispatch({ type: "settle", phase: "ready" });
@@ -1136,24 +1143,32 @@ function SkillBuilderView({
     if (!operation) return;
     invalidatePreview();
     flowVersion.current++;
-    dispatch({ type: "start", phase: "planning", message: "正在生成技能计划…" });
+    dispatch({ type: "start", phase: "planning", message: "正在生成 Skill…" });
     try {
-      const res = await window.skillRecorder.buildSkill({ sessionId, architecture });
+      const res = await window.skillRecorder.buildSkill({ sessionId, architecture, templateId });
       if (!mounted.current || !operations.current.isCurrent(operation)) return;
       if (res.ok && res.plan) {
         setPlan(res.plan);
-        dispatch({ type: "settle", phase: "plan" });
+        dispatch({ type: "start", phase: "preparing", message: "正在生成 Skill 正文…" });
+        const prepared = await window.skillRecorder.prepareSkill(sessionId, res.plan);
+        if (!mounted.current || !operations.current.isCurrent(operation)) {
+          if (prepared.preview) void discardPreview(prepared.preview.id);
+          return;
+        }
+        if (!prepared.ok || !prepared.preview) throw new Error(prepared.error ?? "技能生成失败，请重试。");
+        previewRef.current = prepared.preview;
+        dispatch({ type: "preview", preview: prepared.preview });
       } else {
-        dispatch({ type: "settle", phase: "ready", error: res.error ?? "计划生成失败" });
+        dispatch({ type: "settle", phase: "ready", error: res.error ?? "技能生成失败" });
       }
     } catch (cause) {
       if (mounted.current && operations.current.isCurrent(operation)) {
-        dispatch({ type: "settle", phase: "ready", error: cause instanceof Error ? cause.message : "计划生成失败" });
+        dispatch({ type: "settle", phase: "ready", error: cause instanceof Error ? cause.message : "技能生成失败" });
       }
     } finally {
       operations.current.finish(operation);
     }
-  }, [sessionId, architecture, invalidatePreview]);
+  }, [sessionId, architecture, templateId, invalidatePreview, discardPreview]);
 
   const review = useCallback(async () => {
     if (!plan) return;
@@ -1270,7 +1285,8 @@ function SkillBuilderView({
       </div>
 
       <div className="ws-body">
-        <p>模板：{OUTPUT_TEMPLATES.skill.label} v{OUTPUT_TEMPLATES.skill.version}。先审核泛化流程与工具映射计划，再生成技能；内容审核不代表已经通过业务试运行。</p>
+        <p className="ws-note">根据已确认的录制内容生成 Skill，检查成果后再保存。</p>
+        <section className="doc-setup"><div className="doc-section-heading"><h3>文档设置</h3></div><OutputTemplateSelect kind="skill" value={templateId} disabled={phase !== "ready"} onChange={setTemplateId}/></section>
         {error && <AnalysisError error={error} />}
 
         {phase === "loading" && (
@@ -1282,7 +1298,7 @@ function SkillBuilderView({
 
         {phase === "ready" && (
           <div className="sb-arch">
-            <p className="sb-lead">Build a {archLabel(architecture)} skill from this recording.</p>
+            <p className="sb-lead">将已确认的录制内容整理为可复用的 Skill。</p>
           </div>
         )}
 
@@ -1291,13 +1307,16 @@ function SkillBuilderView({
             <span className="spinner" />
             <span className="status-text">{statusLine || "正在处理…"}</span>
             {(phase === "preparing" || preview) && (
-              <button className="ghost" ref={reviewButtonRef} onClick={() => dispatch({ type: "visibility", open: true })}>查看 SKILL.md</button>
+              <button className="ghost" ref={reviewButtonRef} onClick={() => dispatch({ type: "visibility", open: true })}>查看文件原文</button>
             )}
           </div>
         )}
 
         {phase === "plan" && plan && (
           <div className="sb-plan">
+            {preview && <section className="skill-generated-result"><h2>Skill 已生成</h2><p className="ws-note">请检查内容；保存或导出不会执行业务操作。</p><pre className="doc-preview" aria-label="生成的 SKILL.md">{preview.markdown}</pre></section>}
+            {!preview && <p className="ws-note">请重新生成 Skill，检查完整内容后再保存。</p>}
+            <details className="skill-content-adjustments"><summary>调整技能内容（可选）</summary><p className="ws-note">修改后需重新生成，旧预览不会被保存。</p>
             <div className="sb-planhead">
               <EditableText
                 as="div"
@@ -1329,6 +1348,7 @@ function SkillBuilderView({
                 onChangeValues={(values) => updatePlan({ values })}
               />
             </div>
+            </details>
           </div>
         )}
 
@@ -1355,12 +1375,13 @@ function SkillBuilderView({
         <div className="ws-foot">
           <div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div>
           <div className="ws-foot-actions">
-            <button className="ghost" ref={reviewButtonRef} onClick={() => void review()}>查看 SKILL.md</button>
+            {preview ? <button className="ghost" ref={reviewButtonRef} onClick={() => void review()}>查看文件原文</button> : <button className="record-cta" ref={reviewButtonRef} onClick={() => void review()}>重新生成 Skill</button>}
             {placementModel.actions.map((action) => (
               <button
                 key={action.placement}
                 className={action.primary ? "record-cta" : "ghost"}
                 onClick={() => void place(action.placement)}
+                disabled={!preview}
                 title={action.title}
               >
                 {action.label}
@@ -1375,12 +1396,13 @@ function SkillBuilderView({
           <div className="ws-foot-back"><button className="ghost" onClick={onClose}>返回分析</button><span className="foot-status">技能已创建</span></div>
           <div className="ws-foot-actions">
             {exportedPath && (
-              <button className="record-cta" onClick={() => void window.skillRecorder.revealSkill(sessionId)}>在文件夹中显示</button>
+              <button className="secondary" onClick={() => void window.skillRecorder.revealSkill(sessionId)}>在文件夹中显示</button>
             )}
+            {onPublish && <button className="record-cta" onClick={onPublish}>下一步：发布与分享</button>}
           </div>
         </div>
       )}
-      {phase !== "plan" && phase !== "done" && <div className="ws-foot"><div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div><div className="ws-foot-actions">{phase === "ready" && <button className="record-cta" onClick={() => void runPlan()}>生成技能计划 →</button>}{busy && <button className="secondary" onClick={cancelRun} disabled={phase === "stopping"}>取消</button>}</div></div>}
+      {phase !== "plan" && phase !== "done" && <div className="ws-foot"><div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div><div className="ws-foot-actions">{phase === "ready" && <button className="record-cta" onClick={() => void runPlan()}>生成 Skill</button>}{busy && <button className="secondary" onClick={cancelRun} disabled={phase === "stopping"}>取消</button>}</div></div>}
       {reviewOpen && (
         <SkillReviewModal
           preview={preview}

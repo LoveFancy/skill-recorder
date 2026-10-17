@@ -230,7 +230,7 @@ export class EnrichmentCoordinator {
     }
     if (input.answers !== undefined) {
       const answers = z.array(AnswerSchema).max(100).parse(input.answers);
-      p.answers = [];
+      p.answers = p.answers.filter(a=>a.status === "confirmed" && !answers.some(next=>next.questionId===a.questionId));
       for (const a of answers)
         p.answers.push({
           ...a,
@@ -288,10 +288,11 @@ export class EnrichmentCoordinator {
         a.confirmedAt = now;
       }
     }
+    const allQuestions = [...(p.questionHistory ?? []), ...p.questions];
     for (const g of p.gaps)
       g.resolved =
-        p.questions.filter((q) => q.gapRefs.includes(g.id)).length > 0 &&
-        p.questions
+        allQuestions.filter((q) => q.gapRefs.includes(g.id)).length > 0 &&
+        allQuestions
           .filter((q) => q.gapRefs.includes(g.id))
           .every((q) =>
             p.answers.some(
@@ -375,7 +376,7 @@ export class EnrichmentCoordinator {
         );
         w.run.status = "running";
         w.run.phase = finalizeAfterAnswers ? "finalizing" : "materials";
-        if (finalizeAfterAnswers) w.progress = [{sequence:0,at:now,phase:"finalizing",status:"running",title:"正在合并回答并整理结果",detail:"保留已确认的录制事实，整理补充回答。"}];
+        if (finalizeAfterAnswers) w.progress = [{sequence:0,at:now,phase:p.backend === "local-agent" ? "reading" : "finalizing",status:"running",title:p.backend === "local-agent" ? "正在恢复 Claude 会话" : "正在合并回答并整理结果",detail:"保留已有分析上下文，基于用户反馈继续分析。"}];
         if (!finalizeAfterAnswers) w.result = null;
         w.approvedAt = null;
         const foundation = await this.foundation(id, p);
@@ -386,7 +387,7 @@ export class EnrichmentCoordinator {
         this.save(w);
         let output: z.infer<typeof DeepAnalysisOutputSchema>;
         let followupQuestions: z.infer<typeof DeepAnalysisOutputSchema>["questions"] = [];
-        if (finalizeAfterAnswers) {
+        if (finalizeAfterAnswers && p.backend !== "local-agent") {
           const finalized = await this.model(
             id, signal, "submit_enhancement", EnhancementOutputSchema,
             RECORDING_SEMANTICS + CLARIFICATION_INSTRUCTIONS + "\n" + RECORDING_ANALYSIS_RULES +
@@ -403,7 +404,7 @@ export class EnrichmentCoordinator {
           if (!workspace) throw new Error("任务绑定的 Claude 专用环境不存在。");
           output = await runClaudeTaskSession({
             runId, attempt: w.run.attempt, package: p, evidence: w.evidence,
-            workspace, signal, continueRun,
+            workspace, signal, continueRun, priorResult: previousResult ?? undefined,
             timeoutMs: Math.max(1000, w.run.budget.activeMs - w.run.activeMs),
             redactor: this.imageRedactor ? await this.imageRedactor(id) : undefined,
             onEvidence: (evidence) => { if(!w.evidence.some(item=>item.id===evidence.id))w.evidence.push(evidence); },
@@ -446,8 +447,9 @@ export class EnrichmentCoordinator {
           throw new Error("最终问题引用了未知缺口。");
         if (followupQuestions.length) {
           p.revision++;
+          p.questionHistory = [...(p.questionHistory ?? []), ...p.questions]
+            .filter(q => !followupQuestions.some(next => next.id === q.id));
           p.questions = followupQuestions;
-          p.answers = p.answers.filter((answer) => p.questions.some((q) => q.id === answer.questionId));
           p.status = "awaiting-answers";
           p.confirmedAt = null;
         }
@@ -458,9 +460,22 @@ export class EnrichmentCoordinator {
           taskPackageRevision: p.revision,
           claims: output.claims,
           remainingGapRefs: output.remainingGapRefs,
-          screenshotReviews: output.screenshotReviews,
+          screenshotReviews: output.screenshotReviews ?? (finalizeAfterAnswers ? previousResult?.screenshotReviews : undefined),
           summary: await redactIncremental(output.summary),
         };
+        // A normal clarification answer describes this task unless the user
+        // explicitly supplied a wider scope. Never elevate it to a global rule.
+        for (const claim of result.claims) {
+          if (claim.kind !== "user-confirmed" || claim.temporalScope !== "invariant") continue;
+          const confirmed = claim.evidenceRefs.flatMap(ref=>{
+            const evidence=w.evidence.find(e=>e.id===ref && e.sourceType==="user");
+            return evidence ? p.answers.filter(a=>a.questionId===evidence.sourceRef && a.status==="confirmed") : [];
+          });
+          if (confirmed.length && confirmed.every(a=>!a.appliesTo.trim())) {
+            claim.temporalScope="at-recording";
+            claim.appliesTo="本次录制任务";
+          }
+        }
         await this.acceptCandidate(w, result);
         if (followupQuestions.length) {
           for (const q of followupQuestions) {
@@ -476,6 +491,8 @@ export class EnrichmentCoordinator {
         } else w.run.status = "completed";
         w.progress=[...(w.progress??[]).filter(event=>event.sequence!==4),{sequence:4,at:Date.now(),phase:"finalizing",status:"completed",title:"深度分析完成",detail:w.run.status==="awaiting-input"?`还需确认 ${p.questions.length} 项`:"结果已保存，等待审核"}];
       } catch (error) {
+        for (const key of Object.keys(p))
+          if (!(key in packageBefore)) Reflect.deleteProperty(p, key);
         Object.assign(p,packageBefore);
         w.result=resultBefore;
         const budgetPaused = w.run.status === "paused";

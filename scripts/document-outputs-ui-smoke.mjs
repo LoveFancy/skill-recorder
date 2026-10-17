@@ -32,7 +32,7 @@ try {
     calls.push(action);
     if (action.kind === 'list') return { ok: true, documents: structuredClone(documents) };
     if (action.kind === 'generate') {
-      const a = { id: crypto.randomUUID(), request: action.request, revision: 1, content: action.request.kind === 'sop' ? structuredClone(content) : null, outline: action.request.kind === 'manual' ? outline : null, assets: [], status: 'draft', exports: [] };
+      const a = { id: crypto.randomUUID(), request: action.request, revision: 1, content: structuredClone(content), outline: action.request.kind === 'manual' ? outline : null, assets: [], status: 'draft', exports: [] };
       const next = view(a); documents.unshift(next); return { ok: true, document: next };
     }
     if (action.kind === 'outline' || action.kind === 'edit' || action.kind === 'export') {
@@ -42,20 +42,21 @@ try {
     }
     return { ok: true };
   } };
-  const mount = (kind, sourceConfirmed = false) => settle(() => root.render(createElement(StrictMode, null, createElement(DocumentBuilderView, { key: `${kind}:${sourceConfirmed}`, sessionId: 'recording', kind, sourceConfirmed, onClose() {} }))));
+  const mount = kind => settle(() => root.render(createElement(StrictMode, null, createElement(DocumentBuilderView, { key: kind, sessionId: 'recording', kind, onClose() {} }))));
   await mount('sop');
-  assert.equal(button('生成 SOP').disabled, false, 'SOP generates directly without another confirmation');
-  await mount('sop', true);
-  assert.equal(button('生成 SOP').disabled, false, 'inherits source approval from previous stage');
+  assert.equal(button('生成').disabled, false, 'SOP generates directly without another confirmation');
   assert.equal(document.querySelector('.doc-source-confirmation'), null, 'no duplicate source confirmation');
   assert.equal(document.querySelector('.doc-customization'), null, 'SOP has no customization form');
-  await settle(() => button('生成 SOP').click());
+  await settle(()=>{const select=document.querySelector('.output-template-field select');select.value='sop-checklist';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  await settle(() => button('生成').click());
   assert.ok(button('确认内容并保存'));
   assert.match(document.querySelector('.doc-foot .ws-foot-back').textContent,/返回产物选择/);
   assert.match(document.querySelector('.doc-foot .ws-foot-actions').textContent,/保存草稿.*确认内容并保存/);
   assert.equal(calls.filter(c => c.kind === 'generate').length, 1, 'StrictMode does not double submit');
   assert.equal(calls.find(c => c.kind === 'generate').request.audience, '业务操作者');
   assert.equal(calls.find(c => c.kind === 'generate').request.scope, '本次录制及已确认材料覆盖的任务与功能');
+  assert.equal(calls.find(c => c.kind === 'generate').request.templateId,'sop-checklist');
+  assert.equal(document.querySelector('.output-template-field select').value,'sop-checklist','saved document retains selected template');
   assert.equal(calls.some(c => c.kind === 'outline'), false, 'SOP never uses outline/skill planning');
   await settle(() => button('确认内容并保存').click());
   assert.ok(button('导出文档'));
@@ -63,13 +64,15 @@ try {
   assert.match(document.body.textContent, /已导出：/);
   assert.ok(document.querySelector('select').options.length >= 3, 'saved revisions remain selectable');
   await mount('manual');
-  await settle(() => document.querySelector('input[type=checkbox]').click());
-  await settle(() => button('生成覆盖目录').click());
-  assert.match(document.body.textContent, /审核目录与覆盖范围/);
-  assert.equal(button('确认内容并保存'), undefined, 'manual stops for outline approval');
-  await settle(() => button('确认目录并生成正文').click());
-  assert.match(document.body.textContent, /编辑与审核/);
-  assert.equal(calls.filter(c => c.kind === 'outline').length, 1);
+  await settle(()=>{const select=document.querySelector('.output-template-field select');select.value='manual-quickstart';select.dispatchEvent(new Event('change',{bubbles:true}));});
+  assert.equal(document.querySelector('.doc-source-confirmation'),null,'manual does not require another source confirmation');
+  assert.equal(button('生成').disabled,false);
+  await settle(() => button('生成').click());
+  assert.equal(calls.filter(c => c.kind === 'outline').length, 0,'manual requires no separate outline action');
+  assert.match(document.querySelector('[aria-label="生成的文档"]').textContent,/网页回复邮件/);
+  assert.match(document.querySelector('[aria-label="Markdown 文档"]').textContent,/# 网页回复邮件/);
+  assert.equal(document.querySelector('.doc-edit-details').open,false,'document is shown before editing fields');
+  assert.equal(calls.filter(c=>c.kind==='generate').at(-1).request.templateId,'manual-quickstart');
   await settle(() => root.unmount());
-  console.log('Document outputs UI smoke passed: source confirmation, SOP direct generation, manual outline gate, content review, export and revision browsing.');
+  console.log('Document outputs UI smoke passed: direct full-document generation, template selection, Markdown preview, content review, export and revision browsing.');
 } finally { rmSync(temporary, { recursive: true, force: true }); dom.window.close(); }

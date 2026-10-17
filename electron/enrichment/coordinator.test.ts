@@ -6,6 +6,8 @@ import {
   writeFileSync,
   readFileSync,
   rmSync,
+  chmodSync,
+  readdirSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -51,6 +53,48 @@ let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{
   assert.equal(c.busy(id),false);assert.equal(c.get(id).package?.status,'draft');
 });
 
+test("Claude clarification resumes the bound session with latest answers and preserves earlier answers",async t=>{
+  const {id,root}=fixture(t),bin=path.join(root,"resume-bin"),config=path.join(root,"resume-config");
+  mkdirSync(bin);mkdirSync(config);
+  const calls=path.join(root,"resume-calls.jsonl");
+  writeFileSync(path.join(config,"settings.json"),JSON.stringify({model:"test-model"}));
+  for(const [key,value] of Object.entries({SKILL_RECORDER_PROCESSING_BACKEND:"local-agent",SKILL_RECORDER_PROCESSING_DIR:path.join(root,"processing"),CLAUDE_CONFIG_DIR:config,PATH:bin+path.delimiter+process.env.PATH})){
+    const previous=process.env[key];process.env[key]=value;t.after(()=>{if(previous===undefined)delete process.env[key];else process.env[key]=previous;});
+  }
+  writeFileSync(path.join(bin,"claude"),`#!/usr/bin/env node
+const fs=require('node:fs'),args=process.argv.slice(2);
+if(args.includes('--version')){console.log('2.1.251');process.exit(0)}
+if(args.includes('--help')){console.log('--json-schema --tools --strict-mcp-config --input-format --safe-mode');process.exit(0)}
+if(args[0]==='auth'){console.log(JSON.stringify({loggedIn:true}));process.exit(0)}
+let input='';process.stdin.on('data',c=>input+=c);process.stdin.on('end',()=>{
+ const text=JSON.parse(input).message.content[0].text,check=text.includes('submit_connection_check'),prep=text.includes('submit_preparation');
+ if(check||prep){console.log(JSON.stringify({type:'result',structured_output:{content:'',toolCalls:[{name:check?'submit_connection_check':'submit_preparation',arguments:JSON.stringify(check?{ok:true}:{gaps:[{id:'g1',stepRefs:['s1'],question:'Which orders?',reason:'Need rule',strategy:'user-question',critical:true,resolved:false}],questions:[]})}]}}));return;}
+ const resume=args.includes('--resume'),sid=args[args.indexOf(resume?'--resume':'--session-id')+1];
+ const latest=resume?JSON.parse(text.split('\\n').at(-1)):null;
+ fs.appendFileSync(${JSON.stringify(calls)},JSON.stringify({resume,sid,answers:latest?.taskPackage.answers.length??0})+'\\n');
+ const n=latest?.taskPackage.answers.length??0,user=latest?.evidence.find(e=>e.sourceType==='user'&&e.sourceRef==='q1');
+ const output={claims:user?[{id:'c1',stepRefs:['s1'],text:'Use paid orders',kind:'user-confirmed',evidenceRefs:[user.id],temporalScope:'invariant',appliesTo:'All orders',review:'pending'}]:[],remainingGapRefs:n<2?['g1']:[],summary:'Continued',questions:n<2?[{id:n===0?'q1':'q2',kind:'business-rule',gapRefs:['g1'],text:n===0?'Which orders?':'Which exception?',reason:'Need rule',critical:true,options:[]}]:[]};
+ console.log(JSON.stringify({type:'system',subtype:'init',session_id:sid}));
+ console.log(JSON.stringify({type:'result',session_id:sid,is_error:false,structured_output:output}));
+});`,{mode:0o700});
+  const c=new EnrichmentCoordinator();await c.prepare(id);c.confirm(id,null);const runId=randomUUID();
+  let w=await c.run(id,runId);assert.equal(w.run?.status,"awaiting-input");
+  const answer=(questionId:string,text:string)=>({questionId,text,status:"draft" as const,appliesTo:"",updatedAt:Date.now(),confirmedAt:null});
+  await c.draft(id,{answers:[answer("q1","Paid orders")]});c.confirm(id,null);
+  w=await c.run(id,runId,true);assert.equal(w.run?.status,"awaiting-input",w.run?.error??"");
+  assert.equal(w.package?.answers[0].status,"confirmed");
+  assert.equal(w.result?.claims[0].temporalScope,"at-recording");
+  await c.draft(id,{answers:[answer("q2","Skip canceled")]});c.confirm(id,null);
+  w=await c.run(id,runId,true);assert.equal(w.run?.status,"completed",w.run?.error??"");
+  assert.equal(w.package?.answers.length,2);
+  assert.equal(w.package?.questionHistory?.[0].id,"q1");
+  assert.equal(w.package?.gaps[0].resolved,true);
+  const records=readFileSync(calls,"utf8").trim().split("\n").map(line=>JSON.parse(line));
+  assert.deepEqual(records.map(r=>r.resume),[false,true,true]);
+  assert.deepEqual(records.map(r=>r.answers),[0,1,2]);
+  assert.equal(new Set(records.map(r=>r.sid)).size,1);
+});
+
 function fixture(t: { after: (fn: () => void) => void }) {
   const root = mkdtempSync(path.join(tmpdir(), "enhancement-integration-"));
   for (const [key, value] of Object.entries({
@@ -92,7 +136,16 @@ function fixture(t: { after: (fn: () => void) => void }) {
     null,
   );
   writeFileSync(path.join(dir, "analysis.json"), JSON.stringify(analysis));
-  t.after(() => rmSync(root, { recursive: true, force: true }));
+  t.after(() => {
+    // Native task inputs are frozen with read-only directories.
+    const unlock = (dir: string) => {
+      chmodSync(dir, 0o700);
+      for (const entry of readdirSync(dir, {withFileTypes: true}))
+        if (entry.isDirectory()) unlock(path.join(dir, entry.name));
+    };
+    unlock(root);
+    rmSync(root, { recursive: true, force: true });
+  });
   return { id, dir, root, analysis };
 }
 const response = (name: string, args: unknown) =>

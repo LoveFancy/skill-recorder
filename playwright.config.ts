@@ -18,7 +18,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } } },
-    { name: 'narrow', use: { ...devices['Desktop Chrome'], viewport: { width: 480, height: 800 } }, testMatch: /(?:documents|design)\.spec\.ts/ },
+    { name: 'narrow', use: { ...devices['Desktop Chrome'], viewport: { width: 480, height: 800 } }, testMatch: /(?:documents|design|publish)\.spec\.ts/ },
   ],
   webServer: {
     command: `node tests/ui/serve.mjs --port ${port}`,

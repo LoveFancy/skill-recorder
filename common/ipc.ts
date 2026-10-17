@@ -189,6 +189,7 @@ export interface SkillBuildProgress {
 /** Start a build (or refine one) for a session's analysis. */
 export interface SkillBuildInput {
   sessionId: string;
+  templateId?: string;
   /** Target architecture (Scout or Cowork). */
   architecture: SkillArchitecture;
   /** Natural-language refinement for the current plan; omit for the first pass. */

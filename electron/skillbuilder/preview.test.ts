@@ -49,8 +49,10 @@ function fixture(
   process.env.SKILL_RECORDER_SKILLS_DIR = skills;
   const progress: SkillBuildProgress[] = [];
   const counts = { turns: 0, sessions: 0, aborts: 0 };
+  const sessionConfigs: SessionConfig[] = [];
   const client = new AgentClient();
   t.mock.method(client, "createSession", async (config: SessionConfig) => {
+    sessionConfigs.push(config);
     counts.sessions++;
     await options.beforeSession?.();
     const session = new AgentSession();
@@ -95,8 +97,19 @@ function fixture(
     else process.env.SKILL_RECORDER_SKILLS_DIR = priorSkills;
     rmSync(root, { recursive: true, force: true });
   });
-  return { builder, root, sessions, skills, counts, progress, seed };
+  return { builder, root, sessions, skills, counts, progress, seed, sessionConfigs };
 }
+
+test("skill template flows into planning and survives a new generation session", async t=>{
+  const f=fixture(t);
+  const selected=await f.builder.build({sessionId,architecture:plan.architecture,templateId:"skill-guided"});
+  assert.equal(selected.templateId,"skill-guided");
+  assert.match(f.sessionConfigs[0].systemMessage!.content,/分步协作技能/);
+  await f.builder.forget(sessionId);
+  await f.builder.prepare(sessionId,selected);
+  assert.match(f.sessionConfigs.at(-1)!.systemMessage!.content,/分步协作技能/);
+  await assert.rejects(f.builder.build({sessionId,architecture:plan.architecture,templateId:"sop-checklist"}),/模板/);
+});
 
 test("preview renders the entire final file without installing or marking the session complete", async (t) => {
   const f = fixture(t);

@@ -146,6 +146,9 @@ console.log(JSON.stringify({type:'result',session_id:sessionId,is_error:false,st
     await runClaudeTaskSession({ runId, attempt: 2, package: pkg, evidence: [], workspace, signal, timeoutMs: 5000, continueRun: true });
     assert.ok(existsSync(path.join(paths.config,"settings.json")),"retry upgrades legacy task configuration");
     assert.equal(JSON.parse(readFileSync(path.join(paths.session, "session-id.json"), "utf8")).sessionId, binding.sessionId);
+    unlinkSync(path.join(paths.session, "session-id.json"));
+    await assert.rejects(runClaudeTaskSession({runId,attempt:3,package:pkg,evidence:[],workspace,signal,timeoutMs:5000,continueRun:true,
+      priorResult:{schemaVersion:1,runId,inputRevision:pkg.inputRevision,taskPackageRevision:pkg.revision,claims:[],remainingGapRefs:[],summary:"待继续"}}),/会话绑定丢失/);
     writeFileSync(executable, "#!/usr/bin/env node\nconsole.log(JSON.stringify({loggedIn:false}));process.exit(1);\n");
     await assert.rejects(runClaudeTaskSession({runId:randomUUID(),attempt:1,package:pkg,evidence:[],workspace,signal,timeoutMs:5000,continueRun:false}),/认证不可用/);
   } finally {

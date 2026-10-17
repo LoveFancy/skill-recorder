@@ -88,6 +88,7 @@ export const TaskPackageSchema = z
     status: PreparationStatus,
     gaps: z.array(GapSchema).max(100),
     questions: z.array(QuestionSchema).max(100),
+    questionHistory: z.array(QuestionSchema).max(100).optional(),
     answers: z.array(AnswerSchema).max(100),
     userNotes: Text,
     materials: z.array(MaterialSchema).max(20),
@@ -96,18 +97,19 @@ export const TaskPackageSchema = z
     confirmedAt: z.number().nullable(),
   })
   .superRefine((p, c) => {
+    const allQuestions = [...(p.questionHistory ?? []), ...p.questions];
     const gaps = new Set(p.gaps.map((g) => g.id)),
-      questions = new Set(p.questions.map((q) => q.id));
+      questions = new Set(allQuestions.map((q) => q.id));
     if (
       gaps.size !== p.gaps.length ||
-      questions.size !== p.questions.length ||
+      questions.size !== allQuestions.length ||
       new Set(p.answers.map((a) => a.questionId)).size !== p.answers.length
     )
       c.addIssue({
         code: "custom",
         message: "Duplicate gap, question or answer",
       });
-    for (const q of p.questions)
+    for (const q of allQuestions)
       if (q.gapRefs.some((r) => !gaps.has(r)))
         c.addIssue({ code: "custom", message: "Unknown gap reference" });
     for (const a of p.answers) {

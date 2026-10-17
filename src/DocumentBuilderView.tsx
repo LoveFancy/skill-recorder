@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { OutputTemplateSelect } from "./OutputTemplateSelect";
+import type { PublishSelection } from "./PublishWorkspace";
 import {
   OUTPUT_TEMPLATES, type DocumentAction, type DocumentContent, type DocumentKind,
-  type DocumentOutline, type DocumentView,
+  type DocumentView,
 } from "../common/output";
 
 const label = (kind: DocumentKind) => kind === "sop" ? "SOP 操作说明" : "使用手册";
@@ -20,15 +22,14 @@ function DocumentImage({ sessionId, artifactId, assetId }: { sessionId: string; 
   return src ? <img className="doc-image" src={src} alt="已脱敏的操作截图，请核对画面" /> : <small>{error || "读取脱敏截图…"}</small>;
 }
 
-export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, onClose }: { sessionId: string; kind: DocumentKind; sourceConfirmed?: boolean; onClose: () => void }) {
+export function DocumentBuilderView({ sessionId, kind, onClose, onPublish }: { sessionId: string; kind: DocumentKind; onClose: () => void; onPublish?: (selection: PublishSelection) => void }) {
   const [documents, setDocuments] = useState<DocumentView[]>([]);
   const [view, setView] = useState<DocumentView | null>(null);
   const [content, setContent] = useState<DocumentContent | null>(null);
-  const [outline, setOutline] = useState<DocumentOutline>([]);
   const [audience, setAudience] = useState("业务操作者");
   const [scope, setScope] = useState("本次录制及已确认材料覆盖的任务与功能");
   const [notes, setNotes] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
+  const [templateId, setTemplateId] = useState<string>(OUTPUT_TEMPLATES[kind].id);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,11 +40,12 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
   const loadVersion = useRef(0);
 
   const select = (next: DocumentView | null) => {
-    setView(next); setContent(next?.artifact.content ?? null); setOutline(next?.artifact.outline ?? []);
+    setView(next); setContent(next?.artifact.content ?? null);
     setAudience(next?.artifact.request.audience ?? "业务操作者");
     setScope(next?.artifact.request.scope ?? "本次录制及已确认材料覆盖的任务与功能");
     setNotes(next?.artifact.request.notes ?? "");
-    setDirty(false); setConfirmed(false); setRegenerate(false); setNotice("");
+    setTemplateId(next?.artifact.request.templateId ?? OUTPUT_TEMPLATES[kind].id);
+    setDirty(false); setRegenerate(false); setNotice("");
   };
   const refresh = async (selected?: DocumentView) => {
     const version = ++loadVersion.current;
@@ -63,7 +65,7 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
     };
   }, [sessionId, kind]);
 
-  const perform = async (action: DocumentAction) => {
+  const perform = async (action: DocumentAction, goPublish = false) => {
     if (pending.current) return;
     pending.current = true; setBusy(true); setError(""); setNotice("");
     try {
@@ -73,6 +75,10 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
       if (!result.ok) throw new Error(result.error ?? "文档处理失败。");
       await refresh(result.document);
       if (result.path && live.current) setNotice(`已导出：${result.path}`);
+      if (goPublish && live.current && result.document?.artifact.status === "reviewed") {
+        const saved = result.document.artifact;
+        onPublish?.({ kind: saved.request.kind, id: saved.id, revision: saved.revision });
+      }
     } catch (e) { if (live.current) setError(e instanceof Error ? e.message : String(e)); }
     finally { pending.current = false; if (live.current) setBusy(false); }
   };
@@ -81,8 +87,7 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
   const locked = busy || historical || !!view?.stale;
   const update = (part: Partial<DocumentContent>) => { if (content) { setContent({ ...content, ...part }); setDirty(true); } };
   const generate = (newArtifact = false) => {
-    if (kind === "manual" && !sourceConfirmed && !confirmed) { setError("请先确认使用已审核的基础分析制作文档。"); return; }
-    void perform({ kind: "generate", sessionId, request: { kind, audience: audience.trim() || "业务操作者", scope: scope.trim() || "本次录制及已确认材料覆盖的任务与功能", ...(notes.trim() ? {notes: notes.trim()} : {}) }, artifactId: newArtifact ? undefined : a?.id });
+    void perform({ kind: "generate", sessionId, request: { kind, templateId, audience: audience.trim() || "业务操作者", scope: scope.trim() || "本次录制及已确认材料覆盖的任务与功能", ...(notes.trim() ? {notes: notes.trim()} : {}) }, artifactId: newArtifact ? undefined : a?.id });
   };
   const customFields = <>
     <label className="doc-field">适用读者<input value={audience} maxLength={500} disabled={busy || (!!a && !regenerate)} onChange={e => setAudience(e.target.value)} /></label>
@@ -102,28 +107,22 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
       </label>}
       {historical && <p className="generation-draft">历史版本只读；选择最新版本后可编辑或导出。</p>}
       {view?.stale && <p className="generation-draft">来源已变化，当前内容仅供查看。重新生成后再审核导出，旧版本和编辑会保留。</p>}
-      {kind === "manual" && <section className="doc-setup" aria-labelledby="doc-setup-title">
-        <div className="doc-section-heading"><h3 id="doc-setup-title">文档设置</h3><span>{OUTPUT_TEMPLATES[kind].label} · v{OUTPUT_TEMPLATES[kind].version}</span></div>
-        {customFields}
-        <details className="doc-generation-notes"><summary>生成说明</summary><p>保留实际操作方式，不翻译为 MCP／替代 CLI。仅使用基础分析及当前已审核的补充事实。{kind === "manual" ? "先生成覆盖目录，确认目录后再生成正文。" : "生成后可编辑、审核并导出文档。"}</p></details>
-      </section>}
-      {kind === "manual" && (!a || regenerate) && !sourceConfirmed && <div className="doc-source-confirmation">
-        <h3>确认文档来源</h3>
-        <label className="doc-confirmation"><input type="checkbox" checked={confirmed} disabled={busy} onChange={e => setConfirmed(e.target.checked)} /><span>我已确认基础分析可用于制作本次文档；未审核增强不作为事实。</span></label>
-        {regenerate && <p>重新生成会创建新修订，已保存的历史版本不变。未保存编辑请先保存草稿。</p>}
-      </div>}
-      {a?.outline && !content && <div className="doc-outline">
-        <h3>审核目录与覆盖范围</h3><p>无证据的章节只能标记为“待补充”。目录确认后才生成正文。</p>
-        {outline.map((item, i) => <fieldset key={item.id} disabled={locked}>
-          <legend>章节 {i + 1}</legend>
-          <label className="doc-field">标题<input value={item.title} onChange={e => { setOutline(outline.map((x, j) => j === i ? { ...x, title: e.target.value } : x)); setDirty(true); }} /></label>
-          <label className="doc-field">范围<textarea value={item.scope} onChange={e => { setOutline(outline.map((x, j) => j === i ? { ...x, scope: e.target.value } : x)); setDirty(true); }} /></label>
-          <label>覆盖状态 <select value={item.coverage} onChange={e => { setOutline(outline.map((x, j) => j === i ? { ...x, coverage: e.target.value as typeof item.coverage } : x)); setDirty(true); }}><option value="covered">已覆盖</option><option value="partial">部分覆盖</option><option value="planned">待补充</option></select></label>
-          <small>来源：{item.evidenceRefs.join("、") || "无"}</small>
-        </fieldset>)}
-      </div>}
+      <section className="doc-setup" aria-labelledby="doc-setup-title" hidden={!!content && !regenerate}>
+        <div className="doc-section-heading"><h3 id="doc-setup-title">文档设置</h3></div>
+        <OutputTemplateSelect kind={kind} value={templateId} disabled={busy || (!!a && !regenerate)} onChange={setTemplateId}/>
+        {kind === "manual" && <>{customFields}<details className="doc-generation-notes"><summary>生成说明</summary><p>根据已有分析直接生成完整 Markdown 文档，生成后可查看、编辑和导出。</p></details></>}
+      </section>
+      {a && !content && !regenerate && <p>此历史版本尚未生成正文，请点击生成完成文档。</p>}
       {a && content && <>
-        <h3>编辑与审核</h3><p>修订 {a.revision} · {a.status === "reviewed" ? "已审核" : "草稿"}{dirty ? " · 有未保存编辑" : ""}</p>
+        <article className="doc-reading" aria-label="生成的文档">
+          <h1>{content.title}</h1>
+          <p className="doc-reading-meta">{label(kind)} · 修订 {a.revision}{dirty ? ' · 有未保存编辑' : ''}</p>
+          <h2>目的与范围</h2><p>{content.purpose}</p>
+          {content.prerequisites.length>0&&<><h2>前置条件</h2><ul>{content.prerequisites.map((text,i)=><li key={i}>{text}</li>)}</ul></>}
+          {content.sections.map(section=><section key={section.id}><h2>{section.title}</h2><p>{section.description}</p>{section.steps.map((step,i)=><section key={i}><h3>{i+1}. {step.title}</h3><p>入口：{step.location}</p><p>{step.action}</p><p>结果（{{observed:'录制可见',confirmed:'人工确认',unknown:'待确认'}[step.resultStatus]}）：{step.expectedResult || '录制未证实'}</p>{step.assetIds.map(assetId=><DocumentImage key={assetId} sessionId={sessionId} artifactId={a.id} assetId={assetId}/>)}</section>)}</section>)}
+          {([['exceptions','异常与处理'],['completion','完成检查'],['gaps','待补充与限制']] as const).map(([key,title])=>content[key].length>0&&<section key={key}><h2>{title}</h2><ul>{content[key].map((text,i)=><li key={i}>{text}</li>)}</ul></section>)}
+        </article>
+        <details className="doc-edit-details"><summary>编辑文档内容</summary>
         <fieldset disabled={locked} className="doc-editor">
           <label className="doc-field">标题<input value={content.title} onChange={e => update({ title: e.target.value })} /></label>
           <label className="doc-field">目的与范围<textarea value={content.purpose} onChange={e => update({ purpose: e.target.value })} /></label>
@@ -143,7 +142,8 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
             <small>章节来源：{section.evidenceRefs.join("、")}</small>
           </div>)}
         </fieldset>
-        <details><summary>查看导出预览（已保存版本）</summary><pre className="doc-preview">{view.markdown}</pre></details>
+        </details>
+        <details><summary>查看 Markdown（已保存版本）</summary><pre className="doc-preview" aria-label="Markdown 文档">{view.markdown}</pre></details>
       </>}
       {busy && <p role="status">正在处理文档，已保存版本会保留…</p>}
       {error && <p role="alert" className="error">{error}</p>}{notice && <p role="status">{notice}</p>}
@@ -153,17 +153,18 @@ export function DocumentBuilderView({ sessionId, kind, sourceConfirmed = false, 
         <button className="ghost" onClick={onClose} disabled={busy || dirty}>返回产物选择</button>
         {dirty && <button className="linky" disabled={busy} onClick={() => select(view)}>放弃未保存编辑</button>}
         {a && !historical && !dirty && <>
-          <button className="linky" disabled={busy} onClick={() => { setRegenerate(!regenerate); setConfirmed(false); }}>重新生成新修订</button>
+          <button className="linky" disabled={busy} onClick={() => setRegenerate(!regenerate)}>重新生成新修订</button>
           <button className="linky" disabled={busy} onClick={() => select(null)}>另建一份文档</button>
         </>}
       </div>
       <div className="ws-foot-actions">
-        {busy ? <button className="secondary" onClick={() => void window.skillRecorder.document({ kind: "cancel", sessionId })}>停止</button> : (!a || regenerate) ? <button className="record-cta" disabled={(kind === "manual" && !sourceConfirmed && !confirmed) || dirty} onClick={() => generate()}>{kind === "manual" ? "生成覆盖目录" : "生成 SOP"}</button> : <>
-          {a.outline && !content && <button className="record-cta" disabled={locked} onClick={() => void perform({ kind: "outline", sessionId, artifactId: a.id, revision: a.revision, outline })}>确认目录并生成正文</button>}
+        {busy ? <button className="secondary" onClick={() => void window.skillRecorder.document({ kind: "cancel", sessionId })}>停止</button> : (!a || regenerate || !content) ? <button className="record-cta" disabled={dirty} onClick={() => generate()}>生成</button> : <>
           {content && <>
             <button className="secondary" disabled={locked} onClick={() => void perform({ kind: "edit", sessionId, artifactId: a.id, revision: a.revision, content, reviewed: false })}>保存草稿</button>
             <button className="secondary" disabled={locked || dirty} onClick={() => void perform({ kind: "export", sessionId, artifactId: a.id, revision: a.revision, draft: a.status !== "reviewed" })}>{a.status === "reviewed" ? "导出文档" : "导出草稿（含草稿标记）"}</button>
-            <button className="record-cta" disabled={locked || content.gaps.length > 0} onClick={() => void perform({ kind: "edit", sessionId, artifactId: a.id, revision: a.revision, content, reviewed: true })}>确认内容并保存</button>
+            {onPublish && a.status === "reviewed" && !dirty
+              ? <button className="record-cta" disabled={locked} onClick={() => onPublish({ kind, id: a.id, revision: a.revision })}>下一步：发布与分享</button>
+              : <button className="record-cta" disabled={locked || content.gaps.length > 0} onClick={() => void perform({ kind: "edit", sessionId, artifactId: a.id, revision: a.revision, content, reviewed: true }, !!onPublish)}>{onPublish ? "确认并保存，去发布" : "确认内容并保存"}</button>}
           </>}
         </>}
       </div>

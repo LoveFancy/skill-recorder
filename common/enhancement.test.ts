@@ -70,6 +70,16 @@ test("unanswered and preselected answers cannot become user confirmation", () =>
     false,
   );
 });
+test("historical answers require a known question and valid gap references", () => {
+  const historical = {
+    ...p, questions: [], questionHistory: p.questions,
+    answers: [{questionId: "q1", text: "本次订单", status: "confirmed", appliesTo: "", updatedAt: 2, confirmedAt: 2}],
+  };
+  assert.equal(TaskPackageSchema.safeParse(historical).success, true);
+  assert.equal(TaskPackageSchema.safeParse({...historical, questionHistory: []}).success, false);
+  assert.equal(TaskPackageSchema.safeParse({...historical, questions: p.questions}).success, false);
+  assert.equal(TaskPackageSchema.safeParse({...historical, questionHistory: [{...p.questions[0], gapRefs: ["fake"]}]}).success, false);
+});
 test("navigation does not approve; skip preserves critical gaps and stale inputs block generation", () => {
   const w = {
     version: 1 as const,

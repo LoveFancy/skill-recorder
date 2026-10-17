@@ -64,15 +64,28 @@ test("SOP works without a capability snapshot and only exposes a document submis
   assert.match(f.builder.exportable(id, view.artifact.id, 1, true).markdown, /待审核草稿/);
 });
 
-test("manual stops at a persisted outline and only produces evidence-covered approved chapters", async t => {
+test("selected document templates persist across revisions and guide both manual stages", async t => {
+  const f=fixture(t), signal=new AbortController().signal;
+  const sop=await f.builder.generate(id,{kind:"sop",audience:"操作人员",scope:"录制范围",templateId:"sop-checklist"},undefined,signal);
+  assert.equal(sop.artifact.templateId,"sop-checklist");
+  assert.match(f.calls[0].config.systemMessage!.content,/操作检查清单/);
+  assert.equal(f.builder.list(id)[0].stale,false);
+  const manual=await f.builder.generate(id,{kind:"manual",audience:"新同事",scope:"录制范围",templateId:"manual-quickstart"},undefined,signal);
+  await f.builder.outline(id,manual.artifact.id,1,manual.artifact.outline!,signal);
+  assert.ok(f.calls.slice(1).every(c=>c.config.systemMessage!.content.includes("快速入门手册")));
+  assert.ok(f.builder.list(id).filter(d=>d.artifact.id===manual.artifact.id).every(d=>d.artifact.templateId==="manual-quickstart"&&!d.stale));
+});
+
+test("manual generates a complete document in one action and validates its internal outline", async t => {
   const f = fixture(t);
   const outline = await f.generate("manual");
-  assert.equal(outline.artifact.content, null);
-  assert.equal(f.calls.length, 1);
+  assert.ok(outline.artifact.content);
+  assert.match(outline.markdown,/# 网页回复邮件/);
+  assert.equal(f.calls.length, 2);
   assert.equal((f.calls[0].config.tools![0].parameters as { type: string }).type, "object");
   const a = outline.artifact;
   const view = await f.builder.outline(id, a.id, 1, a.outline!, new AbortController().signal);
-  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls.length, 3);
   assert.match(view.markdown, /管理员功能：待补充/);
   assert.equal(view.artifact.revision, 2);
   const bad = structuredClone(content); bad.sections[0].id = "admin";
@@ -159,6 +172,19 @@ test("manual coverage checks reject fake covered chapters and empty evidence", a
   const a: DocumentArtifact = (await f.generate("manual")).artifact;
   a.outline![1].coverage = "covered";
   assert.throws(() => validateDocument(a), /必须引用证据/);
+});
+
+test("failed manual body generation does not publish an outline-only result and can retry", async t=>{
+  const f=fixture(t),bad=structuredClone(content);
+  bad.sections[0].id="admin";
+  f.payload(bad);
+  await assert.rejects(f.generate("manual"),/超出/);
+  assert.deepEqual(f.builder.list(id),[]);
+  f.payload(structuredClone(content));
+  const result=await f.generate("manual");
+  assert.ok(result.artifact.content);
+  assert.equal(result.artifact.revision,1);
+  assert.equal(f.builder.list(id).length,1);
 });
 
 test("only protected screenshot bytes enter artifacts and changed assets block export", async t => {

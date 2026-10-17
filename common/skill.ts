@@ -56,8 +56,8 @@ export const PlanStepSchema = z.preprocess(
 export type PlanStep = z.infer<typeof PlanStepSchema>;
 
 /**
- * The agent's proposed plan, shown to the user before any skill is written.
- * This is what `propose_plan` submits and what the user refines in NL.
+ * Internal structured generation input, retained for validation and optional adjustments.
+ * `propose_plan` submits it; the application proceeds directly to skill generation.
  */
 export const GenerationMetadataSchema=z.object({sourceFingerprint:z.string().optional(),inputRevision:z.string(),taskPackageRevision:z.number().nullable(),runId:z.string().nullable(),status:z.enum(['draft','reviewed']),gaps:z.array(z.string()),capabilitySnapshotId:z.string().nullable(),catalogueVersion:z.string(),executionVerified:z.literal(false)});
 export type GenerationMetadata=z.infer<typeof GenerationMetadataSchema>;
@@ -76,6 +76,7 @@ export const SkillPlanSchema = z.preprocess(
   /** Plain-language summary of what the skill does. */
   summary: z.string().default(""),
   generation: GenerationMetadataSchema.optional(),
+  templateId: z.string().optional(),
   /** How the recorded specifics are generalized (the loop/collection insight). */
   generalization: z.string().default(""),
   /** Named fixed literals (URLs / paths / constants) the steps reference by `{{id}}`. */
