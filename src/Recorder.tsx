@@ -1,5 +1,4 @@
 import { BrowserSettingsPanel } from "./BrowserSettingsPanel";
-import { AiSettingsPanel } from "./AiSettingsPanel";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import type {
@@ -9,12 +8,10 @@ import type {
   RecorderStatus,
   ScreenSettingsStatus,
   SensitiveModelStatus,
+  StartOptions,
 } from "../common/ipc";
 import {
   DEFAULT_NARRATION_LANGUAGE,
-  isNarrationLanguage,
-  SENSEVOICE_LANGUAGES as NARRATION_LANGUAGES,
-  NARRATION_MODEL_DOWNLOAD_LABEL,
   narrationLanguageLabel,
   type NarrationLanguage,
 } from "../common/narration";
@@ -41,10 +38,11 @@ function measureHudHeight(hud: HTMLElement): number {
     const cs = getComputedStyle(child);
     if (cs.position === "absolute" || cs.position === "fixed" || cs.display === "none") continue;
     total += child.getBoundingClientRect().height;
+    total += (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
     inFlow += 1;
   }
   if (inFlow > 1) total += gap * (inFlow - 1);
-  return Math.ceil(total);
+  return Math.ceil(total) + 2;
 }
 
 export function Recorder() {
@@ -63,7 +61,6 @@ export function Recorder() {
   const [narrationLanguage, setSelectedNarrationLanguage] =
     useState<NarrationLanguage>(DEFAULT_NARRATION_LANGUAGE);
   const [sensitive, setSensitive] = useState<SensitiveModelStatus | null>(null);
-  const [advancedPending, setAdvancedPending] = useState(false);
   const [microphonePending, setMicrophonePending] = useState(false);
   const [microphoneActionError, setMicrophoneActionError] = useState<string | null>(null);
   const [screenPending, setScreenPending] = useState(false);
@@ -122,9 +119,10 @@ export function Recorder() {
   // The analyze step happens in the library window, so re-check how many
   // recordings still need analysis whenever the recorder regains focus.
   useEffect(() => {
-    const onFocus = () => void refreshCount();
+    const onFocus = () => { void refreshCount(); void window.skillRecorder.doctor().then(setDoctor); };
+    const offSettings = window.skillRecorder.onSettingsChanged(onFocus);
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    return () => { window.removeEventListener("focus", onFocus); offSettings(); };
   }, [refreshCount]);
 
   const recording = status?.state === "recording";
@@ -218,18 +216,14 @@ export function Recorder() {
       return;
     }
 
-    const res = await window.skillRecorder.start();
-    if (res.privacyWarningRequired) {
-      setShowRecordingWarning(true);
-      return;
-    }
-    if (!res.ok) window.alert(res.error ?? "操作失败");
-    applyRecorderStatus(await window.skillRecorder.status());
+    setShowNarrationSettings(false);
+    await window.skillRecorder.start();
   }, [applyRecorderStatus, recording]);
 
-  const startAfterWarning = useCallback(async () => {
+  const startAfterWarning = useCallback(async (options: Pick<StartOptions, "intent" | "outputKind">) => {
     setWarningStarting(true);
-    const res = await window.skillRecorder.confirmStart();
+    await window.skillRecorder.markRecordingPrivacyReviewed();
+    const res = await window.skillRecorder.confirmStart(options);
     if (!res.ok) {
       setWarningStarting(false);
       window.alert(res.error ?? "无法开始录制。");
@@ -241,35 +235,22 @@ export function Recorder() {
   }, [applyRecorderStatus]);
 
   const openPrivacyReview = useCallback((origin: PrivacyReviewOrigin) => {
-    setShowRecordingWarning(false);
+    if (origin === "home") setShowRecordingWarning(false);
     setPrivacyReviewOrigin(origin);
   }, []);
 
   const closePrivacyReview = useCallback(() => {
     const returnToWarning = privacyReviewOrigin === "warning";
     setPrivacyReviewOrigin(null);
-    if (returnToWarning) setShowRecordingWarning(true);
+    if (!returnToWarning) setShowRecordingWarning(false);
   }, [privacyReviewOrigin]);
 
   const completePrivacyReview = useCallback(async () => {
     await window.skillRecorder.markRecordingPrivacyReviewed();
+    const returnToIntent = privacyReviewOrigin === "warning";
     setPrivacyReviewOrigin(null);
-    setShowRecordingWarning(false);
-  }, []);
-
-  const selectNarrationLanguage = useCallback(
-    async (value: string) => {
-      if (!isNarrationLanguage(value)) {
-        window.alert("不支持此旁白语言。");
-        return;
-      }
-      setSelectedNarrationLanguage(value);
-      const result = await window.skillRecorder.setNarrationLanguage(value);
-      if (!result.ok) window.alert(result.error ?? "无法修改旁白语言。");
-      applyRecorderStatus(await window.skillRecorder.status());
-    },
-    [applyRecorderStatus],
-  );
+    if (!returnToIntent) setShowRecordingWarning(false);
+  }, [privacyReviewOrigin]);
 
   const toggleNarration = useCallback(async () => {
     if (!microphoneSettings) return;
@@ -316,31 +297,9 @@ export function Recorder() {
     void window.skillRecorder.openLibrary();
   }, []);
 
-  const downloadNarrationModel = useCallback(async () => {
-    const res = await window.skillRecorder.downloadNarrationModel();
-    if (!res.ok) window.alert(res.error ?? "无法下载语音转写模型。");
-  }, []);
-
-  const toggleAdvanced = useCallback(async () => {
-    if (!sensitive) return;
-    const next = !sensitive.enabled;
-    setAdvancedPending(true);
-    setSensitive((s) => (s ? { ...s, enabled: next } : s)); // optimistic; real state follows
-    const res = await window.skillRecorder.setAdvancedProtection(next);
-    if (!res.ok) {
-      void window.skillRecorder.sensitiveModelStatus().then(setSensitive);
-      window.alert(res.error ?? "无法修改隐私保护设置。");
-    }
-    setAdvancedPending(false);
-  }, [sensitive]);
-
-  const downloadSensitiveModels = useCallback(async () => {
-    const res = await window.skillRecorder.downloadSensitiveModels();
-    if (!res.ok) window.alert(res.error ?? "无法下载隐私保护模型。");
-  }, []);
-
   return (
     <div className="hud" ref={hudRef}>
+      <button className="home-settings-button" aria-label="打开设置" onClick={() => void window.skillRecorder.openSettings()}>设置</button>
       <div className="transport">
         <button
           className={`record ${recording ? "on" : ""}`}
@@ -483,28 +442,6 @@ export function Recorder() {
               onClick={() => setShowNarrationSettings(false)}
             />
             <div id="recording-settings" className="narrate-settings">
-            <label htmlFor="narrate-language">语言</label>
-            <div className="narrate-select-wrap">
-              <select
-                id="narrate-language"
-                value={narrationLanguage}
-                disabled={microphonePending || recording || transitioning}
-                onChange={(event) =>
-                  void selectNarrationLanguage(event.currentTarget.value)
-                }
-                title="转写文本使用所选语言"
-              >
-                {NARRATION_LANGUAGES.map(({ code }) => (
-                  <option key={code} value={code}>
-                    {narrationLanguageLabel(code)}
-                  </option>
-                ))}
-              </select>
-              <span className="narrate-select-chevron" aria-hidden>
-                ▾
-              </span>
-            </div>
-
             <label htmlFor="narrate-microphone">麦克风</label>
             <div className="narrate-select-wrap">
               <select
@@ -622,7 +559,7 @@ export function Recorder() {
         </span>
         <span className="privacy-note-text">
           <span className="privacy-note-title">记录屏幕和操作活动</span>
-          <span className="privacy-note-sub">查看具体采集内容</span>
+          <span className="privacy-note-sub">请勿展示密码、访问令牌或 API 密钥 · 查看具体采集内容</span>
         </span>
         {!advancedOn ? (
           <span className="privacy-note-badge is-off">隐私保护已关闭</span>
@@ -701,39 +638,23 @@ export function Recorder() {
         </span>
       </button>
 
-      {doctor && (
-        <div className="doctor">
-          <Row
-            label="AI 模型"
-            status={doctor.aiProvider.ok ? "good" : "bad"}
-            note={doctor.aiProvider.ok ? "已配置" : "请在下方配置"}
-          />
-          {narrate && narrationStatus && (
-            <VoiceModelRow
-              status={narrationStatus}
-              recording={recording}
-              onDownload={downloadNarrationModel}
-            />
-          )}
-          {sensitive && (
-            <SensitiveModelRow
-              status={sensitive}
-              recording={recording}
-              onDownload={downloadSensitiveModels}
-            />
-          )}
-        </div>
-      )}
+      <div className="doctor">
+        <button className="row settings-status-link" title={doctor?.processing?.error ?? "打开 Agent 能力设置"} onClick={() => void window.skillRecorder.openSettings("agent")}>
+          <span className={`badge ${doctor?.processing?.ready ? "good" : "warn"}`}>{doctor?.processing?.ready ? "✓" : "!"}</span><span className="row-label">智能处理</span>
+          <span className="row-note">{doctor?.processing ? doctor.processing.ready ? `${doctor.processing.backend === "local-agent" ? "Claude Code" : "模型 API"} · 已就绪` : "需要配置" : "检查中"}</span>
+        </button>
+        {narrationStatus && <button className="row settings-status-link" onClick={() => void window.skillRecorder.openSettings("voice")}><span className={`badge ${narrationStatus.model === "ready" ? "good" : "warn"}`}>{narrationStatus.model === "ready" ? "✓" : "!"}</span><span className="row-label">语音转写</span><span className="row-note">{narrationStatus.model === "ready" ? "SenseVoice · 本地处理" : narrationStatus.phase === "downloading" ? `下载中 ${narrationStatus.progress ?? ""}%` : "模型未就绪"}</span></button>}
+        {sensitive && <button className="row settings-status-link" onClick={() => void window.skillRecorder.openSettings("privacy")}><span className={`badge ${sensitive.enabled && sensitive.ocr === "ready" ? "good" : "warn"}`}>{sensitive.enabled && sensitive.ocr === "ready" ? "✓" : "!"}</span><span className="row-label">隐私保护</span><span className="row-note">{!sensitive.enabled ? "已关闭" : sensitive.ocr === "ready" ? "已开启 · 本地处理" : "模型未就绪"}</span></button>}
+        <BrowserSettingsPanel summary />
+      </div>
 
-      <BrowserSettingsPanel />
-      {!recording && <AiSettingsPanel onSaved={() => void window.skillRecorder.doctor().then(setDoctor)} />}
 
       <p className="hint">{TOGGLE_SHORTCUT} 随时开始或结束录制</p>
 
       {showRecordingWarning && (
         <RecordingPrivacyWarning
           starting={warningStarting}
-          onStart={() => void startAfterWarning()}
+          onStart={(options) => void startAfterWarning(options)}
           onReview={() => openPrivacyReview("warning")}
           onClose={() => setShowRecordingWarning(false)}
         />
@@ -743,107 +664,9 @@ export function Recorder() {
           onClose={closePrivacyReview}
           onReviewed={() => void completePrivacyReview()}
           sensitive={sensitive}
-          advancedPending={advancedPending}
-          onToggleAdvanced={() => void toggleAdvanced()}
-          onDownload={downloadSensitiveModels}
+          onOpenSettings={() => void window.skillRecorder.openSettings("privacy")}
         />
       )}
     </div>
-  );
-}
-
-type RowStatus = "good" | "warn" | "bad";
-
-function Row({
-  label,
-  status,
-  note,
-  action,
-}: {
-  label: string;
-  status: RowStatus;
-  note: string;
-  action?: { label: string; disabled?: boolean; onClick: () => void };
-}) {
-  const symbol = status === "good" ? "✓" : status === "warn" ? "!" : "✕";
-  return (
-    <div className="row">
-      <span className={`badge ${status}`}>{symbol}</span>
-      <span className="row-label">{label}</span>
-      <span className="row-note">{note}</span>
-      {action && (
-        <button className="row-action" disabled={action.disabled} onClick={action.onClick}>
-          {action.label}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function VoiceModelRow({
-  status,
-  recording,
-  onDownload,
-}: {
-  status: NarrationStatus;
-  recording: boolean;
-  onDownload: () => void;
-}) {
-  if (status.phase === "downloading") {
-    const progress = status.progress == null ? "下载中" : `${status.progress}%`;
-    return <Row label="语音转写" status="warn" note={progress} />;
-  }
-  if (status.phase === "loading") {
-    return <Row label="语音转写" status="warn" note="准备中" />;
-  }
-  if (status.model === "ready") {
-    return <Row label="语音转写" status="good" note="SenseVoice · 本地处理" />;
-  }
-  return (
-    <Row
-      label="语音转写"
-      status="warn"
-      note={
-        status.model === "error"
-          ? "下载失败"
-          : `${NARRATION_MODEL_DOWNLOAD_LABEL} · multilingual`
-      }
-      action={{
-        label: status.model === "error" ? "重试" : "下载",
-        disabled: recording,
-        onClick: onDownload,
-      }}
-    />
-  );
-}
-
-/** Single doctor row for the opt-out Advanced-protection model, shown while enabled.
- *  Goes red whenever the on-device screen-text model isn't downloaded, with one
- *  action that fetches it. */
-function SensitiveModelRow({
-  status,
-  recording,
-  onDownload,
-}: {
-  status: SensitiveModelStatus;
-  recording: boolean;
-  onDownload: () => void;
-}) {
-  if (!status.enabled) return null;
-  if (status.ocr === "downloading") {
-    const note = status.progress == null ? "下载中" : `${Math.round(status.progress)}%`;
-    return <Row label="隐私保护" status="warn" note={note} />;
-  }
-  if (status.ocr === "ready") {
-    return <Row label="隐私保护" status="good" note="本地处理" />;
-  }
-  const failed = status.ocr === "error";
-  return (
-    <Row
-      label="隐私保护"
-      status="bad"
-      note={failed ? "下载失败" : "尚未下载"}
-      action={{ label: failed ? "重试" : "下载", disabled: recording, onClick: onDownload }}
-    />
   );
 }

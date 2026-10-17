@@ -1,3 +1,16 @@
+import { previewManagedSources, saveManagedSelection } from "./agents/managed";
+import { DocumentActionSchema, type DocumentResponse } from "../common/output";
+import { documentBuilder } from "./documentbuilder/builder";
+import { exportDocumentFiles } from "./documentbuilder/export";
+import { readFileSync, writeFileSync, statSync } from "node:fs";
+import { z } from "zod";
+import { EnrichmentCoordinator } from "./enrichment/coordinator";
+import { sessionLocks } from "./enrichment/store";
+import { processingStatus, associateWorkspace, inspectCapabilities, capabilitySnapshot } from "./agents/service";
+import { refreshCapabilities } from "./agents/mcp";
+import { readProcessingSettings,saveProcessingSettings } from "./agents/settings";
+import type { ProcessingAction, EnhancementAction } from "../common/processing-api";
+import { builtinToolsView, saveBuiltinMail } from "./agents/builtin-settings";
 import { renderAnnotation } from "./video/annotation-image";
 import { isCaptureRegion } from "../common/capture-region";
 import { selectRegion } from "./video/region-selector";
@@ -35,7 +48,11 @@ import { IPC } from "../common/ipc";
 import type { AutomationPlan } from "../common/automation";
 import type { NarrationLanguage } from "../common/narration";
 import type { SensitiveReport } from "../common/sensitive";
-import type { SkillPlan } from "../common/skill";
+import { SkillPlanSchema,type SkillPlan } from "../common/skill";
+import { generationContext } from "./enrichment/generation";
+import { atomicJson,fingerprint } from "./enrichment/store";
+import { existsSync } from "node:fs";
+import { sessionDir } from "./recorder/session-store";
 import { AutomationBuilder, loadPersistedAutomation } from "./automationbuilder/builder";
 import { getAiSettings, saveAiSettings } from "./ai/settings";
 import type { AiSettingsInput } from "../common/ai";
@@ -60,6 +77,7 @@ import { deleteSession, listSessions } from "./sessions";
 import { loadPersistedSkill, SkillBuilder, SkillPreviewExpiredError, type SkillTarget } from "./skillbuilder/builder";
 
 const log = createLogger("IPC");
+export const enrichment = new EnrichmentCoordinator(event=>{for(const win of BrowserWindow.getAllWindows())if(!win.isDestroyed())win.webContents.send(IPC.enhancementChanged,event);});
 
 /** Wire the renderer-facing invoke channels to the recorder, describer, builders + doctor. */
 export function registerIpc(
@@ -74,6 +92,35 @@ export function registerIpc(
   isRecordingStartPending: () => boolean,
   canForceTerminalFinish: (sender: WebContents) => boolean,
 ): void {
+  ipcMain.handle(IPC.document, async (event, raw: unknown): Promise<DocumentResponse> => {
+    try {
+      const action = DocumentActionSchema.parse(raw);
+      const id = action.sessionId;
+      if (!isValidSessionId(id)) throw new Error("无效录制。");
+      if (action.kind === "list") return { ok: true, documents: documentBuilder.list(id) };
+      if (action.kind === "asset") return { ok: true, assetDataUrl: documentBuilder.asset(id, action.artifactId, action.assetId) };
+      if (action.kind === "cancel") {
+        if (sessionLocks.purpose(id) === "document") { sessionLocks.cancel(id); await documentBuilder.cancel(id); }
+        return { ok: true };
+      }
+      return await sessionLocks.withLock(id, "document", async signal => {
+        if (action.kind === "generate") return { ok: true, document: await documentBuilder.generate(id, action.request, action.artifactId, signal) };
+        if (action.kind === "outline") return { ok: true, document: await documentBuilder.outline(id, action.artifactId, action.revision, action.outline, signal) };
+        if (action.kind === "edit") return { ok: true, document: await documentBuilder.edit(id, action.artifactId, action.revision, action.content, action.reviewed) };
+        const preview = documentBuilder.exportable(id, action.artifactId, action.revision, action.draft);
+        const zip = preview.assets.length > 0;
+        const options: SaveDialogOptions = { title: action.draft ? "导出文档草稿" : "导出文档", defaultPath: `${preview.artifact.request.kind}${action.draft ? "-draft" : ""}.${zip ? "zip" : "md"}`, filters: [{ name: zip ? "含截图文档" : "Markdown", extensions: [zip ? "zip" : "md"] }] };
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const destination = win ? await dialog.showSaveDialog(win, options) : await dialog.showSaveDialog(options);
+        if (destination.canceled || !destination.filePath) return { ok: false, canceled: true };
+        signal.throwIfAborted();
+        // Recheck the frozen revision after the user has chosen a location.
+        documentBuilder.exportable(id, action.artifactId, action.revision, action.draft);
+        await exportDocumentFiles(destination.filePath, preview.markdown, preview.assets);
+        return { ok: true, path: destination.filePath, document: documentBuilder.recordExport(id, action.artifactId, action.revision, destination.filePath) };
+      });
+    } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "文档操作失败。" }; }
+  });
   ipcMain.handle(IPC.stop, (event, forceTerminal?: boolean) => {
     if (forceTerminal === true && !canForceTerminalFinish(event.sender)) {
       return { ok: false, error: "Terminal interruption confirmation is unavailable." };
@@ -199,18 +246,71 @@ export function registerIpc(
   ipcMain.handle(IPC.narrationLanguage, (_event, language: NarrationLanguage) =>
     recorder.setNarrationLanguage(language),
   );
-  ipcMain.handle(IPC.stepScreenshots, (_event, id: string, start?: number, end?: number) => getStepScreenshots(id, start, end));
+  ipcMain.handle(IPC.stepScreenshots, (_event, id: string, start?: number, end?: number, excludedFiles?: string[]) => getStepScreenshots(id, start, end, excludedFiles));
   ipcMain.handle(IPC.status, () => recorder.status());
   ipcMain.handle(IPC.marker, (_event, note: string) => recorder.marker(note));
-  ipcMain.handle(IPC.doctor, () => runDoctor());
+  ipcMain.handle(IPC.doctor, async () => {const report=runDoctor();const status=await processingStatus();return {...report,aiProvider:{ok:status.ready,path:status.backend==='local-agent'?status.availability.executable:report.aiProvider.path},processing:status};});
+  ipcMain.handle(IPC.processing, async (event, action:ProcessingAction) => {
+    try {
+      if(action.kind==='status')return {ok:true,status:await processingStatus()};
+      if(action.kind==='builtin-status')return {ok:true,builtins:builtinToolsView()};
+      if(action.kind==='pick-directory'){
+        const result=await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender)!,{title:'选择或创建 Agent 项目目录',properties:['openDirectory','createDirectory']});
+        return result.canceled?{ok:false,canceled:true}:{ok:true,directory:result.filePaths[0]};
+      }
+      if(action.kind==='capabilities'&&!action.refresh)return {ok:true,snapshot:capabilitySnapshot(action.workspaceId)};
+      if(describer.isBusy()||builder.isBusy()||automationBuilder.isBusy()||documentBuilder.isBusy()||sessionLocks.anyBusy("document")||enrichment.busy())throw new Error('请先等待处理任务结束，再修改配置或主动刷新能力。');
+      if(action.kind==='managed-sync') return {ok:true,preview:await previewManagedSources()};
+      if(action.kind==='builtin-mail-save')return {ok:true,builtins:saveBuiltinMail(action.account)};
+      if(action.kind==='managed-save') await saveManagedSelection(action.input);
+      else if(action.kind==='save'){const existing=readProcessingSettings();if(existing.managedEnvironmentId&&(action.settings.managedEnvironmentId!==existing.managedEnvironmentId||action.settings.defaultProcessingWorkspaceId!==existing.managedEnvironmentId||!action.settings.workspaces.some(w=>w.id===existing.managedEnvironmentId)))throw new Error('专用环境不能通过通用保存移除或替换。');if(action.settings.workspaces.some(workspace=>!existing.workspaces.some(previous=>previous.id===workspace.id&&JSON.stringify(previous)===JSON.stringify(workspace))))throw new Error('项目与信任信息只能通过关联入口修改。');saveProcessingSettings(action.settings);}
+      else if(action.kind==='associate')await associateWorkspace(action);
+      else if(action.kind==='capabilities')return {ok:true,snapshot:action.refresh==='configuration'?await inspectCapabilities(action.workspaceId):action.refresh==='connection'?await refreshCapabilities(action.workspaceId):capabilitySnapshot(action.workspaceId)};
+      else throw new Error('未知配置操作。');
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IPC.settingsChanged);
+      await Promise.all([describer.dispose(),builder.dispose(),automationBuilder.dispose(),documentBuilder.dispose()]);
+      return {ok:true,status:await processingStatus()};
+    }catch(error){return {ok:false,error:error instanceof Error?error.message:'智能处理操作失败。'};}
+  });
+  ipcMain.handle(IPC.enhancement, async (event, action:EnhancementAction) => {
+    try {
+      if(!isValidSessionId(action?.sessionId))throw new Error('Unknown session.');
+      const id=action.sessionId;let workflow;
+      switch(action.kind){
+        case 'get':workflow=enrichment.get(id);break;
+        case 'prepare':workflow=await enrichment.prepare(id, action.outputKind);break;
+        case 'draft':workflow=await enrichment.draft(id,action.input);break;
+        case 'confirm':workflow=enrichment.confirm(id,action.scope);break;
+        case 'run':workflow=await enrichment.run(id,action.runId,action.continueRun,action.resetBudget);break;
+        case 'review':workflow=enrichment.review(id,z.array(z.object({id:z.string(),review:z.enum(['accepted','rejected'])})).parse(action.decisions));break;
+        case 'budget':workflow=enrichment.increaseBudget(id,action.activeMs);break;
+        case 'skip':workflow=enrichment.skip(id);break;
+        case 'cancel':workflow=await enrichment.cancel(id);break;
+        case 'export':{
+          const packet=await enrichment.exportPackage(id);
+          const result=await dialog.showSaveDialog(BrowserWindow.fromWebContents(event.sender)!,{title:'导出脱敏增强任务包',defaultPath:'enhancement-task.json',filters:[{name:'JSON',extensions:['json']}]});
+          if(result.canceled||!result.filePath)return {ok:false,canceled:true};
+          writeFileSync(result.filePath,JSON.stringify(packet,null,2),{mode:0o600});return {ok:true,path:result.filePath,workflow:enrichment.get(id)};
+        }
+        case 'import':{
+          const result=await dialog.showOpenDialog(BrowserWindow.fromWebContents(event.sender)!,{title:'导入 Agent 增强候选',properties:['openFile'],filters:[{name:'JSON',extensions:['json']}]});
+          if(result.canceled||!result.filePaths[0])return {ok:false,canceled:true};const file=result.filePaths[0];if(statSync(file).size>4*1024*1024)throw new Error('候选文件超过 4 MB。');
+          workflow=await enrichment.importCandidate(id,JSON.parse(readFileSync(file,'utf8')));break;
+        }
+        default:throw new Error('未知增强操作。');
+      }
+      return {ok:true,workflow};
+    }catch(error){return {ok:false,error:error instanceof Error?error.message:'增强操作失败。'};}
+  });
   ipcMain.handle(IPC.aiSettings, () => getAiSettings());
   ipcMain.handle(IPC.aiSettingsSave, async (_event, input: AiSettingsInput) => {
     try {
-      if (describer.isBusy() || builder.isBusy() || automationBuilder.isBusy()) {
+      if (describer.isBusy() || builder.isBusy() || automationBuilder.isBusy() || documentBuilder.isBusy() || sessionLocks.anyBusy("document") || enrichment.busy()) {
         return { ok: false, error: "Wait for analysis and builds to finish before changing AI settings." };
       }
       const settings = saveAiSettings(input);
-      await Promise.all([describer.dispose(), builder.dispose(), automationBuilder.dispose()]);
+      for (const win of BrowserWindow.getAllWindows()) win.webContents.send(IPC.settingsChanged);
+      await Promise.all([describer.dispose(), builder.dispose(), automationBuilder.dispose(), documentBuilder.dispose()]);
       return { ok: true, settings };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : "无法保存 AI 设置。" };
@@ -275,6 +375,14 @@ export function registerIpc(
     }
   };
 
+  const documentRedactor = async (id: string) => {
+    // Manual bundles always redact images; never interpret protection opt-out as a redacted export.
+    const {values}=await scanSession(id);
+    try{await sensitiveModels.ensureReady();return new OcrFrameRedactor({ocr:sensitiveModels.getOcr(),knownValues:values});}catch{return WITHHOLD_FRAME_REDACTOR;}
+  };
+  enrichment.setImageRedactor(documentRedactor);
+  documentBuilder.setImageRedactor(documentRedactor);
+
   /**
    * Fold the frame-blur tally (known only after the describer has pulled frames)
    * into the pre-send text report, and decide whether there's anything worth
@@ -312,7 +420,7 @@ export function registerIpc(
       // proceeds; the (raw-value-free) report is returned purely for a UI summary.
       const { redaction, report } = await buildRedaction(id);
       try {
-        const analysis = await describer.analyze(id, redaction);
+        const analysis = await sessionLocks.withLock(id,"analysis",async signal=>{signal.throwIfAborted();return describer.analyze(id,redaction,signal);});
         const review = summarizeProtection(report, redaction);
         saveSensitiveReport(id, review);
         return { ok: true, analysis, review };
@@ -331,11 +439,11 @@ export function registerIpc(
       // Re-scan + rebind the redactor so the feedback round stays masked too.
       const { redaction, report } = await buildRedaction(input.sessionId);
       try {
-        const analysis = await describer.feedback(
+        const analysis = await sessionLocks.withLock(input.sessionId,"analysis",signal=>describer.feedback(
           input.sessionId,
           { overall: input.overall, steps: input.steps ?? [] },
-          redaction,
-        );
+          redaction, signal,
+        ));
         const review = summarizeProtection(report, redaction);
         saveSensitiveReport(input.sessionId, review);
         return { ok: true, analysis, review };
@@ -358,11 +466,11 @@ export function registerIpc(
   ipcMain.handle(IPC.updateAnalysis, async (_event, input: AnalysisEditInput): Promise<AnalyzeResult> => {
     if (!isValidSessionId(input?.sessionId)) return { ok: false, error: "Unknown session." };
     try {
-      const analysis = await describer.edit(input.sessionId, {
+      const analysis = await sessionLocks.withLock(input.sessionId,"edit",()=>describer.edit(input.sessionId, {
         title: input.title,
         intent: input.intent,
         steps: input.steps,
-      });
+      }));
       return { ok: true, analysis };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -372,7 +480,7 @@ export function registerIpc(
   });
 
   ipcMain.handle(IPC.cancelAnalysis, async (_event, sessionId: string) => {
-    if (isValidSessionId(sessionId)) await describer.cancel(sessionId);
+    if (isValidSessionId(sessionId)) {sessionLocks.cancel(sessionId);await describer.cancel(sessionId);}
     return { ok: true };
   });
 
@@ -380,6 +488,7 @@ export function registerIpc(
 
   ipcMain.handle(IPC.deleteSession, async (_event, sessionId: string): Promise<DeleteSessionResult> => {
     if (!isValidSessionId(sessionId)) return { ok: false, error: "Unknown session." };
+    if(sessionLocks.busy(sessionId))return {ok:false,error:"该录制仍有处理任务，请等待或取消。"};
     if (recorder.status().sessionId === sessionId) {
       return { ok: false, error: "You can't delete a recording while it's still in progress." };
     }
@@ -401,6 +510,7 @@ export function registerIpc(
     try {
       await describer.forget(sessionId); // release any idle agent holding the folder
       await builder.forget(sessionId);
+      await documentBuilder.forget(sessionId);
       await automationBuilder.forget(sessionId);
       await deleteSession(sessionId);
       recorder.forgetSession(sessionId); // clear the "last completed" pointer if it was this one
@@ -418,7 +528,8 @@ export function registerIpc(
       if (!isValidSessionId(sessionId)) return { ok: false, error: "Unknown session." };
       // The session folder is still being written while it records; refuse to zip
       // a moving target. Analyzing/building are read-only, so those are allowed.
-      if (recorder.status().sessionId === sessionId) {
+      if(sessionLocks.busy(sessionId))return {ok:false,error:"该录制仍有处理任务，请等待或取消。"};
+    if (recorder.status().sessionId === sessionId) {
         return {
           ok: false,
           error: "You can't download details while this recording is still in progress.",
@@ -453,7 +564,8 @@ export function registerIpc(
   ipcMain.handle(IPC.buildSkill, async (_event, input: SkillBuildInput): Promise<SkillPlanResult> => {
     if (!isValidSessionId(input?.sessionId)) return { ok: false, error: "Unknown session." };
     try {
-      const plan = await builder.build(input);
+      const gate=enrichment.gate(input.sessionId);if(!gate.allowed)throw new Error(gate.reason!);
+      const plan = await sessionLocks.withLock(input.sessionId,"generation",()=>builder.build(input));
       return { ok: true, plan };
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
@@ -467,7 +579,8 @@ export function registerIpc(
     async (_event, sessionId: string, plan: SkillPlan): Promise<SkillPreviewResult> => {
       if (!isValidSessionId(sessionId)) return { ok: false, error: "Unknown session." };
       try {
-        return { ok: true, preview: await builder.prepare(sessionId, plan) };
+        const gate=enrichment.gate(sessionId);if(!gate.allowed)throw new Error(gate.reason!);
+        return { ok: true, preview: await sessionLocks.withLock(sessionId,"generation",()=>builder.prepare(sessionId, plan)) };
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         log.warn("prepare skill failed:", error);
@@ -502,7 +615,8 @@ export function registerIpc(
         return { ok: false, error: "Invalid skill preview." };
       }
       try {
-        const placed = await builder.create(sessionId, plan, async (): Promise<SkillTarget | null> => {
+        const gate=enrichment.gate(sessionId);if(!gate.allowed)throw new Error(gate.reason!);
+        const placed = await sessionLocks.withLock(sessionId,"generation",()=>builder.create(sessionId, plan, async (): Promise<SkillTarget | null> => {
           if (placement === "install") return { kind: "install" };
           // Export == download: let the user pick a destination folder; we drop a
           // ready-to-use <name>/SKILL.md inside it. A dismissed dialog is a cancel, not an error.
@@ -517,7 +631,7 @@ export function registerIpc(
             : await dialog.showOpenDialog(opts);
           if (result.canceled || result.filePaths.length === 0) return null;
           return { kind: "export", dir: result.filePaths[0] };
-        }, previewId);
+        }, previewId));
         if (!placed) return { ok: false, canceled: true };
         const { skill, path: file } = placed;
         return { ok: true, skill, path: file, placement };
@@ -529,6 +643,13 @@ export function registerIpc(
     },
   );
 
+  ipcMain.handle(IPC.getSkillPlan,(_event,id:string)=>{
+    if(!isValidSessionId(id))return null;
+    try{const file=path.join(sessionDir(id),'skill-plan.json');if(!existsSync(file))return null;const plan=SkillPlanSchema.parse(JSON.parse(readFileSync(file,'utf8')));const context=generationContext(id,plan.architecture);if(context&&(plan.generation?.inputRevision!==context.inputRevision||plan.generation?.sourceFingerprint!==fingerprint(context)))return null;return plan;}catch{return null;}
+  });
+  ipcMain.handle(IPC.saveSkillPlan,(_event,id:string,value:unknown)=>{
+    try{if(!isValidSessionId(id)||sessionLocks.busy(id))throw new Error('请先等待当前任务完成。');const plan=SkillPlanSchema.parse(value);const context=generationContext(id,plan.architecture);if(context&&(plan.generation?.inputRevision!==context.inputRevision||plan.generation?.sourceFingerprint!==fingerprint(context)))throw new Error('计划输入已过期，请重新生成。');atomicJson(path.join(sessionDir(id),'skill-plan.json'),plan);return {ok:true};}catch(error){return {ok:false,error:error instanceof Error?error.message:'无法保存计划。'};}
+  });
   ipcMain.handle(IPC.getSkill, (_event, sessionId: string) =>
     isValidSessionId(sessionId) ? loadPersistedSkill(sessionId) : null,
   );

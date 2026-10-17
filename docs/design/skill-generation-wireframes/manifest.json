@@ -1,0 +1,1260 @@
+[
+  {
+    "order": 1,
+    "id": "home",
+    "title": "录制页：保持现有界面",
+    "group": "主流程",
+    "notes": [
+      "以用户提供的真实录制页为底稿，保持竖向窗口、圆形按钮、计时器、卡片及四行状态原样布局。",
+      "圆形录制按钮与快捷键先打开目标确认；确认后才开始采集。设置及其他入口位置不变。"
+    ],
+    "links": [
+      "settings",
+      "goal",
+      "speech",
+      "analysis"
+    ]
+  },
+  {
+    "order": 2,
+    "id": "goal",
+    "title": "录制前：一句话说明目标",
+    "group": "主流程",
+    "notes": [
+      "只收集产出类型和任务目标；初始不代选、不代填。示例为占位文字。",
+      "文字或麦克风输入；至少填写目标后主按钮才启用。权限失败保留目标。"
+    ],
+    "links": [
+      "settings",
+      "goal",
+      "speech",
+      "analysis",
+      "home",
+      "voice",
+      "home",
+      "recording"
+    ]
+  },
+  {
+    "order": 3,
+    "id": "recording",
+    "title": "录制中：保持原布局",
+    "group": "主流程",
+    "notes": [
+      "沿用录制页布局，只更新计时、停止按钮与实际采集状态；不替换为宽屏工作台。",
+      "结束后保存再进入分析，浏览器心跳不冒充录制成功。"
+    ],
+    "links": [
+      "settings",
+      "analyzing",
+      "speech",
+      "analysis"
+    ]
+  },
+  {
+    "order": 4,
+    "id": "analyzing",
+    "title": "分析中：只显示当前进度",
+    "group": "主流程",
+    "notes": [
+      "显示真实阶段与耗时；不虚构百分比，完成后自动呈现分析结果。",
+      "取消只停止当前处理，保留录制；再次开始须显式操作。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis-error"
+    ]
+  },
+  {
+    "order": 5,
+    "id": "analysis",
+    "title": "原始素材确认：核对操作记录",
+    "group": "主流程",
+    "notes": [
+      "记录原始操作，保留粗略描述和不确定性，不预先编造可复用规则。",
+      "用户可以纠错、查看材料、修改目标或显式重新整理；点击确认并深度分析后才运行第二阶段。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "goal-edit",
+      "clarify-loading",
+      "analyzing",
+      "timeline",
+      "analysis-edit",
+      "timeline",
+      "timeline",
+      "timeline"
+    ]
+  },
+  {
+    "order": 6,
+    "id": "clarify-loading",
+    "title": "深度分析：使用邮箱补充细节",
+    "group": "主流程",
+    "notes": [
+      "从分析页继续后自动识别应用并匹配已启用能力；本页为匹配与实际调用成功开始后的示例。",
+      "只有连接检查、账号/授权范围和只读工具核验通过，且调用真正开始，才能显示正在通过邮箱补充；发现工具不等于已使用。",
+      "输入来自录制目标、前序分析、可定位事件和已有材料；仅查询与本次录制相关的邮件，优先消息 ID，再使用窄时间范围及联系人/主题定位。",
+      "已有授权范围内自动读取；未启用不自动开启。权限或登录缺失时就地提供修复或跳过，不要求正常路径重复确认。",
+      "调用返回的材料先经隐私处理、关联与时间核验，再生成带来源的候选；仍无法确定的业务规则才形成问卷。",
+      "返回分析不停止后台任务；取消停止后续查询，尽可能取消在途请求，迟到返回不能继续推进界面。展示读取 Claude 结构化进度 JSON，工具调用与阶段结果另由应用核验，不显示思维链或假进度。",
+      "这是新增设计，现有受控运行适配尚未据此接通业务 MCP；不能通过改提示词绕过工具隔离。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "deep-cancelled",
+      "capability-details",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 7,
+    "id": "clarify",
+    "title": "深度分析：必要时回答问题",
+    "group": "主流程",
+    "notes": [
+      "取消所有二级阶段导航；问题、其他输入、可选材料在同一页完成。",
+      "首次只展示 1–3 个必要业务问题；不问模型配置、工具或标注含义。",
+      "默认无答案。提交并继续分析提交当前回答及材料；未答保持缺口，不要求额外确认材料页。",
+      "本图演示邮箱补充成功后进入问卷；只有实际完成才出现补充摘要，未查询/失败时不显示。",
+      "未回答也可提交继续分析，未答必须作为缺口呈现在待确认分析结果中，不采用默认选项。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "materials",
+      "deep-refining",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "capability-complete"
+    ]
+  },
+  {
+    "order": 8,
+    "id": "deep-result",
+    "title": "深度分析：确认完整流程",
+    "group": "主流程",
+    "notes": [
+      "这是第二阶段的明确产物，不是最终 Skill；正文展示目标、流程、业务规则、每次变化内容与异常处理。",
+      "只有点击确认并生成才批准当前深度分析版本并启动生成；浏览、工具返回成功、回答提交均不等于确认。",
+      "流程正文可直接修改；工具与来源折叠查看。支持返回原始素材、补充后重新分析，保留旧回答和结果。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "clarify-loading",
+      "generating",
+      "deep-edit",
+      "analysis-tools"
+    ]
+  },
+  {
+    "order": 9,
+    "id": "generating",
+    "title": "生成中：根据已确认结果生成",
+    "group": "主流程",
+    "notes": [
+      "只使用用户已确认且未过期的深度分析结果生成；不将未经确认的补充悄悄写入 Skill。",
+      "生成失败保留确认结果；如发现新关键冲突则返回深度分析，并在确认后重新生成。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "generation-error"
+    ]
+  },
+  {
+    "order": 10,
+    "id": "preview",
+    "title": "生成：统一预览与确认",
+    "group": "主流程",
+    "notes": [
+      "根据已确认深度分析展示生成内容；可编辑、返回修改分析或显式重新生成。",
+      "确认并保存用于文件落盘，不替代之前对深度分析内容的确认；依赖与来源按需查看。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "generating",
+      "saved",
+      "output",
+      "source",
+      "preview-edit",
+      "sources",
+      "skill-tools"
+    ]
+  },
+  {
+    "order": 11,
+    "id": "saved",
+    "title": "保存完成：一个结束状态",
+    "group": "主流程",
+    "notes": [
+      "点击确认并保存后调用原生保存对话框，取消/失败留在预览；仅保存成功后显示本页。",
+      "文件系统按钮在线稿中为位置示意，不假装已产生实际文件。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "preview"
+    ]
+  },
+  {
+    "order": 12,
+    "id": "voice",
+    "title": "语音输入",
+    "group": "可选与异常",
+    "notes": [
+      "麦克风仅用于这一段目标；不提前录屏。失败回到文字输入，保留已有文字。"
+    ],
+    "links": [
+      "settings",
+      "goal",
+      "speech",
+      "analysis",
+      "home",
+      "voice-review",
+      "goal",
+      "goal"
+    ]
+  },
+  {
+    "order": 13,
+    "id": "voice-review",
+    "title": "核对语音文字",
+    "group": "可选与异常",
+    "notes": [
+      "采用回填原目标，已有内容冲突时选择追加/替换；不静默覆盖，不自动开始录制。"
+    ],
+    "links": [
+      "settings",
+      "goal",
+      "speech",
+      "analysis",
+      "home",
+      "goal",
+      "voice",
+      "goal"
+    ]
+  },
+  {
+    "order": 14,
+    "id": "timeline",
+    "title": "展开录制材料",
+    "group": "可选与异常",
+    "notes": [
+      "保留三条时间轴；悬停分别预览转写、截图、浏览器操作。",
+      "无数据明确显示未采集/无操作，禁止用加载状态冒充空数据。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "goal-edit",
+      "clarify-loading",
+      "analyzing",
+      "analysis",
+      "analysis-edit",
+      "timeline",
+      "timeline",
+      "timeline"
+    ]
+  },
+  {
+    "order": 15,
+    "id": "capability-matching",
+    "title": "同页：识别应用并检查能力",
+    "group": "可选与异常",
+    "notes": [
+      "识别应用→匹配实际已启用能力→检查账号和只读权限，不新增用户操作阶段。",
+      "邮箱/MCP 名称相似不足以匹配；要核对工具 schema、支持的数据对象、业务账号及任务范围。",
+      "仅有配置或历史快照时显示检查中/未核验，不显示已登录；未提供明确认证状态时使用已连接或可读取。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "deep-cancelled",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 16,
+    "id": "capability-complete",
+    "title": "同页：补充完成后整理问题",
+    "group": "可选与异常",
+    "notes": [
+      "只有已验证关联且可追溯的返回才计入补充项；模型自报和工具返回成功不等于业务事实正确。",
+      "本状态自动转换成问卷或深度分析结果，无需点击继续；候选内容先在深度分析结果确认。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "deep-cancelled",
+      "capability-details",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 17,
+    "id": "capability-login",
+    "title": "同页：登录失效，可跳过",
+    "group": "可选与异常",
+    "notes": [
+      "登录只在需要时处理；返回后显式重查，防止重复运行。",
+      "能力未启用、账号不符、没有匹配连接时使用相同轻提示结构，给出对应原因与去设置/先继续；不遍历所有业务系统。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "clarify-loading",
+      "clarify-unenriched",
+      "capability-details",
+      "agent",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 18,
+    "id": "capability-failed",
+    "title": "同页：查询失败，可继续",
+    "group": "可选与异常",
+    "notes": [
+      "超时/权限不足/限流/无匹配结果各自说明，保留已验证材料；可重试或仅用录制继续。",
+      "无匹配或多候选不得猜测关联，多候选保留待补充并允许用户提供材料；不要求技术问题问卷。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "clarify-loading",
+      "clarify-unenriched",
+      "capability-details",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 19,
+    "id": "capability-details",
+    "title": "按需：工具用途、范围和进度",
+    "group": "可选与异常",
+    "notes": [
+      "5 分钟只是线稿中的已确定查询范围示例；实际由录制时长、时区和具体证据决定，页面显示真实范围。",
+      "默认页只显示工具、用途、状态；详情提供受保护的账号提示、范围、已完成动作及脱敏错误，不能展示密钥或思维链。",
+      "成功材料保存来源 ID、获取时间、关联录制事件和时间适用性；来自当前状态的数据不证明录制时事实。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "clarify-loading"
+    ]
+  },
+  {
+    "order": 20,
+    "id": "clarify-unenriched",
+    "title": "问卷：仅使用录制内容",
+    "group": "可选与异常",
+    "notes": [
+      "未启用、登录失效、无结果或主动跳过工具补充时使用此状态；不显示已通过邮箱补充的摘要。",
+      "保留业务问题与事实缺口，来源详情只包含实际取得的材料。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "materials",
+      "deep-refining",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown"
+    ]
+  },
+  {
+    "order": 21,
+    "id": "clarify-answered",
+    "title": "问卷：已选择答案",
+    "group": "可选与异常",
+    "notes": [
+      "示例展示用户已选择的状态；初始页不预选。回答可随时修改，未提交仅为草稿。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "materials",
+      "deep-refining",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown"
+    ]
+  },
+  {
+    "order": 22,
+    "id": "clarify-other",
+    "title": "问卷：填写其他做法",
+    "group": "可选与异常",
+    "notes": [
+      "选其他后就地展开输入；切回选项保留输入草稿。多问句仍在同一页。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "materials",
+      "deep-refining",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown"
+    ]
+  },
+  {
+    "order": 23,
+    "id": "clarify-unknown",
+    "title": "问卷：暂不确定",
+    "group": "可选与异常",
+    "notes": [
+      "将不知道与未填写统一呈现为待补充，内部状态仍分别保存；不记作业务答案。",
+      "选择暂不确定后，缺口在深度分析结果、预览与文件中持续显示。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "materials",
+      "deep-result-incomplete",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown"
+    ]
+  },
+  {
+    "order": 24,
+    "id": "no-questions",
+    "title": "无需提问：直接确认深度分析结果",
+    "group": "可选与异常",
+    "notes": [
+      "无需提问时自动展示深度分析结果，用户确认后才生成，不展示空白问卷。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "clarify-loading",
+      "generating",
+      "deep-edit",
+      "analysis-tools"
+    ]
+  },
+  {
+    "order": 25,
+    "id": "materials",
+    "title": "同页展开可选补充",
+    "group": "可选与异常",
+    "notes": [
+      "同页展开补充区域，保留上方已答问题；收起后回到问卷，不是新增流程阶段。",
+      "文件检查通过前不能用于生成；失败仅阻止该文件，允许删除后继续。保留来源供预览审核。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "clarify-answered",
+      "deep-refining",
+      "clarify",
+      "clarify",
+      "clarify-answered"
+    ]
+  },
+  {
+    "order": 26,
+    "id": "conflict",
+    "title": "仅有冲突时追加问题",
+    "group": "可选与异常",
+    "notes": [
+      "原回答保留；只在同一页追加影响结果的问题，不重新走整套问卷。",
+      "用户提交后更新深度分析结果；问题未解决则可保留缺口生成草稿，不无限追问。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "clarify-answered",
+      "deep-refining",
+      "clarify-answered",
+      "clarify-answered",
+      "clarify-other",
+      "clarify-unknown"
+    ]
+  },
+  {
+    "order": 27,
+    "id": "draft",
+    "title": "预览：保留待补充项",
+    "group": "可选与异常",
+    "notes": [
+      "缺口不隐藏；预览与导出文件都保留待补充标识。保存草稿不等于事实已核验。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "generating",
+      "saved-draft",
+      "output",
+      "source",
+      "preview-edit",
+      "sources",
+      "skill-tools"
+    ]
+  },
+  {
+    "order": 28,
+    "id": "saved-draft",
+    "title": "草稿保存完成",
+    "group": "可选与异常",
+    "notes": [
+      "未解决问题持续保留；不以成功工具返回代替业务确认。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "draft"
+    ]
+  },
+  {
+    "order": 29,
+    "id": "sop",
+    "title": "预览：操作说明",
+    "group": "可选与异常",
+    "notes": [
+      "使用同一生成预览页，产出类型不同；Markdown 导出沿用原生文件保存，不新增执行能力。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "generating",
+      "saved",
+      "output",
+      "source",
+      "preview-edit",
+      "sources",
+      "skill-tools"
+    ]
+  },
+  {
+    "order": 30,
+    "id": "output",
+    "title": "按需更改输出形式",
+    "group": "可选与异常",
+    "notes": [
+      "录制前选择 SOP/Skill 则直接沿用，暂不确定时在生成前用此小弹层选择。",
+      "处理后端与输出格式独立；本地专属能力不自动写入通用技能。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "sop",
+      "preview",
+      "target",
+      "preview"
+    ]
+  },
+  {
+    "order": 31,
+    "id": "target",
+    "title": "高级：其他技能格式",
+    "group": "可选与异常",
+    "notes": [
+      "保留现有支持目标，放在其他格式，不做全屏平台卡片墙。",
+      "切换格式只使生成内容失效；如新目标缺少必要能力，显式保留依赖缺口，不静默假装支持。",
+      "本轮不设计 Scout 交付、自动化执行或试运行。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "preview",
+      "preview",
+      "preview",
+      "preview",
+      "output"
+    ]
+  },
+  {
+    "order": 32,
+    "id": "analysis-error",
+    "title": "分析未完成",
+    "group": "可选与异常",
+    "notes": [
+      "失败/取消不清空用户输入。只有实际持久化成功，才显示已保存。",
+      "需要配置修复时主按钮变为去设置；重试调用用户选择的后端，不静默回退。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analyzing",
+      "error-details"
+    ]
+  },
+  {
+    "order": 33,
+    "id": "generation-error",
+    "title": "这次没有生成成功",
+    "group": "可选与异常",
+    "notes": [
+      "失败/取消不清空用户输入。只有实际持久化成功，才显示已保存。",
+      "需要配置修复时主按钮变为去设置；重试调用用户选择的后端，不静默回退。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "generating",
+      "error-details"
+    ]
+  },
+  {
+    "order": 34,
+    "id": "error-details",
+    "title": "异常详情：原因和解决入口",
+    "group": "可选与异常",
+    "notes": [
+      "技术名只在需要修复时出现；完整错误折叠，支持复制脱敏详情。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "settings",
+      "clarify"
+    ]
+  },
+  {
+    "order": 35,
+    "id": "stale",
+    "title": "输入变化：一个更新动作",
+    "group": "可选与异常",
+    "notes": [
+      "原始素材或目标改变使深度分析及生成失效；回答或材料改变使相关深度分析和生成失效；仅改生成格式只使生成失效。",
+      "查看旧结果不会触发运行；受影响结果未更新、未重新确认前不可作为最新输入生成。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "clarify-loading"
+    ]
+  },
+  {
+    "order": 36,
+    "id": "goal-edit",
+    "title": "修改目标：保存后提示更新",
+    "group": "可选与异常",
+    "notes": [
+      "只保存目标，不启动录制；保留旧回答。语音回填必须返回编辑态，不能跳入新录制。"
+    ],
+    "links": [
+      "settings",
+      "goal",
+      "speech",
+      "analysis",
+      "home",
+      "home",
+      "stale"
+    ]
+  },
+  {
+    "order": 37,
+    "id": "analysis-edit",
+    "title": "就地修改分析",
+    "group": "可选与异常",
+    "notes": [
+      "实际为正文原位编辑，保持同一窗口；保存后标记受影响问题和成果需更新。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "stale"
+    ]
+  },
+  {
+    "order": 38,
+    "id": "preview-edit",
+    "title": "就地修改生成内容",
+    "group": "可选与异常",
+    "notes": [
+      "编辑不自动批准结果；保存修改回到预览，仍需最后确认并保存文件。",
+      "更改事实/规则的内容必须保留用户编辑来源；违反输出结构则就地提示。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "preview"
+    ]
+  },
+  {
+    "order": 39,
+    "id": "sources",
+    "title": "按需查看内容依据",
+    "group": "可选与异常",
+    "notes": [
+      "技术 Evidence/Claim schema 隐藏，保留用户可理解的来源和不确定性。",
+      "新外部事实仍按时间适用性审核；当前数据不能证明录制时事实。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "capability-details",
+      "preview"
+    ]
+  },
+  {
+    "order": 40,
+    "id": "source",
+    "title": "高级：查看文件原文",
+    "group": "可选与异常",
+    "notes": [
+      "文件原文为次要入口；默认预览面向业务人员。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "preview"
+    ]
+  },
+  {
+    "order": 41,
+    "id": "settings",
+    "title": "设置：简单概况",
+    "group": "设置",
+    "notes": [
+      "配置从主流程抽出；语音与隐私保持独立分类。正常状态不显示长篇机制说明。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "browser",
+      "ai",
+      "speech",
+      "privacy"
+    ]
+  },
+  {
+    "order": 42,
+    "id": "browser",
+    "title": "设置：浏览器插件",
+    "group": "设置",
+    "notes": [
+      "跨标签页采集；分别显示连接与录制状态。重连、安装和错误详情按需打开。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "error-details"
+    ]
+  },
+  {
+    "order": 43,
+    "id": "ai",
+    "title": "设置：AI 模型",
+    "group": "设置",
+    "notes": [
+      "自动策略仅在未安装受支持本地 Agent 时选择 API；登录失败不静默切换。",
+      "配置模型 API 展开地址、模型、密钥和连接检查。保存配置不启动模型任务。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "api-fields",
+      "settings"
+    ]
+  },
+  {
+    "order": 44,
+    "id": "api-fields",
+    "title": "设置：展开 API 配置",
+    "group": "设置",
+    "notes": [
+      "必要的技术字段保留在设置；密钥遮挡，检查状态和保存状态区分。保存失败保留输入。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "ai"
+    ]
+  },
+  {
+    "order": 45,
+    "id": "agent",
+    "title": "设置：能力开关",
+    "group": "设置",
+    "notes": [
+      "应用专用环境继承可核验的全局能力目录，不要求用户关联项目；不会修改全局配置。",
+      "新能力默认关闭，变更复核；开关先编辑草稿，保存后形成隔离配置。",
+      "已启用连接在已有授权与本次范围内可自动只读补充；发现、启用、登录和实际业务读取权限分别核验。",
+      "保存不授予业务写权限，无法强制排除关闭能力时阻止加载。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "agent-details",
+      "settings"
+    ]
+  },
+  {
+    "order": 46,
+    "id": "agent-details",
+    "title": "设置：按需查看技术信息",
+    "group": "设置",
+    "notes": [
+      "来源变更只显示受影响的项目并请求复核，不展示整页快照/哈希。",
+      "发现时仍需区分读取配置、启动连接、执行业务操作；详情提供脱敏诊断。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "agent"
+    ]
+  },
+  {
+    "order": 47,
+    "id": "speech",
+    "title": "设置：语音转写",
+    "group": "设置",
+    "notes": [
+      "录制期间有冲突的选项禁用；模型首次下载或不可用时提供行动入口。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "settings"
+    ]
+  },
+  {
+    "order": 48,
+    "id": "privacy",
+    "title": "设置：隐私保护",
+    "group": "设置",
+    "notes": [
+      "独立保存；关闭时用简短提示明确影响。隐私失败阻止相关材料传出，不用常驻说明淹没正文。"
+    ],
+    "links": [
+      "home",
+      "settings",
+      "browser",
+      "ai",
+      "agent",
+      "speech",
+      "privacy",
+      "settings"
+    ]
+  },
+  {
+    "order": 49,
+    "id": "deep-result-incomplete",
+    "title": "深度分析：仍有待补充项",
+    "group": "可选与异常",
+    "notes": [
+      "未知问题不变成规则；允许明确确认带缺口的分析，再生成标注待补充的草稿。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "clarify-loading",
+      "generating",
+      "deep-edit",
+      "analysis-tools"
+    ]
+  },
+  {
+    "order": 50,
+    "id": "deep-refining",
+    "title": "深度分析：结合回答完善结果",
+    "group": "可选与异常",
+    "notes": [
+      "回答与材料持久化后继续分析；完成进入深度分析结果，绝不直接进入生成。",
+      "按需读取原始截图、转写和事件核对缺口，不无条件重读全部视频；失败或取消保留回答和已取得证据。",
+      "左侧只汇总本次实际使用的工具与素材，不承载过程日志；未成功读取的工具明确标记。右侧读取 Claude 的 report_progress JSON 逐条更新动态时间轴，应用补实际状态；不显示模型思维链，模型报告不等于工具核验成功。",
+      "同一工具重复调用只保留一个左侧入口，动作和结果追加在右侧；长进展仅在时间轴内部滚动，用户上翻时不强制拉回，提供新进展提示。完成后自动进入必要问题或待确认结果；回看保留已有进展。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "deep-cancelled",
+      "capability-details",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 51,
+    "id": "deep-cancelled",
+    "title": "深度分析：暂停后可继续",
+    "group": "可选与异常",
+    "notes": [
+      "停止后续工具调用，迟到结果不改变界面；继续必须显式操作，复用仍有效的已存材料。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "analysis",
+      "clarify-loading"
+    ]
+  },
+  {
+    "order": 52,
+    "id": "deep-edit",
+    "title": "深度分析：直接编辑结果",
+    "group": "可选与异常",
+    "notes": [
+      "产品中为正文原位编辑，此图单独演示编辑态；保存用户修改后仍需确认并生成。",
+      "用户编辑留来源；若已有生成内容则标记需更新，保留旧成果。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "deep-result",
+      "deep-refining"
+    ]
+  },
+  {
+    "order": 53,
+    "id": "analysis-tools",
+    "title": "按需：本次分析实际使用的工具",
+    "group": "可选与异常",
+    "notes": [
+      "只列真实调用和使用的来源；配置中存在或已经登录不算使用。",
+      "列表示例属于邮箱补充成功路径；失败/跳过路径不能复用成功摘要。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "deep-result",
+      "capability-details"
+    ]
+  },
+  {
+    "order": 54,
+    "id": "skill-tools",
+    "title": "按需：Skill 的使用依赖",
+    "group": "可选与异常",
+    "notes": [
+      "区分生成时实际使用的工具和 Skill 未来使用依赖；未配置能力明确标记，不承诺已可执行。"
+    ],
+    "links": [
+      "home",
+      "analysis",
+      "analysis",
+      "analysis",
+      "settings",
+      "analysis",
+      "deep-result",
+      "preview",
+      "preview"
+    ]
+  }
+]

@@ -1,17 +1,16 @@
 const status=document.getElementById('status');
-async function refresh(){const s=await chrome.runtime.sendMessage({kind:'status'});status.textContent=`${s.connected?'本地桥已连接':'等待桌面应用'} · ${s.session?'录制中':'未录制'}\n${s.boundTab===null?'未绑定标签页':'已绑定标签页'} · 已同步 ${s.accepted} 条 · 待同步 ${s.pending} 条${s.error?'\n'+s.error:''}`;}
-document.getElementById('bind').onclick=async()=>{
- try{
-  const [tab]=await chrome.tabs.query({active:true,currentWindow:true});
-  if(!tab?.id||!/^https?:\/\//.test(tab.url??''))throw new Error('请在普通 HTTP/HTTPS 网页中使用');
-  const origin=new URL(tab.url).origin+'/*';
-  if(!await chrome.permissions.request({origins:[origin]}))throw new Error('未授权当前站点');
-  const id='site-'+await crypto.subtle.digest('SHA-256',new TextEncoder().encode(origin)).then(b=>Array.from(new Uint8Array(b)).slice(0,12).map(n=>n.toString(16).padStart(2,'0')).join(''));
-  const existing=await chrome.scripting.getRegisteredContentScripts({ids:[id]});
-  if(!existing.length)await chrome.scripting.registerContentScripts([{id,matches:[origin],js:['content.js'],allFrames:true,runAt:'document_start'}]);
-  await chrome.scripting.executeScript({target:{tabId:tab.id,allFrames:true},files:['content.js']});
-  await chrome.runtime.sendMessage({kind:'bind',tabId:tab.id});await refresh();
- }catch(e){status.textContent=String(e.message??e);}
+async function refresh(){
+  try{
+    let timer;
+    const s=await Promise.race([chrome.runtime.sendMessage({kind:'status'}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('连接超时')),2000);})]).finally(()=>clearTimeout(timer));
+    document.body.classList.toggle('recording',!!s.session);
+    status.textContent=`${s.session?(s.captureReady?'● 正在录制':'正在准备网页采集'):'未录制'} · ${s.connected?'本地桥已连接':'等待桌面应用'}\n全部普通网页标签页 · 已同步 ${s.accepted} 条 · 待同步 ${s.pending} 条${s.error?'\n'+s.error:''}`;
+  }catch{status.textContent='插件后台未响应，请在 chrome://extensions 中重新加载插件';}
+}
+document.getElementById('reconnect').onclick=async()=>{
+  const button=document.getElementById('reconnect');button.disabled=true;
+  try{await chrome.runtime.sendMessage({kind:'reconnect'});await refresh();}
+  catch{status.textContent='重连失败，请在 chrome://extensions 中重新加载插件';}
+  finally{button.disabled=false;}
 };
-document.getElementById('unbind').onclick=async()=>{await chrome.runtime.sendMessage({kind:'unbind'});await refresh();};
 void refresh();setInterval(refresh,1000);

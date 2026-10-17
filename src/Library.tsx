@@ -1,3 +1,8 @@
+import { DocumentBuilderView } from "./DocumentBuilderView";
+import { OUTPUT_TEMPLATES, type OutputKind } from "../common/output";
+import { EnhancementWorkspace,enhancementLabel } from "./EnhancementWorkspace";
+import { generationGate,type EnhancementWorkflow } from "../common/enhancement";
+import { CaptureTimeline } from "./CaptureTimeline";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import type { Analysis, AnalysisStep } from "../common/analysis";
@@ -11,7 +16,6 @@ import type {
   SkillPlacement,
   SkillPreview,
 } from "../common/ipc";
-import { AiSettingsPanel } from "./AiSettingsPanel";
 import type {
   BuildTarget,
   BuiltSkill,
@@ -21,7 +25,6 @@ import type {
 import {
   ARCHITECTURES,
   DEFAULT_TARGET,
-  TARGETS,
   buildTargetFor,
 } from "../common/skill";
 import type { AutomationPlan, BuiltAutomation } from "../common/automation";
@@ -45,8 +48,11 @@ import { SensitiveReview } from "./SensitiveReview";
 import { AnalysisRecovery, type AnalysisRun } from "./analysis-recovery";
 
 export function Library() {
+  const [autoAnalyzeId, setAutoAnalyzeId] = useState<string | null>(() =>
+    new URLSearchParams(window.location.hash.split("?")[1]).get("autoAnalyze"));
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(() =>
+    new URLSearchParams(window.location.hash.split("?")[1]).get("autoAnalyze"));
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [narrationStatus, setNarrationStatus] = useState<NarrationStatus | null>(null);
@@ -56,6 +62,17 @@ export function Library() {
     setSessions(list);
     setLoaded(true);
     setSelectedId((prev) => prev ?? list[0]?.id ?? null);
+  }, []);
+
+  useEffect(() => window.skillRecorder.onLibrarySessionRequested((sessionId) => {
+    setAutoAnalyzeId(sessionId);
+    setSelectedId(sessionId);
+    void loadSessions();
+  }), [loadSessions]);
+
+  const consumeAutoAnalysis = useCallback(() => {
+    setAutoAnalyzeId(null);
+    window.history.replaceState(null, "", "#library");
   }, []);
 
   useEffect(() => {
@@ -100,6 +117,7 @@ export function Library() {
         <div className="lib-list-head">
           <span className="eyebrow">录制记录</span>
           <span className="pill">{sessions.length}</span>
+          <button className="linky library-settings-button" onClick={() => void window.skillRecorder.openSettings()}>设置</button>
         </div>
         {notice && (
           <button className="sess-notice" onClick={() => setNotice(null)} title="关闭提示">
@@ -123,6 +141,8 @@ export function Library() {
             summary={selected}
             narrationStatus={narrationStatus}
             onChanged={loadSessions}
+            autoAnalyze={autoAnalyzeId === selected.id}
+            onAutoAnalysisStarted={consumeAutoAnalysis}
           />
         ) : (
           <div className="detail-empty">
@@ -400,17 +420,21 @@ function DebugDownload({ sessionId }: { sessionId: string }) {
 }
 
 function AnalysisError({ error }: { error: string }) {
-  return <div className="analysis-error"><p>{error}</p><AiSettingsPanel /></div>;
+  return <div className="analysis-error"><p>{error}</p><button className="linky" onClick={() => void window.skillRecorder.openSettings("agent")}>打开智能处理设置</button></div>;
 }
 
 function AnalysisWorkspace({
   summary,
   narrationStatus,
   onChanged,
+  autoAnalyze,
+  onAutoAnalysisStarted,
 }: {
   summary: SessionSummary;
   narrationStatus: NarrationStatus | null;
   onChanged: () => void | Promise<void>;
+  autoAnalyze: boolean;
+  onAutoAnalysisStarted: () => void;
 }) {
   const sessionId = summary.id;
   const voicePending = summary.hasAudio && !summary.hasNarration;
@@ -431,6 +455,7 @@ function AnalysisWorkspace({
       summary.narrationUpdatedAt > summary.analysis.narrationSourceUpdatedAt);
 
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analysisLoaded, setAnalysisLoaded] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const recovery = useRef(new AnalysisRecovery());
   const latestRun = useRef<AnalysisRun | null>(null);
@@ -460,8 +485,21 @@ function AnalysisWorkspace({
       : summary.hasAutomation && !summary.hasSkill
         ? "automation"
         : "none";
+  const [outputKind, setOutputKind] = useState<OutputKind | "undecided">(summary.requestedOutput ?? "undecided");
   const [launch, setLaunch] = useState<LaunchTarget>(initialLaunch);
   const [chosenArch, setChosenArch] = useState<SkillArchitecture>(DEFAULT_TARGET.architecture);
+  const [stage,setStage]=useState<'analysis'|'enhancement'|'generation'>(initialLaunch==='none'?'analysis':'generation');
+  const [workflow,setWorkflow]=useState<EnhancementWorkflow|null>(null);
+  const [gateReason,setGateReason]=useState('');
+  useEffect(()=>{
+    if(!analysis)return;
+    let live=true;void window.skillRecorder.enhancement({kind:'get',sessionId}).then(r=>{if(live&&r.workflow)setWorkflow(r.workflow);});
+    const unsubscribe=window.skillRecorder.onEnhancementChanged(event=>{if(event.sessionId===sessionId)setWorkflow(event.workflow);});
+    return ()=>{live=false;unsubscribe();};
+  },[sessionId,analysis?.revision]);
+  const gate=generationGate(workflow,workflow?.package?.inputRevision??workflow?.decision?.inputRevision??'');
+  const openGeneration=()=>{setStage('generation');if(launch==='none')setLaunch('picker');};
+
   useEffect(() => {
     workspaceLive.current = true;
     return () => {
@@ -483,6 +521,7 @@ function AnalysisWorkspace({
       // Rehydrate the redaction summary so it survives reopen (only when the session
       // is actually analyzed — never surface a stale report on an un-analyzed one).
       setReview(a ? r : null);
+      setAnalysisLoaded(true);
     });
     return () => {
       live = false;
@@ -496,6 +535,7 @@ function AnalysisWorkspace({
       stepsDirty.current = false;
       void window.skillRecorder.updateAnalysis({ sessionId, steps: stepsRef.current }).then((res) => {
         if (res.ok && res.analysis) setAnalysis(res.analysis);
+        else {stepsDirty.current=true;setError(res.error??"步骤保存失败，请等待当前任务完成后重试。");}
         void onChanged();
       });
     }, 500);
@@ -577,6 +617,16 @@ function AnalysisWorkspace({
     if (token) await executeRun(token);
   }, [executeRun]);
 
+  useEffect(() => {
+    if (!autoAnalyze || !analysisLoaded || !summary.processed) return;
+    // Defer so StrictMode's initial effect replay cannot start a canceled run.
+    const timer = setTimeout(() => {
+      onAutoAnalysisStarted();
+      if (!analysis && !summary.analysis) void run();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [autoAnalyze, analysisLoaded, summary.processed, summary.analysis, analysis, run, onAutoAnalysisStarted]);
+
   const cancel = useCallback(async () => {
     const token = latestRun.current;
     recovery.current.cancelRun();
@@ -613,18 +663,23 @@ function AnalysisWorkspace({
     void onChanged();
   }, [sessionId, draftTitle, draftIntent, onChanged]);
 
+  const generationContent=()=>{
   if (launch === "picker") {
     return (
       <TargetPicker
         startedAt={summary.startedAt}
+        onDocument={(kind) => { setOutputKind(kind); setLaunch(kind); }}
         onPick={(t) => {
+          setOutputKind("skill");
           setChosenArch(t.architecture);
           setLaunch(t.kind);
         }}
-        onClose={() => setLaunch("none")}
+        onClose={() => {setLaunch("none");setStage("analysis");}}
       />
     );
   }
+
+  if (launch === "sop" || launch === "manual") return <DocumentBuilderView key={`${sessionId}:${launch}`} sessionId={sessionId} kind={launch} sourceConfirmed={gate.allowed} onClose={() => setLaunch("picker")} />;
 
   if (launch === "skill") {
     return (
@@ -634,7 +689,7 @@ function AnalysisWorkspace({
         startedAt={summary.startedAt}
         hasSkill={summary.hasSkill}
         onClose={() => {
-          setLaunch("none");
+          setLaunch("none");setStage("analysis");
           void onChanged();
         }}
       />
@@ -649,14 +704,31 @@ function AnalysisWorkspace({
         startedAt={summary.startedAt}
         hasAutomation={summary.hasAutomation}
         onClose={() => {
-          setLaunch("none");
+          setLaunch("none");setStage("analysis");
           void onChanged();
         }}
       />
     );
   }
 
+    return null;
+  };
+
   return (
+    <div className="workflow-workspace">
+      <nav className="workflow-nav" aria-label="录制产物制作流程">
+        <button aria-current={stage==="analysis"?"step":undefined} onClick={()=>setStage("analysis")}><span>1 原始素材确认</span><small>{analyzing?"分析中":analysis?"已确认":"待确认"}</small></button>
+        <span aria-hidden="true">→</span>
+        <button disabled={!analysis} title={!analysis?"需先完成原始素材确认":undefined} aria-current={stage==="enhancement"?"step":undefined} onClick={()=>setStage("enhancement")}><span>2 补充分析</span><small>{enhancementLabel(workflow)}</small></button>
+        <span aria-hidden="true">→</span>
+        <button disabled={!analysis} title={!analysis?"需先完成分析":undefined} aria-current={stage==="generation"?"step":undefined} onClick={openGeneration}><span>3 生成</span><small>{summary.hasSkill?"已导出":gate.allowed?(gate.draft?"草稿":"待生成"):"待确认"}</small></button>
+      </nav>
+      {stage === "generation" && launch !== "picker" && <label className="output-kind-select">本次产物 <select value={outputKind} disabled={analyzing || ["queued","running","awaiting-input"].includes(workflow?.run?.status ?? "")} onChange={e => {
+        const next = e.target.value as OutputKind | "undecided";
+        setOutputKind(next);
+        setLaunch(stage === "generation" ? (next === "sop" || next === "manual" ? next : "picker") : "none");
+      }}><option value="undecided">暂不确定</option><option value="sop">SOP 操作说明</option><option value="skill">通用 Skill</option><option value="manual">产品使用手册</option></select></label>}
+      <div className="workflow-stage" hidden={stage!=="analysis"}>
     <section className="ws">
       <div className="ws-head">
         <div className="ws-titles">
@@ -704,7 +776,7 @@ function AnalysisWorkspace({
         )}
 
         {!summary.processed && (
-          <p className="ws-note">录制仍在处理，请稍后再试。</p>
+          <p className="ws-note">{autoAnalyze ? "正在整理录制素材，完成后自动开始分析…" : "录制仍在处理，请稍后再试。"}</p>
         )}
 
         {summary.processed && !analysis && !analyzing && (
@@ -732,6 +804,8 @@ function AnalysisWorkspace({
         {summary.processed && review && !analyzing && (
           <SensitiveReview report={review} onDismiss={() => setReview(null)} />
         )}
+
+        <CaptureTimeline sessionId={sessionId} hasAudio={summary.hasAudio} hasVideo={summary.hasVideo} busy={analyzing} />
 
         {analyzing && (
           <div className="status-line">
@@ -824,20 +898,21 @@ function AnalysisWorkspace({
         <div className="ws-foot">
           <span className="foot-status">{launchFootStatus(summary)}</span>
           <div className="ws-foot-actions">
+            <button className="record-cta" onClick={()=>setStage("enhancement")}>确认并补充分析 →</button>
             {summary.hasSkill && (
-              <button className="secondary" onClick={() => setLaunch("skill")} title="打开基于这条录制创建的技能">打开技能 →</button>
+              <button className="secondary" onClick={() => {setLaunch("skill");setStage("generation");}} title="打开基于这条录制创建的技能">打开技能 →</button>
             )}
             {summary.hasAutomation && (
               <button
                 className="secondary"
-                onClick={() => setLaunch("automation")}
+                onClick={() => {setLaunch("automation");setStage("generation");}}
                 title="打开基于这条录制创建的自动化"
               >打开自动化 →</button>
             )}
             <button
               className="record-cta"
-              onClick={() => setLaunch("picker")}
-              title="将这条录制转换为技能或自动化"
+              onClick={openGeneration}
+              title="基于这条录制生成 SOP、Skill 或使用手册"
             >
               {summary.hasSkill || summary.hasAutomation ? "再次创建 →" : "创建…"}
             </button>
@@ -845,6 +920,18 @@ function AnalysisWorkspace({
         </div>
       )}
     </section>
+      </div>
+      <div className="workflow-stage" hidden={stage!=="enhancement"}>
+        {analysis&&<EnhancementWorkspace analysis={analysis} sessionId={sessionId} workflow={workflow} activeStage={stage==='enhancement'} onWorkflow={setWorkflow} onGenerate={openGeneration}/>}
+      </div>
+      <div className="workflow-stage" hidden={stage!=="generation"}>
+        {!gate.allowed && launch==='skill' && !summary.hasSkill ? <section className="ws"><div className="ws-head"><span className="eyebrow">生成准备</span></div><div className="ws-body"><div className="enhancement-card"><strong>请先确认制作素材</strong><p>{gateReason||gate.reason}</p><p>导航只用于浏览，不会批准增强候选或自动跳过增强。</p><div className="processing-actions"><button className="record-cta" onClick={()=>setStage('enhancement')}>返回增强 / 审核</button><button className="secondary" onClick={()=>{setStage('enhancement');setGateReason('请在增强页明确跳过，并审核基础分析。');}}>明确跳过增强</button></div></div></div></section> : <>
+          {launch==='skill'&&gate.draft&&gate.gaps.length>0&&<div className="generation-draft">待确认草稿：{gate.gaps.join('；')}</div>}
+          {!gate.allowed&&launch==='skill'&&summary.hasSkill&&<div className="generation-draft">正在查看上一有效导出。制作新版前请返回增强并确认当前素材。</div>}
+          {generationContent()}
+        </>}
+      </div>
+    </div>
   );
 }
 
@@ -863,7 +950,7 @@ function narrationWorkLabel(status: NarrationStatus | null): string {
 /* --- Final stage: target picker + builders -------------------------------- */
 
 /** Which final-stage surface the analysis workspace is showing. */
-type LaunchTarget = "none" | "picker" | "skill" | "automation";
+type LaunchTarget = "none" | "picker" | "skill" | "automation" | "sop" | "manual";
 
 function launchFootStatus(summary: SessionSummary): string {
   if (summary.hasSkill && summary.hasAutomation) return "技能与自动化已创建";
@@ -874,11 +961,13 @@ function launchFootStatus(summary: SessionSummary): string {
 
 /** "你希望创建什么？" — picks both kind and architecture up front. */
 function TargetPicker({
+  onDocument,
   startedAt,
   onPick,
   onClose,
 }: {
   startedAt: number | null;
+  onDocument: (kind: "sop" | "manual") => void;
   onPick: (target: BuildTarget) => void;
   onClose: () => void;
 }) {
@@ -889,26 +978,18 @@ function TargetPicker({
           <span className="eyebrow">创建</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
-        <button className="ghost" onClick={onClose} title="返回分析">取消</button>
       </div>
       <div className="ws-body">
         <div className="sb-arch">
           <p className="sb-lead">你希望基于这条录制创建什么？</p>
-          <div className="arch-grid">
-            {TARGETS.map((t) => (
-              <button
-                key={`${t.kind}:${t.architecture}`}
-                className="arch-card"
-                disabled={!t.enabled}
-                onClick={() => t.enabled && onPick(t)}
-              >
-                <span className="arch-name">{t.label}</span>
-                <span className="arch-note">{t.enabled ? t.note : "即将推出"}</span>
-              </button>
-            ))}
+          <div className="arch-grid output-product-grid">
+            <button className="arch-card" onClick={() => onDocument("sop")}><span className="arch-name">SOP 操作说明</span><span className="arch-note">按顺序还原真实操作，不进行工具翻译</span></button>
+            <button className="arch-card" onClick={() => onDocument("manual")}><span className="arch-name">产品使用手册</span><span className="arch-note">先审核功能目录，再生成已覆盖的使用说明</span></button>
+            <button className="arch-card" onClick={() => onPick(DEFAULT_TARGET)}><span className="arch-name">通用 Skill</span><span className="arch-note">提炼可复用的任务流程，生成通用智能体技能</span></button>
           </div>
         </div>
       </div>
+      <div className="ws-foot"><div className="ws-foot-back"><button className="ghost" onClick={onClose}>返回分析</button></div></div>
     </section>
   );
 }
@@ -1018,9 +1099,12 @@ function SkillBuilderView({
         setPlacement(defaultPlacementFor(s.architecture));
         if (s.plan) setPlan(s.plan);
         dispatch({ type: "done" });
-      } else if (hasSkill) {
+      } else {
+        void window.skillRecorder.getSkillPlan(sessionId).then(draft=>{if(live&&draft){setPlan(draft);setArchitecture(draft.architecture);setPlacement(defaultPlacementFor(draft.architecture));dispatch({type:"settle",phase:"plan"});}});
+        if (hasSkill) {
         // We expected a skill but couldn't load it; fall back to the ready screen.
         dispatch({ type: "settle", phase: "ready" });
+        }
       }
     }).catch((cause: unknown) => {
       if (live && flowVersion.current === version) dispatch({
@@ -1032,6 +1116,12 @@ function SkillBuilderView({
       live = false;
     };
   }, [sessionId, hasSkill, defaultPlacementFor]);
+
+  useEffect(()=>{
+    if(!plan||phase!=='plan')return;
+    const timer=setTimeout(()=>{void window.skillRecorder.saveSkillPlan(sessionId,plan).then(result=>{if(!result.ok&&mounted.current)dispatch({type:'error',error:result.error??'计划保存失败。'});}).catch(()=>{if(mounted.current)dispatch({type:'error',error:'计划保存失败。'});});},500);
+    return ()=>clearTimeout(timer);
+  },[sessionId,plan,phase]);
 
   useEffect(() => {
     return window.skillRecorder.onSkillProgress((p: SkillBuildProgress) => {
@@ -1177,17 +1267,10 @@ function SkillBuilderView({
           <span className="eyebrow">{phase === "done" ? "技能" : "创建技能"}</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
-        <button
-          className="ghost"
-          onClick={onClose}
-          disabled={busy}
-          title={phase === "done" ? "查看这条录制的分析" : "返回分析"}
-        >
-          {phase === "done" ? "分析" : "关闭"}
-        </button>
       </div>
 
       <div className="ws-body">
+        <p>模板：{OUTPUT_TEMPLATES.skill.label} v{OUTPUT_TEMPLATES.skill.version}。先审核泛化流程与工具映射计划，再生成技能；内容审核不代表已经通过业务试运行。</p>
         {error && <AnalysisError error={error} />}
 
         {phase === "loading" && (
@@ -1200,7 +1283,6 @@ function SkillBuilderView({
         {phase === "ready" && (
           <div className="sb-arch">
             <p className="sb-lead">Build a {archLabel(architecture)} skill from this recording.</p>
-            <button className="record-cta" onClick={() => void runPlan()}>生成技能计划 →</button>
           </div>
         )}
 
@@ -1208,7 +1290,6 @@ function SkillBuilderView({
           <div className="status-line" role="status">
             <span className="spinner" />
             <span className="status-text">{statusLine || "正在处理…"}</span>
-            <button className="linky status-cancel" onClick={cancelRun} disabled={phase === "stopping"}>取消</button>
             {(phase === "preparing" || preview) && (
               <button className="ghost" ref={reviewButtonRef} onClick={() => dispatch({ type: "visibility", open: true })}>查看 SKILL.md</button>
             )}
@@ -1272,7 +1353,7 @@ function SkillBuilderView({
 
       {phase === "plan" && plan && (
         <div className="ws-foot">
-          <span className="foot-status" />
+          <div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div>
           <div className="ws-foot-actions">
             <button className="ghost" ref={reviewButtonRef} onClick={() => void review()}>查看 SKILL.md</button>
             {placementModel.actions.map((action) => (
@@ -1291,7 +1372,7 @@ function SkillBuilderView({
 
       {phase === "done" && (
         <div className="ws-foot">
-          <span className="foot-status">技能已创建</span>
+          <div className="ws-foot-back"><button className="ghost" onClick={onClose}>返回分析</button><span className="foot-status">技能已创建</span></div>
           <div className="ws-foot-actions">
             {exportedPath && (
               <button className="record-cta" onClick={() => void window.skillRecorder.revealSkill(sessionId)}>在文件夹中显示</button>
@@ -1299,6 +1380,7 @@ function SkillBuilderView({
           </div>
         </div>
       )}
+      {phase !== "plan" && phase !== "done" && <div className="ws-foot"><div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div><div className="ws-foot-actions">{phase === "ready" && <button className="record-cta" onClick={() => void runPlan()}>生成技能计划 →</button>}{busy && <button className="secondary" onClick={cancelRun} disabled={phase === "stopping"}>取消</button>}</div></div>}
       {reviewOpen && (
         <SkillReviewModal
           preview={preview}
@@ -1441,14 +1523,6 @@ function AutomationBuilderView({
           <span className="eyebrow">{phase === "done" ? "自动化" : "创建自动化"}</span>
           <span className="ws-when">{formatWhen(startedAt)}</span>
         </div>
-        <button
-          className="ghost"
-          onClick={onClose}
-          disabled={busy}
-          title={phase === "done" ? "查看这条录制的分析" : "返回分析"}
-        >
-          {phase === "done" ? "分析" : "关闭"}
-        </button>
       </div>
 
       <div className="ws-body">
@@ -1464,7 +1538,6 @@ function AutomationBuilderView({
         {phase === "ready" && (
           <div className="sb-arch">
             <p className="sb-lead">Build a {archLabel(architecture)} automation from this recording.</p>
-            <button className="record-cta" onClick={() => void runPlan()}>生成自动化计划 →</button>
           </div>
         )}
 
@@ -1472,7 +1545,6 @@ function AutomationBuilderView({
           <div className="status-line">
             <span className="spinner" />
             <span className="status-text">{statusLine || "正在处理…"}</span>
-            <button className="linky status-cancel" onClick={cancelRun}>取消</button>
           </div>
         )}
 
@@ -1545,7 +1617,7 @@ function AutomationBuilderView({
 
       {phase === "plan" && plan && (
         <div className="ws-foot">
-          <span className="foot-status" />
+          <div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div>
           <div className="ws-foot-actions">
             <button
               className="record-cta"
@@ -1558,7 +1630,7 @@ function AutomationBuilderView({
 
       {phase === "done" && (
         <div className="ws-foot">
-          <span className="foot-status">自动化已创建</span>
+          <div className="ws-foot-back"><button className="ghost" onClick={onClose}>返回分析</button><span className="foot-status">自动化已创建</span></div>
           <div className="ws-foot-actions">
             {exportedPath && (
               <button
@@ -1569,6 +1641,7 @@ function AutomationBuilderView({
           </div>
         </div>
       )}
+      {phase !== "plan" && phase !== "done" && <div className="ws-foot"><div className="ws-foot-back"><button className="ghost" onClick={onClose} disabled={busy}>返回分析</button></div><div className="ws-foot-actions">{phase === "ready" && <button className="record-cta" onClick={() => void runPlan()}>生成自动化计划 →</button>}{busy && <button className="secondary" onClick={cancelRun}>取消</button>}</div></div>}
     </section>
   );
 }

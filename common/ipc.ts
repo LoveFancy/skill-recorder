@@ -37,6 +37,7 @@ export interface LastSession {
 
 /** A saved recording as shown in the sessions library. */
 export interface SessionSummary {
+  requestedOutput?: import("./output").OutputKind | "undecided";
   id: string;
   startedAt: number | null;
   stoppedAt: number | null;
@@ -279,6 +280,10 @@ export interface StartResult {
 
 /** Per-session capture choices the user makes in the HUD before recording. */
 export interface StartOptions {
+  /** User-confirmed purpose captured before recording starts. */
+  intent?: string;
+  /** Preferred output selected before recording; analysis treats this as context only. */
+  outputKind?: "sop" | "skill" | "manual" | "undecided";
   /** Capture microphone narration for this session (opt-in, off by default). */
   narration?: boolean;
   /** Source language to preserve in the transcript. Defaults to English. */
@@ -417,6 +422,7 @@ export interface DoctorSource {
 }
 
 export interface DoctorReport {
+  processing?:import("./agents").ProcessingStatus;
   platform: NodeJS.Platform;
   aiProvider: AiProviderInfo;
   activeWindow: ActiveWindowInfo;
@@ -445,6 +451,9 @@ export const IPC = {
   status: "recorder:status",
   marker: "recorder:marker",
   doctor: "doctor:check",
+  processing: "processing:action",
+  enhancement: "enhancement:action",
+  enhancementChanged: "enhancement:changed",
   aiSettings: "ai:settings",
   aiSettingsSave: "ai:settings-save",
   statusChanged: "recorder:status-changed",
@@ -453,6 +462,7 @@ export const IPC = {
   narrationStatus: "narration:status",
   narrationDownload: "narration:download",
   narrationTranscribe: "narration:transcribe",
+  intentTranscribe: "narration:transcribe-intent",
   narrationStatusChanged: "narration:status-changed",
   sensitiveModelStatus: "sensitive:status",
   sensitiveSetAdvanced: "sensitive:set-advanced",
@@ -469,11 +479,14 @@ export const IPC = {
   listSessions: "sessions:list",
   deleteSession: "sessions:delete",
   exportDebugBundle: "sessions:export-debug",
+  document: "document:action",
   buildSkill: "skill:build",
   prepareSkill: "skill:prepare",
   discardSkillPreview: "skill:discard-preview",
   createSkill: "skill:create",
   getSkill: "skill:get",
+  getSkillPlan: "skill:plan-get",
+  saveSkillPlan: "skill:plan-save",
   cancelSkill: "skill:cancel",
   revealSkill: "skill:reveal",
   skillProgress: "skill:progress",
@@ -494,7 +507,13 @@ export const IPC = {
   terminalStatusChanged: "terminal:status-changed",
   terminalFinishConfirmationRequested: "terminal:finish-confirmation-requested",
   terminalOutput: "terminal:output",
+  openSettings: "ui:open-settings",
+  closeSettings: "ui:close-settings",
+  settingsSection: "ui:settings-section",
+  settingsCloseRequested: "ui:settings-close-requested",
+  settingsChanged: "ui:settings-changed",
   openLibrary: "ui:open-library",
+  librarySessionRequested: "ui:library-session-requested",
   closeLibrary: "ui:close-library",
   recordingControlsExpanded: "ui:recording-controls-expanded",
   fitRecorderHeight: "ui:fit-recorder-height",
@@ -502,12 +521,22 @@ export const IPC = {
 
 /** Shape exposed on `window.skillRecorder` by the preload bridge. */
 export interface SkillRecorderApi {
+  openSettings(section?: import("./settings").SettingsSection): Promise<void>;
+  closeSettings(): Promise<void>;
+  onSettingsSection(cb: (section: import("./settings").SettingsSection) => void): () => void;
+  onSettingsCloseRequested(cb: () => void): () => void;
+  onSettingsChanged(cb: () => void): () => void;
+  processing(action:import("./processing-api").ProcessingAction):Promise<import("./processing-api").ProcessingResult>;
+  enhancement(action:import("./processing-api").EnhancementAction):Promise<import("./processing-api").EnhancementResponse>;
+  onEnhancementChanged(cb:(event:{sessionId:string;workflow:import("./enhancement").EnhancementWorkflow})=>void):()=>void;
+  reconnectBrowser(): Promise<import("./browser").BrowserStatus>;
+  captureTimeline(sessionId:string): Promise<CaptureTimeline>;
   browserStatus(): Promise<import("./browser").BrowserStatus>;
   revealBrowserExtension(): Promise<void>;
   /** Request a start; may require the pre-recording privacy warning first. */
-  start(): Promise<StartResult>;
+  start(options?: StartOptions): Promise<StartResult>;
   /** Start once after the user explicitly proceeds through the privacy warning. */
-  confirmStart(): Promise<StartResult>;
+  confirmStart(options?: StartOptions): Promise<StartResult>;
   markRecordingPrivacyReviewed(): Promise<void>;
   onRecordingPrivacyWarningRequested(cb: () => void): () => void;
   stop(forceTerminal?: boolean): Promise<StopResult>;
@@ -547,6 +576,7 @@ export interface SkillRecorderApi {
   narrationStatus(): Promise<NarrationStatus>;
   downloadNarrationModel(): Promise<NarrationActionResult>;
   transcribeNarration(sessionId: string): Promise<NarrationActionResult>;
+  transcribeIntent(samples: Float32Array): Promise<{ ok: boolean; text?: string; error?: string }>;
   onNarrationStatusChanged(cb: (status: NarrationStatus) => void): () => void;
   /** Current status of the "Advanced protection" model (on-device frame OCR). */
   sensitiveModelStatus(): Promise<SensitiveModelStatus>;
@@ -571,7 +601,7 @@ export interface SkillRecorderApi {
   /** Send NL feedback and re-analyze in the same multi-turn session. */
   analyzeFeedback(input: AnalysisFeedbackInput): Promise<AnalyzeResult>;
   /** Load the persisted analysis for a session, if any. */
-  stepScreenshots(sessionId: string, startMs?: number, endMs?: number): Promise<{ timeMs: number; dataUrl: string; regions: CaptureRegion[] }[]>;
+  stepScreenshots(sessionId: string, startMs?: number, endMs?: number, excludedFiles?: string[]): Promise<{ timeMs: number; dataUrl: string; regions: CaptureRegion[] }[]>;
   getAnalysis(sessionId: string): Promise<Analysis | null>;
   /** Edit the title/intent text directly (no re-analysis). */
   updateAnalysis(input: AnalysisEditInput): Promise<AnalyzeResult>;
@@ -592,6 +622,7 @@ export interface SkillRecorderApi {
    * Propose (or refine) a skill from a recording's analysis. Pass `feedback` to
    * revise the current plan in the same multi-turn conversation.
    */
+  document(action: import("./output").DocumentAction): Promise<import("./output").DocumentResponse>;
   buildSkill(input: SkillBuildInput): Promise<SkillPlanResult>;
   /**
    * Finalize the (user-edited) skill plan and place its SKILL.md. The edited plan the
@@ -610,6 +641,8 @@ export interface SkillRecorderApi {
   ): Promise<SkillCreateResult>;
   /** Load a previously built skill for a session, if any. */
   getSkill(sessionId: string): Promise<BuiltSkill | null>;
+  getSkillPlan(sessionId:string):Promise<SkillPlan|null>;
+  saveSkillPlan(sessionId:string,plan:SkillPlan):Promise<{ok:boolean;error?:string}>;
   /** Abort an in-flight build. */
   cancelSkill(sessionId: string): Promise<{ ok: boolean }>;
   /** Reveal an exported SKILL.md in the OS file manager. */
@@ -633,6 +666,7 @@ export interface SkillRecorderApi {
   onAutomationProgress(cb: (progress: AutomationBuildProgress) => void): () => void;
   /** Open (and focus) the Sessions library window, docked to the recorder. */
   openLibrary(): Promise<void>;
+  onLibrarySessionRequested(cb: (sessionId: string) => void): () => void;
   /** Close the Sessions library window from within it. */
   closeLibrary(): Promise<void>;
   /** Resize the recording-controls window while an overlay panel is visible. */
@@ -641,3 +675,5 @@ export interface SkillRecorderApi {
    *  so the fixed-width HUD never shows dead space or clips a revealed row. */
   fitRecorderHeight(height: number): void;
 }
+
+export interface CaptureTimeline { durationMs:number; frames:number[]; voice:{atMs:number;endMs:number;text:string}[]; browser:{atMs:number;kind:string;summary:string}[]; }

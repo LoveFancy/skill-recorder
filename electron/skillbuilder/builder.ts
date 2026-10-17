@@ -1,3 +1,9 @@
+import { RECORDING_SEMANTICS } from "../../common/clarification";
+import { OUTPUT_TEMPLATES } from "../../common/output";
+import { redactIncremental } from "../enrichment/privacy";
+import { generationContext,generationKey } from "../enrichment/generation";
+import { atomicJson, fingerprint } from "../enrichment/store";
+import { validatePlanTooling } from "./plan-tools";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
@@ -72,6 +78,7 @@ type SkillTargetPicker = () => Promise<SkillTarget | null>;
 interface PreparedSkill extends SkillPreview {
   skill: BuiltSkill;
   planKey: string;
+  inputKey:string;
 }
 
 interface BuildOperation {
@@ -155,11 +162,11 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
 
   /** Prepare the exact file for optional review, without writing or placing it. */
   async prepare(sessionId: string, editedPlan: SkillPlan): Promise<SkillPreview> {
-    const plan = SkillPlanSchema.parse(editedPlan);
+    const plan = this.bindPlan(sessionId,SkillPlanSchema.parse(editedPlan));
     const operation = this.begin(sessionId);
     try {
       let prepared = this.previews.get(sessionId);
-      if (!prepared || prepared.planKey !== JSON.stringify(plan)) {
+      if (!prepared || prepared.planKey !== JSON.stringify(plan) || prepared.inputKey!==generationKey(sessionId,plan.architecture)) {
         this.discardPreview(sessionId);
         prepared = await this.generate(sessionId, plan, operation);
         this.requireActive(operation);
@@ -210,7 +217,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     previewId?: string,
   ): Promise<{ skill: BuiltSkill; path: string } | null> {
     const plan = editedPlan
-      ? SkillPlanSchema.parse(editedPlan)
+      ? this.bindPlan(sessionId,SkillPlanSchema.parse(editedPlan))
       : this.live.get(sessionId)?.lastPlan ?? null;
     if (!plan) throw new Error("There is no plan to build from yet.");
     const operation = this.begin(sessionId);
@@ -268,7 +275,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
 
   private requirePreview(sessionId: string, plan: SkillPlan, id: string): PreparedSkill {
     const prepared = this.previews.get(sessionId);
-    if (!prepared || prepared.id !== id || prepared.planKey !== JSON.stringify(plan)) {
+    if (!prepared || prepared.id !== id || prepared.planKey !== JSON.stringify(plan) || prepared.inputKey!==generationKey(sessionId,plan.architecture)) {
       throw new SkillPreviewExpiredError();
     }
     return prepared;
@@ -288,6 +295,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     if (!live) live = await this.createLive(sessionId, plan.architecture);
     this.requireActive(operation);
     live.lastPlan = plan;
+    atomicJson(path.join(live.sessionDir,"skill-plan.json"),plan);
     this.emit(sessionId, "drafting", "正在生成技能…");
     live.holder.submission = undefined;
     try {
@@ -309,8 +317,33 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
       allowedTools: submission.allowedTools.length ? submission.allowedTools : plan.allowedTools,
       body: submission.body,
     };
+    const context=generationContext(sessionId,plan.architecture);
+    if(context){
+      if (submission.allowedTools.some(tool => !plan.allowedTools.includes(tool))) throw new Error("技能正文申请了计划之外的权限，请先修改并审核技能计划。");
+      finalSubmission.allowedTools = plan.allowedTools;
+      const approvedTools = new Set(plan.steps.flatMap(s => s.tools));
+      const mentionedMcp = submission.body.match(/\bmcp__[A-Za-z0-9_]+/g) ?? [];
+      if (mentionedMcp.some(tool => !approvedTools.has(tool))) throw new Error("技能正文包含计划之外的 MCP 工具，请重新审核计划。");
+      const unknownSources = plan.steps.flatMap(s => s.sourceStepIds ?? []).filter(id => !loadPersistedAnalysis(sessionId)?.steps.some(s => s.id === id));
+      if (unknownSources.length) throw new Error("技能计划引用了未知录制步骤。");
+      const sections=["", "## 经用户审核的补充",...context.rules.map(c=>`- 固定规则（${c.appliesTo}）：${c.text}`),...context.runtimeQueries.map(c=>`- 运行时查询（不得固定当前值）：${c.text}`),...context.historicalFacts.map(c=>`- 历史示例（不作为固定值）：${c.text}`)];
+      if(context.project)sections.push("", "## 项目依赖",`能力快照：${context.project.snapshotId}；来源：${context.project.coveredSources.join("、")}`,...context.project.servers.map(server=>`- MCP ${server.name}：${server.status}，使用前核验连接与权限`));
+      finalSubmission.body+=sections.join("\n");
+    }
     const skill = toBuiltSkill(sessionId, plan.architecture, finalSubmission, plan);
-    return { id: randomUUID(), skill, planKey: JSON.stringify(plan), markdown: renderSkillMarkdown(skill) };
+    return { id: randomUUID(), skill, planKey: JSON.stringify(plan), inputKey:generationKey(sessionId,plan.architecture), markdown: renderSkillMarkdown(skill) };
+  }
+
+  private bindPlan(id:string,plan:SkillPlan):SkillPlan {
+    const context=generationContext(id,plan.architecture);if(!context)return plan;
+    const issues=validatePlanTooling(plan);if(issues.length)throw new Error(issues.join(' '));
+    if(plan.architecture==='agent-skill' && [...plan.allowedTools,...plan.steps.flatMap(s=>s.tools)].some(t=>/mcp[_.:]|browser|playwright/i.test(t)))throw new Error('通用目标不能继承项目 MCP 或浏览器专属依赖。请选择项目目标，或改为明确的可移植依赖缺口。');
+    if(plan.architecture==='claude-code'){
+      const builtins=new Set(['Read','Write','Edit','Glob','Grep','Bash']);
+      const tools=new Set(context.project?.tools.map(t=>t.name));
+      if(plan.steps.flatMap(s=>s.tools).some(t=>!builtins.has(t)&&!tools.has(t)))throw new Error('项目计划包含能力快照中不存在的工具。');
+    }
+    return {...plan,generation:{sourceFingerprint:fingerprint(context),inputRevision:context.inputRevision,taskPackageRevision:context.taskPackageRevision,runId:context.runId,status:context.status,gaps:context.gaps,capabilitySnapshotId:context.project?.snapshotId??null,catalogueVersion:requireCatalogue(plan.architecture,'skill').version,executionVerified:false}};
   }
 
   private emit(sessionId: string, phase: SkillBuildProgress["phase"], message: string): void {
@@ -328,7 +361,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
         sessionDir: dir,
         analysis,
         onProgress: (m) => this.emit(sessionId, "working", m),
-      }),
+      }).map(tool=>({...tool,handler:async(args:unknown,ctx:Parameters<typeof tool.handler>[1])=>{const value=await tool.handler(args,ctx);return typeof value==="string"?await redactIncremental(value):value;}})),
       ...createSkillBuilderTools({
         architecture,
         onProgress: (m) => this.emit(sessionId, "working", m),
@@ -342,7 +375,8 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     ];
 
     const catalogue = requireCatalogue(architecture, "skill").content;
-    const systemContent = `${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
+    const context=generationContext(sessionId,architecture);
+    const systemContent = `${RECORDING_SEMANTICS}\nSkill template: ${JSON.stringify(OUTPUT_TEMPLATES.skill)}\n${context ? "Reviewed enrichment (authoritative):\n"+JSON.stringify(context)+"\nDo not promote current/historical/inferred values to constants. Generic targets cannot inherit project MCP names or browser dependencies. Missing portable equivalents are dependency gaps.\n" : ""}${SKILL_BUILDER_INSTRUCTIONS}\n\n${catalogue}\n\n${OUTPUT_LANGUAGE_INSTRUCTIONS}`.trim();
 
     const client = await this.ensureClient();
     const agent = await client.createSession({
@@ -378,9 +412,10 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
       throw new Error(`Planning failed: ${msg(err)}`);
     }
     this.requireActive(operation);
-    const plan = live.holder.plan;
+    const plan = live.holder.plan ? this.bindPlan(live.sessionId,live.holder.plan) : undefined;
     if (!plan) throw new Error("The agent finished without proposing a plan.");
     live.lastPlan = plan;
+    atomicJson(path.join(live.sessionDir,"skill-plan.json"),plan);
     this.emit(live.sessionId, "done", "计划已生成，请检查。");
     return plan;
   }
@@ -404,6 +439,7 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     mkdirSync(dir, { recursive: true });
     const file = path.join(dir, "SKILL.md");
     writeFileSync(file, markdown);
+    if(skill.generation)atomicJson(path.join(dir,"review-report.json"),{...skill.generation,skillName:skill.name,createdAt:skill.createdAt,note:"仅内容审核；未进行业务试运行。"});
     return file;
   }
 
@@ -420,14 +456,16 @@ export class SkillBuilder extends AgentBuilder<LiveBuild> {
     mkdirSync(dir, { recursive: true });
     const file = path.join(dir, "SKILL.md");
     writeFileSync(file, markdown);
+    if(skill.generation)atomicJson(path.join(dir,"review-report.json"),{...skill.generation,skillName:skill.name,createdAt:skill.createdAt,note:"仅内容审核；未进行业务试运行。"});
     return file;
   }
 
   private persist(dir: string, skill: BuiltSkill): void {
     try {
-      writeFileSync(path.join(dir, "skill.json"), JSON.stringify(skill, null, 2));
+      atomicJson(path.join(dir,"skill.json"),skill);
+      if(skill.generation)atomicJson(path.join(dir,"enhancement-report.json"),skill.generation);
     } catch (err) {
-      log.warn("failed to persist skill:", msg(err));
+      throw new Error("技能保存失败，请重试。");
     }
   }
 }
@@ -449,6 +487,10 @@ function renderPlanForPrompt(plan: SkillPlan): string {
       const head = [s.title, s.text].filter(Boolean).join(" — ");
       const bits = [`${idx + 1}. (${s.kind}) ${head}`];
       if (s.tools.length) bits.push(`[tools: ${s.tools.join(" → ")}]`);
+      if (s.mappingReason) bits.push(`[mapping: ${s.mappingReason}]`);
+      if (s.sourceStepIds?.length) bits.push(`[recorded steps: ${s.sourceStepIds.join(", ")}]`);
+      if (s.inputSources?.length) bits.push(`[inputs: ${s.inputSources.join("; ")}]`);
+      if (s.output) bits.push(`[output: ${s.output}]`);
       lines.push(bits.join(" "));
     });
   }

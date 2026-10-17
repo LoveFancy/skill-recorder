@@ -6,6 +6,8 @@ export interface SessionMeta {
   stoppedAt: number | null;
   platform: NodeJS.Platform;
   appVersion: string;
+  recordingIntent?: string;
+  requestedOutput?: "sop" | "skill" | "manual" | "undecided";
 }
 
 /**

@@ -17,3 +17,8 @@ evals/.cache/
 native/bin/
 
 .models/
+
+# Playwright browser test artifacts
+/test-results/
+/playwright-report/
+/blob-report/

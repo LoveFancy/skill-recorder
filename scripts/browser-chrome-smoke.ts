@@ -3,7 +3,7 @@ import { AnalysisSchema } from "../common/analysis";
 import { createReadTools } from "../electron/builders/read-tools";
 /** Optional real-Chrome integration test. Uses a fresh profile, never the user's tabs.
  * macOS only: briefly installs a test native-host registration, restores it in finally.
- * Fixture manifest pre-grants only the loopback test site; production stays opt-in.
+ * Fixture manifest pre-grants only the loopback test site; production captures all HTTP/HTTPS sites.
  */
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
@@ -33,7 +33,7 @@ try{
  mkdirSync(path.join(root,"chrome-profile/NativeMessagingHosts"),{recursive:true});
  cpSync(registry,path.join(root,"chrome-profile/NativeMessagingHosts/com.skillrecorder.browser.json"));
  const extension=path.join(root,'extension');cpSync('browser-extension',extension,{recursive:true});
- const manifest=JSON.parse(readFileSync(path.join(extension,'manifest.json'),'utf8'));manifest.host_permissions=[origin+'/*'];writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(manifest));
+ const manifest=JSON.parse(readFileSync(path.join(extension,'manifest.json'),'utf8'));manifest.host_permissions=[origin+'/*'];manifest.content_scripts[0].matches=[origin+'/*'];writeFileSync(path.join(extension,'manifest.json'),JSON.stringify(manifest));
  const chromeEnv={...process.env};delete chromeEnv.__CFBundleIdentifier;delete chromeEnv.LaunchInstanceID;
  browser=spawn(chrome,[`--user-data-dir=${root}/chrome-profile`,'--remote-debugging-pipe','--enable-unsafe-extension-debugging','--no-first-run','--no-default-browser-check'],{env:chromeEnv,stdio:['ignore','ignore','pipe','pipe','pipe']});browser.stderr?.on('data',()=>{});
  let buffer='',id=0;const pending=new Map<number,{resolve:(value:any)=>void;reject:(e:Error)=>void}>();
@@ -48,11 +48,10 @@ try{
  const extensionId=JSON.parse(readFileSync('browser-extension/identity.json','utf8')).id;
  const popup=await call('Target.createTarget',{url:`chrome-extension://${extensionId}/popup.html`});const control=await attach(popup.targetId);
  await wait(()=>evaluate(control,"typeof chrome?.runtime?.sendMessage==='function'"),'extension control loaded');
- await evaluate(control,`(async()=>{const tabs=await chrome.tabs.query({});const tab=tabs.find(t=>t.url?.startsWith(${JSON.stringify(origin)}));await chrome.scripting.registerContentScripts([{id:'fixture',matches:[${JSON.stringify(origin+'/*')}],js:['content.js'],allFrames:true,runAt:'document_start'}]);await chrome.scripting.executeScript({target:{tabId:tab.id,allFrames:true},files:['content.js']});return await chrome.runtime.sendMessage({kind:'bind',tabId:tab.id});})()`);
  const meta={id:'chrome-real-test',startedAt:Date.now(),stoppedAt:null,platform:process.platform,appVersion:'test'};
  store=new SessionStore(meta);const bus=new EventBus();bus.attach(store);
  bridge.start({sessionDir:store.dir,log:createLogger('browser-smoke'),publish:(type,payload)=>{bus.publish({type,source:'chrome-extension',payload} as any);},publishDurable:(type,payload)=>bus.publishDurable({type,source:'chrome-extension',payload} as any)});
- await wait(async()=> (await evaluate(control,"chrome.runtime.sendMessage({kind:'status'})"))?.session?.id===meta.id,'extension recording lifecycle');
+ await wait(async()=>{const s=await evaluate(control,"chrome.runtime.sendMessage({kind:'status'})");return s?.session?.id===meta.id&&s.captureReady;},'extension recording lifecycle');
  await call('Target.activateTarget',{targetId:tab.targetId});await call('Page.bringToFront',{},page);
  const capturedFrames:any[]=[];mkdirSync(path.join(store.dir,'video-frames'));
  const snapshot=async()=>{const bytes=Buffer.from((await call('Page.captureScreenshot',{format:'jpeg',quality:75},page)).data,'base64');const info=await sharp(bytes).metadata();const tMs=Date.now();const file=`video-frames/capture-${capturedFrames.length}.jpg`;writeFileSync(path.join(store!.dir,file),bytes);capturedFrames.push({file,tMs,offsetMs:tMs-meta.startedAt,width:info.width,height:info.height});};

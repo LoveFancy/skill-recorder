@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync,readFileSync,rmSync,writeFileSync,existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { connect, type Socket } from "node:net";
 import { spawn } from "node:child_process";
 import { validateBrowserEvent } from "./protocol";
 import { BrowserBridge } from "./bridge";
@@ -50,6 +51,9 @@ test("native host → durable session → timeline → required model evidence, 
   const send=(value:unknown)=>{const b=Buffer.from(JSON.stringify(value)),h=Buffer.alloc(4);h.writeUInt32LE(b.length);host!.stdin!.write(Buffer.concat([h,b]));};
   const wait=async(predicate:()=>boolean)=>{const start=Date.now();while(!predicate()){if(Date.now()-start>10000)throw new Error('Native bridge timeout; received kinds: '+messages.map(m=>m.kind).join(',')+'; bridge: '+JSON.stringify(bridge.status()));await new Promise(r=>setTimeout(r,10));}};
   await wait(()=>messages.some(m=>m.kind==='session'));
+  send({kind:'client-info',browser:'edge',version:'0.7.0'});send({kind:'bound',bound:true});
+  await wait(()=>bridge.status().browsers?.[0]?.name==='edge' && bridge.status().bound);
+  assert.equal(bridge.status().browsers?.[0]?.version,'0.7.0');
   const raw=event(meta.id,Date.now()-500);send({kind:'events',events:[raw]});
   await wait(()=>messages.filter(m=>m.kind==='ack').length===1);
   const persisted=JSON.parse(readFileSync(path.join(store.dir,'events.jsonl'),'utf8').trim());
@@ -100,4 +104,27 @@ test("long browser recordings require all pages, including final operations",asy
   await invoke('get_browser_actions',{offset:100});assert.match((await invoke('submit_analysis',{}) as any).textResultForLlm,/offset=200/);
   const last=JSON.parse(String(await invoke('get_browser_actions',{offset:200})));assert.equal(last.events[0].atMs,200000);assert.equal(last.nextOffset,null);
  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test("Chrome and Edge retain independent capture and error state when one disconnects",{skip:!existsSync(binary)},async()=>{
+ const root=mkdtempSync(path.join(os.tmpdir(),"browser-identities-"));
+ const bridge=new BrowserBridge(path.join(root,"profile"),process.cwd());const sockets:Socket[]=[];
+ try{
+  await bridge.initialize(false);
+  const config=JSON.parse(readFileSync(path.join(root,"profile/browser-companion/bridge.json"),"utf8"));
+  const wait=async(predicate:()=>boolean)=>{const start=Date.now();while(!predicate()){if(Date.now()-start>3000)throw new Error("bridge identity timeout");await new Promise(r=>setTimeout(r,5));}};
+  const client=async(browser:string,bound:boolean)=>{
+   const socket=connect(config.endpoint);sockets.push(socket);await once(socket,'connect');
+   socket.write([{kind:'hello',token:config.token},{kind:'client-info',browser,version:'0.7.0'},{kind:'bound',bound}].map(x=>JSON.stringify(x)).join('\n')+'\n');return socket;
+  };
+  const chrome=await client('chrome',true);await client('edge',false);
+  await wait(()=>bridge.status().browsers?.length===2 && bridge.status().bound);
+  chrome.write(JSON.stringify({kind:'capture-error',error:'Chrome capture stopped'})+'\n');
+  await wait(()=>!!bridge.status().browsers?.find(c=>c.name==='chrome')?.error);
+  assert.equal(bridge.status().browsers?.find(c=>c.name==='edge')?.error,null);
+  assert.equal(bridge.status().error,null,'a client error is not a global bridge failure');
+  chrome.destroy();await wait(()=>bridge.status().browsers?.length===1);
+  assert.equal(bridge.status().connected,true);assert.equal(bridge.status().bound,false);
+  assert.equal(bridge.status().browsers?.[0]?.name,'edge');
+ }finally{for(const socket of sockets)socket.destroy();bridge.close();await rm(root,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 });

@@ -649,6 +649,12 @@ export function SkillStepTiles({
               ))}
             </div>
           )}
+          <details className="step-mapping"><summary>工具映射与数据衔接</summary>
+            <label>映射理由<EditableText value={s.mappingReason ?? ""} placeholder="说明为什么可以等价替换原操作" multiline onChange={v => patch(i, { mappingReason: v })} /></label>
+            <label>输入来源<EditableText value={(s.inputSources ?? []).join("\n")} placeholder="每行一个输入来源" multiline onChange={v => patch(i, { inputSources: v.split("\n").filter(Boolean) })} /></label>
+            <label>输出与结果<EditableText value={s.output ?? ""} placeholder="提供给下一步的数据或成功判据" multiline onChange={v => patch(i, { output: v })} /></label>
+            <small>录制步骤：{(s.sourceStepIds ?? []).join("、") || "未关联"}</small>
+          </details>
         </div>
       ))}
       <AddTile

@@ -154,8 +154,21 @@ async function summarize(root: string, name: string): Promise<SessionSummary | n
       }),
   ]);
 
+  // Older builds mistakenly stored audio.json's mtime as the transcript version.
+  // Normalize only that exact legacy signature, and only for a transcript that
+  // already existed when the analysis began. Never hide genuinely newer speech.
+  if (analysis?.narrationSourceUpdatedAt != null && narration && narration.updatedAt <= analysis.createdAt) {
+    try {
+      const audio = await stat(path.join(dir, "audio.json"));
+      if (analysis.narrationSourceUpdatedAt === audio.mtimeMs) {
+        analysis.narrationSourceUpdatedAt = narration.updatedAt;
+      }
+    } catch { /* No legacy audio source to normalize. */ }
+  }
+
   return {
     id: meta.id,
+    requestedOutput: meta.requestedOutput,
     startedAt: meta.startedAt ?? null,
     stoppedAt: meta.stoppedAt ?? null,
     durationMs: meta.startedAt && meta.stoppedAt ? meta.stoppedAt - meta.startedAt : null,

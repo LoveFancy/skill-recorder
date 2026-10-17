@@ -10,7 +10,7 @@ export type BrowserAction = {
   tabId: number;
   frameId: number;
   documentId?: string;
-  scope: "user-bound-tab";
+  scope: "user-bound-tab" | "browser-profile";
   coordinateSpace: "css-viewport";
   viewport: { width: number; height: number; dpr: number; scrollX: number; scrollY: number };
   point?: { x: number; y: number };
@@ -23,6 +23,7 @@ export type BrowserAction = {
   };
 };
 export type BrowserStatus = {
+  browsers?: { name: "chrome" | "edge" | "unknown"; connected: boolean; bound: boolean; version?: string; error: string | null }[];
   connected: boolean; sessionId: string | null; bound: boolean;
   eventCount: number; extensionDir: string; error: string | null;
 };

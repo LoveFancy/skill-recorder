@@ -1,0 +1,953 @@
+[
+  {
+    "id": "01-home",
+    "title": "首页 · 状态摘要与统一设置",
+    "group": "01 录制前：目标与输入",
+    "notes": [
+      "不再要求选择或信任用户项目目录。",
+      "环境及能力开关更改不会自动启动增强；任务仍有独立范围确认。"
+    ],
+    "order": 1,
+    "links": [
+      "41-recording-intent",
+      "07-records",
+      "02-settings",
+      "02-settings",
+      "05-api-fallback",
+      "30-general"
+    ]
+  },
+  {
+    "id": "41-recording-intent",
+    "title": "录制前 · 确认目标",
+    "group": "01 录制前：目标与输入",
+    "notes": [
+      "点击首页录制后先确认目标；确认前不采集屏幕。",
+      "类型选择 SOP / Skill / 其他，不要求用户选择技术架构。",
+      "界面示例不是默认代填；开始录制仍需原有权限检查。",
+      "仅保留产出类型与任务目标；不再单独询问最终效果，也不显示业务补充与证据说明。"
+    ],
+    "order": 2,
+    "links": [
+      "06-recording",
+      "07-records",
+      "02-settings",
+      "02-settings",
+      "05-api-fallback",
+      "30-general",
+      "01-home",
+      "06-recording",
+      "01-home",
+      "42-intent-voice"
+    ]
+  },
+  {
+    "id": "42-intent-voice",
+    "title": "录制目标 · 语音输入",
+    "group": "01 录制前：目标与输入",
+    "notes": [
+      "单独显式开启目标语音，停止后转写，不启动屏幕录制。",
+      "权限拒绝、模型未就绪或转写失败保留文字输入；提供设置入口，不无限等待。",
+      "语音转写未核对不成为已确认目标。",
+      "仅保留产出类型与任务目标；不再单独询问最终效果，也不显示业务补充与证据说明。"
+    ],
+    "order": 3,
+    "links": [
+      "06-recording",
+      "07-records",
+      "02-settings",
+      "02-settings",
+      "05-api-fallback",
+      "30-general",
+      "01-home",
+      "43-intent-review",
+      "41-recording-intent",
+      "01-home"
+    ]
+  },
+  {
+    "id": "43-intent-review",
+    "title": "录制目标 · 核对语音文字",
+    "group": "01 录制前：目标与输入",
+    "notes": [
+      "显示转写原文供编辑与采用；不静默把模型归纳作为用户意图。",
+      "仅保留产出类型与任务目标；不再单独询问最终效果，也不显示业务补充与证据说明。"
+    ],
+    "order": 4,
+    "links": [
+      "06-recording",
+      "07-records",
+      "02-settings",
+      "02-settings",
+      "05-api-fallback",
+      "30-general",
+      "01-home",
+      "41-recording-intent",
+      "42-intent-voice",
+      "01-home"
+    ]
+  },
+  {
+    "id": "06-recording",
+    "title": "录制中 · 原首页与插件状态",
+    "group": "02 录制与基础分析",
+    "notes": [
+      "底稿：截图 1 的首页；沿用圆按钮，不换成长条开始按钮。",
+      "悬浮控制条和插件为独立状态示意，不属于新增 Agent 页面。",
+      "原采集提醒保留，录制时不执行业务自动化。"
+    ],
+    "order": 5,
+    "links": [
+      "07-records",
+      "07-records",
+      "02-settings",
+      "07-records",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "07-records",
+    "title": "录制记录 · 进入基础分析",
+    "group": "02 录制与基础分析",
+    "notes": [
+      "底稿：Library 未分析状态；保留分析录制与发送材料说明。",
+      "只新增处理环境摘要与查看配置入口。",
+      "基础分析继续使用现有采集时间线组件。"
+    ],
+    "order": 6,
+    "links": [
+      "17-states",
+      "02-settings",
+      "07-records"
+    ]
+  },
+  {
+    "id": "17-states",
+    "title": "分析中 · 原时间线与步骤加载状态",
+    "group": "02 录制与基础分析",
+    "notes": [
+      "空记录：原左栏显示暂无录制，主区提示选择录制，不新增引导后台。",
+      "材料变化：原分析顶部插入需复核提示，保留上一成果，不静默覆盖。",
+      "本图展示实际加载状态，而不是三列并排的示例卡片。"
+    ],
+    "order": 7,
+    "links": [
+      "07-records",
+      "17-states"
+    ]
+  },
+  {
+    "id": "08-analysis",
+    "title": "分析顶部 · 保留隐私提示与三源时间线",
+    "group": "02 录制与基础分析",
+    "notes": [
+      "底稿：截图 2；保留时间线卡片、三条灰底轨道与竖向标记。",
+      "顶部新增分析 → 增强 → 生成三阶段导航，原时间线与步骤保持。",
+      "创建…作为直接生成入口保留；阶段主操作进入增强。"
+    ],
+    "order": 8,
+    "links": [
+      "07-records",
+      "29-preparation",
+      "23-generation-pending",
+      "08-analysis",
+      "29-preparation",
+      "23-generation-pending",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "19-analysis-steps",
+    "title": "分析下半页 · 原步骤卡片与创建入口",
+    "group": "02 录制与基础分析",
+    "notes": [
+      "底稿：截图 1 左侧步骤 5、对应截图网格、添加步骤与底部创建…。",
+      "本图是同一分析页的向下滚动状态，不新增独立路由。",
+      "需补证步骤标记保留；创建…可以直接进入生成准备，增强支持跳过。"
+    ],
+    "order": 9,
+    "links": [
+      "07-records",
+      "29-preparation",
+      "23-generation-pending",
+      "19-analysis-steps",
+      "29-preparation",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "29-preparation",
+    "title": "澄清和补充 · 检查处理环境",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "环境检查是进度第一步，环境状态不再占据大卡片。",
+      "此步骤失败展示具体异常及设置入口，不把未检查误报为调用中。"
+    ],
+    "order": 10,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "33-enhancement-ready",
+      "33-enhancement-ready",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "09-enhance-scope",
+    "title": "澄清和补充 · Agent 整理进度",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "显示真实阶段、耗时、当前后端；没有总时长依据时不展示百分比。",
+      "模型单次调用期间保持“整理澄清问题”；不能伪造细分思考进度。",
+      "拿到结果后才进入校验和问卷，无问题进入确认。",
+      "可取消并保留分析；失败保留已有回答，重试需明确操作。"
+    ],
+    "order": 11,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "33-enhancement-ready",
+      "33-enhancement-ready",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "40-clarification-api",
+    "title": "澄清和补充 · API 整理进度",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "与本地 Agent 相同的阶段展示，明确标注本次实际使用 API。",
+      "只有未安装本地 Agent 且策略为自动，或用户明确选择 API 时使用；认证失败不静默降级。"
+    ],
+    "order": 12,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "33-enhancement-ready",
+      "33-enhancement-ready",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "33-enhancement-ready",
+    "title": "澄清和补充 · 材料与后端说明",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "当前初判主要读取已有分析，不宣称重新分析原始录屏。",
+      "首次进入自动发起一次；导航往返不重复请求。",
+      "分析修订变化提示重新整理，保留原回答供复核。"
+    ],
+    "order": 13,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "09-enhance-scope",
+      "11-question"
+    ]
+  },
+  {
+    "id": "11-question",
+    "title": "业务澄清 · 问卷选择",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "问题按 1、2 编号；以单选项为主，不默认代选。",
+      "选其他后就地显示输入框，原自定义草稿在来回切换中保留。",
+      "系统解释标注和技术配置；只问业务规则。适用范围按需展开。",
+      "顶部 Agent 状态缩为一行，不显示大型环境卡和重复说明。"
+    ],
+    "order": 14,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "38-questionnaire-other",
+      "39-questionnaire-unknown",
+      "38-questionnaire-other",
+      "39-questionnaire-unknown",
+      "21-task-package",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "38-questionnaire-other",
+    "title": "业务澄清 · 其他输入",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "选中“其他”才展开输入框；切换预设不清空自定义草稿。",
+      "无可靠预设时只展示其他/自行填写，不虚构选项。"
+    ],
+    "order": 15,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "21-task-package",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "39-questionnaire-unknown",
+    "title": "业务澄清 · 未知与暂不回答",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "不确定与暂不回答分开保存；不计为已回答业务规则。",
+      "允许继续查看任务包，保留关键缺口和草稿标识。"
+    ],
+    "order": 16,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "21-task-package",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "21-task-package",
+    "title": "确认补充内容 · 提交前预览",
+    "group": "03 澄清问题与补充内容",
+    "notes": [
+      "沿用一行 Agent 状态与紧凑子导航。",
+      "摘要显示选择结果和其他输入；未知/跳过保留缺口。",
+      "统一确认之前不启动增强。"
+    ],
+    "order": 17,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "11-question",
+      "10-enhancing",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "10-enhancing",
+    "title": "补充处理 · 核对已有材料",
+    "group": "04 补充处理与审核",
+    "notes": [
+      "本期自动处理仅核对已有分析、目标、回答和材料，不自动查询邮箱/业务 MCP。",
+      "外部证据明确来源于人工导入；技术缺口保留，追加澄清只问业务规则。"
+    ],
+    "order": 18,
+    "links": [
+      "08-analysis",
+      "16-recovery",
+      "16-recovery",
+      "08-analysis",
+      "10-enhancing",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "25-followup",
+    "title": "追加澄清 · 业务规则冲突",
+    "group": "04 补充处理与审核",
+    "notes": [
+      "本期自动处理仅核对已有分析、目标、回答和材料，不自动查询邮箱/业务 MCP。",
+      "外部证据明确来源于人工导入；技术缺口保留，追加澄清只问业务规则。"
+    ],
+    "order": 19,
+    "links": [
+      "08-analysis",
+      "23-generation-pending",
+      "08-analysis",
+      "25-followup",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "27-enhancement-complete",
+    "title": "增强完成 · 候选等待审核",
+    "group": "04 补充处理与审核",
+    "notes": [
+      "10 号运行页完成后自动进入本状态；运行中不能点击最终审核。",
+      "候选结果通过结构校验后保存，尚不提升为用户已审核。",
+      "有剩余缺口时显示缺口数量，审核后按规则生成草稿。"
+    ],
+    "order": 20,
+    "links": [
+      "08-analysis",
+      "12-facts",
+      "08-analysis",
+      "08-analysis",
+      "27-enhancement-complete",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "12-facts",
+    "title": "审核补充结果 · 事实与规则",
+    "group": "04 补充处理与审核",
+    "notes": [
+      "本期自动处理仅核对已有分析、目标、回答和材料，不自动查询邮箱/业务 MCP。",
+      "外部证据明确来源于人工导入；技术缺口保留，追加澄清只问业务规则。"
+    ],
+    "order": 21,
+    "links": [
+      "08-analysis",
+      "22-generation-ready",
+      "23-generation-pending",
+      "08-analysis",
+      "12-facts",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "22-generation-ready",
+    "title": "生成准备 · 审核内容与输出偏好",
+    "group": "05 生成与导出",
+    "notes": [
+      "顶栏生成入口打开此页，不直接启动业务或写入产物。",
+      "增强可跳过，但要记录显式选择；关键未答问题只能进入待确认草稿。",
+      "保持既有目标卡片、计划编辑、SKILL.md 预览和导出链路。"
+    ],
+    "order": 22,
+    "links": [
+      "08-analysis",
+      "08-analysis",
+      "12-facts",
+      "20-create-targets",
+      "12-facts",
+      "08-analysis",
+      "12-facts",
+      "22-generation-ready"
+    ]
+  },
+  {
+    "id": "20-create-targets",
+    "title": "生成 · 选择 Skill 或 SOP 输出",
+    "group": "05 生成与导出",
+    "notes": [
+      "默认突出录制前确认的输出偏好；SOP 进入 Markdown 文档预览，Skill 继续选择既有目标。",
+      "Scout 等既有入口不在本期扩展执行/导入链路；不新增 Replay。"
+    ],
+    "order": 23,
+    "links": [
+      "08-analysis",
+      "28-generic-plan",
+      "13-plan",
+      "08-analysis",
+      "12-facts",
+      "20-create-targets",
+      "46-sop-preview"
+    ]
+  },
+  {
+    "id": "13-plan",
+    "title": "技能计划 · 沿用现有 builder 布局",
+    "group": "05 生成与导出",
+    "notes": [
+      "源代码底稿：现有 sb-plan 标题、描述、可编辑步骤和值、底部查看 SKILL.md。",
+      "只新增已审核规则材料和项目依赖说明。",
+      "继续复用原计划到预览的流程，不另造执行计划。"
+    ],
+    "order": 24,
+    "links": [
+      "08-analysis",
+      "15-exported",
+      "14-preview",
+      "08-analysis",
+      "12-facts",
+      "13-plan"
+    ]
+  },
+  {
+    "id": "28-generic-plan",
+    "title": "通用 Skill · 依赖缺口",
+    "group": "05 生成与导出",
+    "notes": [
+      "通用卡片进入本页，不再误跳到 Claude 项目计划。",
+      "未知接口保留为依赖缺口；支持补充能力或切换输出目标。",
+      "草稿导出是静态操作示意，保留待确认标记；不使用项目目标的预览或完成页。"
+    ],
+    "order": 25,
+    "links": [
+      "08-analysis",
+      "20-create-targets",
+      "20-create-targets",
+      "08-analysis",
+      "12-facts",
+      "28-generic-plan"
+    ]
+  },
+  {
+    "id": "14-preview",
+    "title": "查看 SKILL.md · 复用现有预览弹窗",
+    "group": "05 生成与导出",
+    "notes": [
+      "源代码底稿：SkillReviewModal；保留弹窗、只读源文件、关闭和导出。",
+      "只补充内容检查与未试运行状态，不把预览换成新工作台页面。",
+      "关闭返回计划；导出取消与失败仍保留预览。"
+    ],
+    "order": 26,
+    "links": [
+      "08-analysis",
+      "13-plan",
+      "15-exported",
+      "08-analysis",
+      "12-facts",
+      "14-preview"
+    ]
+  },
+  {
+    "id": "15-exported",
+    "title": "导出完成 · 沿用现有结果页",
+    "group": "05 生成与导出",
+    "notes": [
+      "源代码底稿：sb-done / ws-foot；保留完成状态、文件路径、在文件夹中显示。",
+      "不增设发布、运行或 Replay 入口。",
+      "导出成功与执行成功始终分开描述。"
+    ],
+    "order": 27,
+    "links": [
+      "08-analysis",
+      "13-plan",
+      "08-analysis",
+      "12-facts",
+      "15-exported"
+    ]
+  },
+  {
+    "id": "46-sop-preview",
+    "title": "生成 · SOP 文档预览",
+    "group": "05 生成与导出",
+    "notes": [
+      "SOP 偏好对应文档输出，与可执行 Skill 分开。",
+      "只导出 Markdown，保留未核验步骤；不自动执行业务操作。"
+    ],
+    "order": 28,
+    "links": [
+      "11-question",
+      "20-create-targets",
+      "47-sop-exported"
+    ]
+  },
+  {
+    "id": "47-sop-exported",
+    "title": "导出完成 · SOP 文档",
+    "group": "05 生成与导出",
+    "notes": [
+      "SOP 偏好对应文档输出，与可执行 Skill 分开。",
+      "只导出 Markdown，保留未核验步骤；不自动执行业务操作。"
+    ],
+    "order": 29,
+    "links": [
+      "11-question",
+      "46-sop-preview",
+      "07-records"
+    ]
+  },
+  {
+    "id": "44-intent-context",
+    "title": "录制意图 · 跨阶段上下文",
+    "group": "06 目标查看与修订",
+    "notes": [
+      "目标来源、确认时间和版本独立记录，不等于录制证据。",
+      "分析、澄清、生成都引用目标，差异保留而非补造步骤。"
+    ],
+    "order": 30,
+    "links": [
+      "11-question",
+      "08-analysis",
+      "11-question",
+      "22-generation-ready",
+      "09-enhance-scope",
+      "02-settings",
+      "45-intent-edit",
+      "11-question"
+    ]
+  },
+  {
+    "id": "45-intent-edit",
+    "title": "录制意图 · 修订与影响",
+    "group": "06 目标查看与修订",
+    "notes": [
+      "修订不启动新的录制；保留旧目标及当前回答。",
+      "分析与问题按引用版本提示待更新，由用户明确决定重新处理；不静默重跑。"
+    ],
+    "order": 31,
+    "links": [
+      "44-intent-context",
+      "07-records",
+      "02-settings",
+      "02-settings",
+      "05-api-fallback",
+      "30-general",
+      "44-intent-context",
+      "44-intent-context",
+      "44-intent-context"
+    ]
+  },
+  {
+    "id": "23-generation-pending",
+    "title": "生成受阻 · 补充尚未审核",
+    "group": "07 异常与恢复",
+    "notes": [
+      "分析页创建…与审核页保存待确认草稿进入此状态，不冒充增强已审核。",
+      "明确跳过按钮是静态操作示意：实际保留 skip 决策及缺口，目标选择继承待确认状态。",
+      "无关键缺口且基础分析已经审核时可正常生成；有关键缺口只能生成待确认草稿。"
+    ],
+    "order": 32,
+    "links": [
+      "08-analysis",
+      "11-question",
+      "29-preparation",
+      "08-analysis",
+      "29-preparation",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "24-generation-stale",
+    "title": "生成受阻 · 输入版本已更新",
+    "group": "07 异常与恢复",
+    "notes": [
+      "材料或回答变更只标记受影响结果过期，不静默覆盖历史版本。",
+      "返回任务包时创建 v2，不沿用示例页显示的 v1；静态示例不模拟版本数据库。",
+      "确认新输入、重新增强和审核完成后才恢复正常生成。"
+    ],
+    "order": 33,
+    "links": [
+      "08-analysis",
+      "11-question",
+      "21-task-package",
+      "08-analysis",
+      "11-question",
+      "24-generation-stale"
+    ]
+  },
+  {
+    "id": "16-recovery",
+    "title": "处理异常 · 登录修复与恢复",
+    "group": "07 异常与恢复",
+    "notes": [
+      "沿用现有 AnalysisError / status-line 的内容区位置，错误不打断左侧列表。",
+      "需认证、输出不合法、预算耗尽、应用中断分别给出原因。",
+      "已安装但异常不能静默切到 API；检查点完成后才提供恢复承诺。"
+    ],
+    "order": 34,
+    "links": [
+      "08-analysis",
+      "04-capabilities",
+      "23-generation-pending",
+      "18-manual",
+      "02-settings",
+      "08-analysis",
+      "08-analysis",
+      "16-recovery",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "18-manual",
+    "title": "人工补充 · 导出与导入材料",
+    "group": "07 异常与恢复",
+    "notes": [
+      "不新增第三种执行界面，只承接脱敏证据导出与候选结果导入。",
+      "格式错误、引用失效或隐私检查失败就地提示，不能提升为已审核。",
+      "与自动增强共用同一个审核及 SkillPlan/BuiltSkill 生成链路。"
+    ],
+    "order": 35,
+    "links": [
+      "08-analysis",
+      "12-facts",
+      "09-enhance-scope",
+      "08-analysis",
+      "18-manual",
+      "23-generation-pending"
+    ]
+  },
+  {
+    "id": "30-general",
+    "title": "全局设置 · 通用概况",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "不再要求选择或信任用户项目目录。",
+      "环境及能力开关更改不会自动启动增强；任务仍有独立范围确认。"
+    ],
+    "order": 36,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "26-connection-error"
+    ]
+  },
+  {
+    "id": "31-browser",
+    "title": "全局设置 · 浏览器插件",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "抽取现有浏览器配置、插件目录与重连操作，不发明新的自动安装能力。",
+      "Chrome 和 Edge 分别显示状态；录制中展示真实采集状态，不能以心跳冒充录制成功。"
+    ],
+    "order": 37,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings"
+    ]
+  },
+  {
+    "id": "05-api-fallback",
+    "title": "全局设置 · AI 模型 API",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "不再要求选择或信任用户项目目录。",
+      "环境及能力开关更改不会自动启动增强；任务仍有独立范围确认。"
+    ],
+    "order": 38,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "02-settings"
+    ]
+  },
+  {
+    "id": "02-settings",
+    "title": "Agent 能力 · 自动管理 Claude 专用环境",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "取消默认项目下拉框及关联/创建目录按钮。",
+      "检测与自动环境创建不加载业务 MCP；管理页选择并保存后才生成启用配置。",
+      "界面“已启用”需有实际加载隔离依据，不能只靠提示词或 UI 开关。"
+    ],
+    "order": 39,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "04-capabilities",
+      "35-global-sync",
+      "03-workspace",
+      "33-enhancement-ready"
+    ]
+  },
+  {
+    "id": "03-workspace",
+    "title": "Agent 能力 · 专用环境来源与边界",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "替代原目录关联页，不要求用户选择目录或勾选任意项目的信任。",
+      "自动创建目录不是自动授予程序执行或业务读写权限。"
+    ],
+    "order": 40,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "02-settings"
+    ]
+  },
+  {
+    "id": "04-capabilities",
+    "title": "Agent 能力 · MCP / Skills 选择启用",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "开关先编辑本地草稿，保存后原子生成应用专用配置；不修改全局配置。",
+      "全局 MCP 自动继承及全局 Skill 自动发现必须被隔离；否则显示“无法保证隔离”并阻止自动加载。",
+      "没有能力也可完成基础分析；业务工具权限按任务另行确认。"
+    ],
+    "order": 41,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "02-settings",
+      "35-global-sync"
+    ]
+  },
+  {
+    "id": "35-global-sync",
+    "title": "Agent 能力 · 全局配置同步差异",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "改变启动命令/参数/凭据引用或 Skill 内容后需复核，不能默默扩大执行权限。",
+      "确认同步不等于启用新增能力；同步与保存形成新的版本。"
+    ],
+    "order": 42,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "02-settings",
+      "04-capabilities"
+    ]
+  },
+  {
+    "id": "26-connection-error",
+    "title": "Agent 能力 · 已启用能力局部异常",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "保留启用选择，但认证/来源变化不等于可用。",
+      "不改变已冻结的任务版本；实时授权撤销仍需暂停依赖步骤。"
+    ],
+    "order": 43,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "35-global-sync",
+      "02-settings"
+    ]
+  },
+  {
+    "id": "36-managed-error",
+    "title": "Agent 能力 · 生成或隔离失败",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "工程验收必须验证未选全局能力不出现在实际运行中。",
+      "能力隔离失败与环境不可用分开处理；手工路径不宣称可强制约束外部 Agent。"
+    ],
+    "order": 44,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "02-settings"
+    ]
+  },
+  {
+    "id": "32-capture-settings",
+    "title": "全局设置 · 语音转写",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "仅管理默认转写语言和本地语音模型。",
+      "独立保存；离开时提示未保存更改；录制期间锁定。"
+    ],
+    "order": 45,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings"
+    ]
+  },
+  {
+    "id": "37-privacy-settings",
+    "title": "全局设置 · 隐私保护",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "保护开关及隐私模型独立管理，不保存语音语言。",
+      "首页隐私状态定位此分类；录制期间锁定。"
+    ],
+    "order": 46,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "37-privacy-settings",
+      "32-capture-settings"
+    ]
+  },
+  {
+    "id": "34-unsaved-settings",
+    "title": "全局设置 · 未保存离开确认",
+    "group": "08 全局设置与能力管理",
+    "notes": [
+      "按分组显式保存。返回、关闭和 Esc 一致处理脏表单；点击遮罩不关闭。",
+      "保存失败留在当前页，保留输入；成功才返回来源。"
+    ],
+    "order": 47,
+    "links": [
+      "01-home",
+      "01-home",
+      "30-general",
+      "31-browser",
+      "05-api-fallback",
+      "02-settings",
+      "32-capture-settings",
+      "37-privacy-settings",
+      "05-api-fallback",
+      "01-home",
+      "01-home"
+    ]
+  }
+]

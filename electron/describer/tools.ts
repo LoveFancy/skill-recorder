@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 
 import type { Tool } from "../ai/client";
@@ -502,6 +502,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
     },
   };
 
+  let inspectedNarrationUpdatedAt: number | null = null;
   const getNarration: Tool = {
     name: "get_narration",
     description:
@@ -524,6 +525,7 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       }
       progress(args.query ? `正在搜索旁白“${args.query}”…` : "正在读取语音旁白…");
       const q = args.query?.trim().toLowerCase();
+      if (!q) inspectedNarrationUpdatedAt = statSync(path.join(sessionDir, NARRATION_FILE)).mtimeMs;
       const lines = transcript.segments
         .filter((s) => (q ? s.text.toLowerCase().includes(q) : true))
         .map((s) => `[${mmss(s.atMs)}] ${s.text}`);
@@ -589,6 +591,10 @@ export function createDescriberTools(ctx: ToolContext): Tool[] {
       };
       const missingBrowser = readBrowserActions().findIndex(e=>!inspectedBrowserActions.has(e.seq));
       if(missingBrowser>=0) return {resultType:"failure",textResultForLlm:`submit_analysis rejected: real browser actions have not all been inspected. Call get_browser_actions with offset=${missingBrowser} and follow nextOffset until null; use their controls, locators, values and timing in the trajectory.`};
+      const narration = readNarration(sessionDir);
+      if (narration?.segments.length && inspectedNarrationUpdatedAt !== statSync(path.join(sessionDir, NARRATION_FILE)).mtimeMs) {
+        return { resultType: "failure", textResultForLlm: "submit_analysis rejected: read the full current voice narration with get_narration without a query, and incorporate the user's spoken intent before submitting." };
+      }
       const parsed = AnalysisSubmissionSchema.safeParse(raw);
       if (!parsed.success) {
         return {

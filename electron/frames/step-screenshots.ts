@@ -5,7 +5,7 @@ import path from "node:path";
 import sharp from "sharp";
 import { sessionDir, sessionsRoot } from "../recorder/session-store";
 
-export async function getStepScreenshots(id: string, start?: number, end?: number) {
+export async function getStepScreenshots(id: string, start?: number, end?: number, excludedFiles: string[] = []) {
   if (!Number.isFinite(start)) return [];
   const root = await realpath(sessionsRoot());
   const dir = await realpath(sessionDir(id));
@@ -23,6 +23,17 @@ export async function getStepScreenshots(id: string, start?: number, end?: numbe
   let frames: { file: string; tMs: number }[];
   try { frames = (await readJson("video-frames.json")).frames; }
   catch { try { frames = (await readJson("frames/frames.json")).map((f: { file: string; tMs: number }) => ({ ...f, file: `frames/${f.file}` })); } catch { frames = []; } }
+  // Match reviewed derived images to their original capture by exact timestamp.
+  // Never infer that an unreviewed nearby image is also useless.
+  const excluded = new Set(Array.isArray(excludedFiles) ? excludedFiles.filter(f => typeof f === "string" && /^frames\/[A-Za-z0-9_.-]+\.(jpg|jpeg|png)$/.test(f)) : []);
+  const excludedTimes = new Set<number>();
+  if (excluded.size) {
+    try {
+      const derived = await readJson("frames/frames.json") as {file:string;tMs:number}[];
+      for (const frame of derived) if (excluded.has(`frames/${frame.file}`) && Number.isFinite(frame.tMs)) excludedTimes.add(frame.tMs);
+    } catch { /* Missing review targets cannot suppress unrelated captures. */ }
+  }
+  frames = frames.filter(f => !excluded.has(f.file) && !excludedTimes.has(f.tMs));
   // Current analyses use session-relative milliseconds; accept legacy epoch spans too.
   const from = start! > 1e12 ? start! : session.startedAt + start!;
   const until = Number.isFinite(end) ? (end! > 1e12 ? end! : session.startedAt + end!) : from;

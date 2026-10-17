@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { SensitiveModelStatus } from "../common/ipc";
 
@@ -24,35 +24,45 @@ function protectionModelNote(status: SensitiveModelStatus | null): string {
  * and what leaves the machine on analysis. Every claim here is grounded in the
  * actual collectors and describer behavior, so it must be kept in sync with them.
  *
- * Also home to the Advanced-protection opt-out toggle: protection is on by default,
- * and this sheet is where the user reviews what it does and turns it off if they
- * don't want on-device screen-image scanning.
+ * Privacy settings live in the global settings window; this sheet is disclosure only.
  */
 export function WhatsRecorded({
   onClose,
   onReviewed,
   sensitive,
-  advancedPending,
-  onToggleAdvanced,
-  onDownload,
+  onOpenSettings,
+  inline = false,
+  compact = false,
+  onExpandedChange,
+  disabled = false,
 }: {
   onClose: () => void;
   onReviewed: () => void;
   sensitive: SensitiveModelStatus | null;
-  advancedPending: boolean;
-  onToggleAdvanced: () => void;
-  onDownload: () => void;
+  onOpenSettings: () => void;
+  inline?: boolean;
+  compact?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+  disabled?: boolean;
 }) {
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [section, setSection] = useState(0);
+  const sections = ["录制期间", "录制终端", "语音旁白", "存储位置", "分析发送", "隐私保护", "不会采集"];
+  const toggleExpanded = () => {
+    setExpanded(!expanded);
+    onExpandedChange?.(!expanded);
+  };
 
   useEffect(() => {
+    if (inline) return;
     sheetRef.current?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, inline]);
 
   const advancedOn = sensitive?.enabled ?? true;
   const showModelError = advancedOn && sensitive?.ocr === "error";
@@ -60,14 +70,14 @@ export function WhatsRecorded({
     advancedOn && (sensitive?.ocr === "error" || sensitive?.ocr === "missing");
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
+    <div className={inline ? `recording-disclosure${compact ? " compact" : ""}${expanded ? " is-expanded" : ""}` : "sheet-backdrop"} onClick={inline ? undefined : onClose}>
       <div
         ref={sheetRef}
-        className="sheet"
-        role="dialog"
-        aria-modal="true"
+        className={inline ? "recording-disclosure-content" : "sheet"}
+        role={inline ? "region" : "dialog"}
+        aria-modal={inline ? undefined : true}
         aria-labelledby="whats-recorded-title"
-        tabIndex={-1}
+        tabIndex={inline ? undefined : -1}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="sheet-head">
@@ -91,9 +101,28 @@ export function WhatsRecorded({
           <h2 id="whats-recorded-title">采集内容</h2>
         </header>
 
+        {compact && <>
+          {!expanded && <div className="capture-summary">
+            <p>录制屏幕、应用切换、页面网址和复制文本的简短预览。</p>
+            <p>终端和语音仅在打开时采集；录制保存在本机，分析时发送必要内容。</p>
+            <p className="capture-summary-caution">请避免录入密码、令牌、API 密钥等敏感信息。</p>
+          </div>}
+          <button type="button" className="capture-detail-toggle" disabled={disabled} aria-expanded={expanded}
+            aria-controls="capture-detail-content" onClick={toggleExpanded}>
+            {expanded ? "收起说明，返回录制准备" : "展开详细说明"}<span aria-hidden="true">{expanded ? "−" : "+"}</span>
+          </button>
+          {expanded && <nav className="capture-detail-tabs" aria-label="采集说明分类">
+            {sections.map((label, index) => <button key={label} type="button" aria-pressed={section === index}
+              onClick={() => setSection(index)}>{label}</button>)}
+          </nav>}
+        </>}
+
+        <div id={compact ? "capture-detail-content" : undefined} className={compact ? "capture-detail-content" : "capture-full-content"}
+          hidden={compact && !expanded}>
+
         <p className="sheet-lead">本工具记录屏幕和操作活动，将操作转换为可复用技能。以下说明具体采集内容及可能发送的数据。</p>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 0}>
           <h3>录制期间</h3>
           <p className="sheet-note">仅在开始和结束录制之间采集。</p>
           <ul>
@@ -106,7 +135,7 @@ export function WhatsRecorded({
           <p className="sheet-caution">请勿输入、粘贴、展示、复制或口述密码、令牌、API 密钥等敏感信息。屏幕上可见的内容、复制文本预览与旁白都可能被录制。</p>
         </section>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 1}>
           <h3>录制终端（仅在打开时）</h3>
           <ul>
             <li>仅采集从悬浮录制栏打开的终端。</li>
@@ -115,7 +144,7 @@ export function WhatsRecorded({
           </ul>
         </section>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 2}>
           <h3>语音旁白（仅在启用时）</h3>
           <p className="sheet-note">默认关闭。可在旁白设置中选择麦克风和初始状态，再通过悬浮录制栏控制。</p>
           <ul>
@@ -127,7 +156,7 @@ export function WhatsRecorded({
           </ul>
         </section>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 3}>
           <h3>存储位置</h3>
           <ul>
             <li>所有内容都保存在本机的应用录制目录中。</li>
@@ -135,37 +164,24 @@ export function WhatsRecorded({
           </ul>
         </section>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 4}>
           <h3>发送用于分析的内容</h3>
           <ul>
             <li>录制期间不会向外发送数据。</li>
             <li>
               选择分析后，事件时间线、屏幕截图、旁白文本及分析所需的有限终端输出片段会发送到配置的 AI 服务。
             </li>
-            <li>默认会在本机隐藏文本和截图中的密码、密钥、邮箱、银行卡号和证件号码等敏感信息，可在下方关闭。</li>
+            <li>默认会在本机隐藏文本和截图中的密码、密钥、邮箱、银行卡号和证件号码等敏感信息，可在全局设置中调整。</li>
           </ul>
         </section>
 
-        <section className={`sheet-block sheet-advp ${advancedOn ? "on" : ""}`}>
+        <section className={`sheet-block sheet-advp ${advancedOn ? "on" : ""}`} hidden={compact && section !== 5}>
           <div className="sheet-advp-head">
             <div className="sheet-advp-copy">
               <h3>隐私保护</h3>
               <p className="sheet-note">默认开启。分析前在本机检查文本和截图，并隐藏敏感信息。关闭后将按原样发送录制内容。</p>
             </div>
-            <button
-              type="button"
-              className="sheet-switch-btn"
-              role="switch"
-              aria-checked={advancedOn}
-              aria-busy={advancedPending}
-              aria-label="隐私保护"
-              disabled={advancedPending}
-              onClick={onToggleAdvanced}
-            >
-              <span className={`sheet-switch ${advancedOn ? "on" : ""}`} aria-hidden>
-                <span className="sheet-switch-knob" />
-              </span>
-            </button>
+            <button type="button" className="secondary" onClick={onOpenSettings}>前往隐私设置</button>
           </div>
           {advancedOn && (
             <>
@@ -177,7 +193,7 @@ export function WhatsRecorded({
               <div className={`sheet-advp-status ${showModelError ? "is-error" : ""}`}>
                 <span className="sheet-advp-model">{protectionModelNote(sensitive)}</span>
                 {showDownloadAction && (
-                  <button type="button" className="sheet-advp-download" onClick={onDownload}>
+                  <button type="button" className="sheet-advp-download" onClick={onOpenSettings}>
                     {sensitive?.ocr === "error" ? "重试" : "立即设置"}
                   </button>
                 )}
@@ -187,7 +203,7 @@ export function WhatsRecorded({
           )}
         </section>
 
-        <section className="sheet-block">
+        <section className="sheet-block" hidden={compact && section !== 6}>
           <h3>不会采集的内容</h3>
           <ul>
             <li>不会记录键盘按键。</li>
@@ -195,8 +211,9 @@ export function WhatsRecorded({
             <li>仅在录制期间采集，不会在后台持续监控。</li>
           </ul>
         </section>
+        </div>
 
-        <button className="sheet-close" onClick={onReviewed}>知道了</button>
+        {!inline && <button type="button" className="sheet-close" onClick={onReviewed}>知道了</button>}
       </div>
     </div>
   );

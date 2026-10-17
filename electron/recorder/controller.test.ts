@@ -8,6 +8,7 @@ import { FULL_CAPTURE } from "../../common/config";
 import type { NarrationLanguage } from "../../common/narration";
 import type { MicrophoneDevice } from "../../common/microphone";
 import { RecorderController, type SessionAudioRecorder } from "./controller";
+import { SavedRecordingHandoff } from "../saved-recording-handoff";
 
 class FakeAudioRecorder implements SessionAudioRecorder {
   readonly calls: string[] = [];
@@ -50,6 +51,8 @@ test("microphone toggles are serialized and finalized on save", async () => {
   await withSessionsRoot(async () => {
     const audio = new FakeAudioRecorder();
     let processed = 0;
+    const handoff = new SavedRecordingHandoff();
+    const openedSessions: string[] = [];
     const controller = new RecorderController({
       resolveConfig: () => ({ ...FULL_CAPTURE }),
       buildCollectors: () => [],
@@ -64,6 +67,10 @@ test("microphone toggles are serialized and finalized on save", async () => {
       },
     });
 
+    controller.onStatusChanged(status => {
+      const id = handoff.consume(status, false);
+      if (id) openedSessions.push(id);
+    });
     const started = await controller.start();
     assert.equal(started.ok, true);
     assert.equal(audio.narrationLanguage, "zh");
@@ -95,6 +102,7 @@ test("microphone toggles are serialized and finalized on save", async () => {
 
     await controller.whenProcessed();
     assert.equal(processed, 1);
+    assert.deepEqual(openedSessions, [started.sessionId], "real save and post-processing transitions hand off once");
   });
 });
 
@@ -151,6 +159,25 @@ test("preferred narration language is reused by optionless recording starts", as
     const changeWhileRecording = await controller.setNarrationLanguage("fr");
     assert.equal(changeWhileRecording.ok, false);
     assert.match(changeWhileRecording.error ?? "", /cannot change while recording/i);
+    assert.equal((await controller.stop()).ok, true);
+  });
+});
+
+test("recording purpose and requested output are persisted with the session", async () => {
+  await withSessionsRoot(async (root) => {
+    const controller = new RecorderController({
+      resolveConfig: () => ({ ...FULL_CAPTURE, video: false }),
+      buildCollectors: () => [],
+      deleteSession: async () => undefined,
+    });
+    const started = await controller.start({
+      intent: "根据订单准备报价单，确认后发给客户。",
+      outputKind: "skill",
+    });
+    assert.equal(started.ok, true);
+    const meta = JSON.parse(await readFile(path.join(root, started.sessionId!, "session.json"), "utf8"));
+    assert.equal(meta.recordingIntent, "根据订单准备报价单，确认后发给客户。");
+    assert.equal(meta.requestedOutput, "skill");
     assert.equal((await controller.stop()).ok, true);
   });
 });

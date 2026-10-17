@@ -1,4 +1,7 @@
+import { documentBuilder } from "./documentbuilder/builder";
+import { getCaptureTimeline } from "./capture-timeline";
 import path from "node:path";
+import { settingsSection } from "../common/settings";
 import { BrowserBridge } from "./browser/bridge";
 import {
   app,
@@ -12,7 +15,7 @@ import {
 } from "electron";
 
 import { FULL_CAPTURE } from "../common/config";
-import { IPC, type RecorderStatus, type StartResult } from "../common/ipc";
+import { IPC, type RecorderStatus, type StartOptions, type StartResult } from "../common/ipc";
 import type {
   SupportedShellId,
   TerminalActionResult,
@@ -22,9 +25,12 @@ import { createCollectors } from "./collectors";
 import { installCrashGuards } from "./crash-guards";
 import { Describer } from "./describer/describer";
 import { processSession } from "./pipeline";
-import { registerIpc } from "./ipc";
+import { registerIpc, enrichment } from "./ipc";
 import { createLogger } from "./logger";
 import { NarrationManager } from "./narration/manager";
+import { getAsrPipeline } from "./narration/sensevoice";
+import { transcribeIntentAudio } from "./narration/intent";
+import { SavedRecordingHandoff } from "./saved-recording-handoff";
 import { SensitiveModelManager } from "./sensitive/model-manager";
 import { RecorderController } from "./recorder/controller";
 import { RecordingPrivacySession } from "./recording-privacy";
@@ -40,7 +46,9 @@ import { ScreenSourceService } from "./video/sources";
 import {
   clampRecordingControlsWindow,
   createLibraryWindow,
+  createSettingsWindow,
   createRecorderWindow,
+  createRecordingPreparationWindow,
   createRecordingControlsWindow,
   createTerminalWindow,
   fitRecorderHeight,
@@ -58,7 +66,10 @@ installCrashGuards(log);
 const dock = dockIcon();
 
 let recorderWindow: BrowserWindow | null = null;
+let recordingPreparationWindow: BrowserWindow | null = null;
+let intentTranscriptionPending = false;
 let libraryWindow: BrowserWindow | null = null;
+let settingsWindow: BrowserWindow | null = null;
 let recordingControlsWindow: BrowserWindow | null = null;
 let terminalWindow: BrowserWindow | null = null;
 let terminalWindowClosing = false;
@@ -124,7 +135,11 @@ const recorder = new RecorderController({
   },
 });
 
-async function startRecording(): Promise<StartResult> {
+async function startRecording(request: StartOptions = {}): Promise<StartResult> {
+  if (typeof request.intent !== "string" || !request.intent.trim() || request.intent.length > 1200)
+    return { ok: false, error: "请先填写这次录制要完成的目标。" };
+  if (!request.outputKind || !["sop", "skill", "manual", "undecided"].includes(request.outputKind))
+    return { ok: false, error: "请先选择希望产出的内容。" };
   if (recordingStartPending) {
     return { ok: false, error: "Recording is already starting." };
   }
@@ -138,6 +153,8 @@ async function startRecording(): Promise<StartResult> {
     return await recorder.start({
       ...microphones.startOptions(),
       ...screenOptions,
+      intent: request.intent,
+      outputKind: request.outputKind,
     });
   } catch (error) {
     return { ok:false,error:error instanceof Error ? error.message : "无法开始录制" };
@@ -149,7 +166,7 @@ async function startRecording(): Promise<StartResult> {
 /** Send an event to every live window (recorder HUD + library, if open). */
 function broadcast(channel: string, payload: unknown): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    if (!win.isDestroyed()) win.webContents.send(channel, payload);
+    if (!win.isDestroyed() && !win.webContents.isDestroyed()) win.webContents.send(channel, payload);
   }
 }
 
@@ -160,17 +177,23 @@ const automationBuilder = new AutomationBuilder((progress) =>
 );
 
 /** Open, focus, and re-dock the Sessions library window (creating it lazily). */
-function openLibrary(): void {
+function openLibrary(autoAnalyzeSessionId?: string): void {
   if (recorder.state === "recording") return;
   if (!recorderWindow || recorderWindow.isDestroyed()) return;
   if (libraryWindow && !libraryWindow.isDestroyed()) {
     redockLibrary(recorderWindow, libraryWindow);
     libraryWindow.show();
     libraryWindow.focus();
+    if (autoAnalyzeSessionId) {
+      const win = libraryWindow;
+      const notify = () => { if (!win.isDestroyed()) win.webContents.send(IPC.librarySessionRequested, autoAnalyzeSessionId); };
+      if (win.webContents.isLoading()) win.webContents.once("did-finish-load", notify);
+      else notify();
+    }
     return;
   }
   recorderHome = recorderWindow.getBounds();
-  libraryWindow = createLibraryWindow(recorderWindow);
+  libraryWindow = createLibraryWindow(recorderWindow, autoAnalyzeSessionId);
   libraryWindow.on("closed", () => {
     libraryWindow = null;
     // Return the recorder to where it sat before it made room for the library.
@@ -181,6 +204,7 @@ function openLibrary(): void {
     // Drop idle agent conversations now that the library is gone.
     void describer.evictIdle();
     void builder.evictIdle();
+    void documentBuilder.evictIdle();
     void automationBuilder.evictIdle();
   });
 }
@@ -301,19 +325,19 @@ function showRecorderWindow(): BrowserWindow {
 }
 
 function showRecordingPrivacyWarning(): void {
-  const win = showRecorderWindow();
-  const notify = () => {
-    if (!win.isDestroyed()) win.webContents.send(IPC.recordingPrivacyWarningRequested);
-  };
-  if (win.webContents.isLoading()) {
-    win.webContents.once("did-finish-load", notify);
-  } else {
-    notify();
+  if (recordingPreparationWindow && !recordingPreparationWindow.isDestroyed()) {
+    recordingPreparationWindow.show();
+    recordingPreparationWindow.focus();
+    return;
   }
+  const win = recordingPreparationWindow = createRecordingPreparationWindow(showRecorderWindow());
+  win.on("close", (event) => { if (recordingStartPending) event.preventDefault(); });
+  win.on("closed", () => { recordingPreparationWindow = null; });
 }
 
 async function requestStartRecording(): Promise<StartResult> {
-  if (recordingPrivacy.startDecision() === "start") return startRecording();
+  // Every recording needs a fresh purpose confirmation. The renderer combines
+  // the persistent privacy disclosure with that task-level confirmation.
   showRecordingPrivacyWarning();
   return { ok: false, privacyWarningRequired: true };
 }
@@ -321,6 +345,7 @@ async function requestStartRecording(): Promise<StartResult> {
 /** Keep the full HUD and compact overlay mutually exclusive. */
 function syncRecordingWindows(status: RecorderStatus): void {
   if (status.state === "recording") {
+    if (recordingPreparationWindow && !recordingPreparationWindow.isDestroyed()) recordingPreparationWindow.destroy();
     if (libraryWindow && !libraryWindow.isDestroyed()) libraryWindow.close();
     if (recorderWindow && !recorderWindow.isDestroyed()) recorderWindow.hide();
     showRecordingControls();
@@ -365,7 +390,15 @@ function clampControlsToDisplay(): void {
 app.whenReady().then(async () => {
   let browserInitError: string | null = null;
   try { await browserBridge.initialize(); } catch (error) { browserInitError=String(error); log.warn("Browser bridge unavailable:",error); }
+  ipcMain.handle("capture:timeline",(_event,id:string)=>getCaptureTimeline(id));
   ipcMain.handle("browser:status",()=>({...browserBridge.status(),error:browserInitError??browserBridge.status().error}));
+  let browserReconnect:Promise<void>|null=null;
+  ipcMain.handle("browser:reconnect",async()=>{
+    if(recorder.state === "recording")return {...browserBridge.status(),error:"录制期间不能重置浏览器连接，请停止录制后重试。"};
+    if(!browserReconnect)browserReconnect=browserBridge.reconnect().then(()=>{browserInitError=null;}).catch(error=>{browserInitError=String(error);}).finally(()=>{browserReconnect=null;});
+    await browserReconnect;
+    return {...browserBridge.status(),error:browserInitError??browserBridge.status().error};
+  });
   ipcMain.handle("browser:reveal",()=>{shell.showItemInFolder(path.join(browserBridge.extensionDir,"manifest.json"));});
   app.on("will-quit",()=>browserBridge.close());
   if (process.platform === "win32") Menu.setApplicationMenu(null);
@@ -423,10 +456,36 @@ app.whenReady().then(async () => {
   );
   sensitiveModels.initialize();
   ipcMain.handle(IPC.start, () => requestStartRecording());
-  ipcMain.handle(IPC.startConfirmed, () => startRecording());
+  ipcMain.handle(IPC.intentTranscribe, async (event, samples: unknown) => {
+    if (!recordingPreparationWindow || recordingPreparationWindow.isDestroyed() ||
+        event.sender !== recordingPreparationWindow.webContents || recorder.state !== "idle" ||
+        recordingStartPending || intentTranscriptionPending) {
+      return { ok: false, error: "当前无法进行语音输入，请稍后重试。" };
+    }
+    intentTranscriptionPending = true;
+    try {
+      return await transcribeIntentAudio(samples, recorder.status().narrationLanguage,
+        () => getAsrPipeline({ allowDownload: false }));
+    } finally { intentTranscriptionPending = false; }
+  });
+  ipcMain.handle(IPC.startConfirmed, (_event, options: StartOptions = {}) => startRecording(options));
   ipcMain.handle(IPC.recordingPrivacyReviewed, () => recordingPrivacy.markReviewed());
   log.info("Capture: recording all sources");
 
+  ipcMain.handle(IPC.openSettings, (event, requested: unknown) => {
+    const section = settingsSection(requested);
+    if (settingsWindow && !settingsWindow.isDestroyed()) {
+      settingsWindow.webContents.send(IPC.settingsSection, section); settingsWindow.show(); settingsWindow.focus(); return;
+    }
+    const parent = BrowserWindow.fromWebContents(event.sender) ?? recorderWindow;
+    if (!parent) return;
+    const win = settingsWindow = createSettingsWindow(parent, section);
+    win.on("close", event => { if (!quitReady) { event.preventDefault(); win.webContents.send(IPC.settingsCloseRequested); } });
+    win.on("closed", () => { settingsWindow = null; broadcast(IPC.settingsChanged, null); if (!parent.isDestroyed()) parent.focus(); });
+  });
+  ipcMain.handle(IPC.closeSettings, event => {
+    if (settingsWindow && event.sender === settingsWindow.webContents) { settingsWindow.destroy(); }
+  });
   ipcMain.handle(IPC.openLibrary, () => openLibrary());
   ipcMain.handle(IPC.closeLibrary, () => {
     if (libraryWindow && !libraryWindow.isDestroyed()) libraryWindow.close();
@@ -531,9 +590,12 @@ app.whenReady().then(async () => {
     fitRecorderHeight(win, height);
   });
 
+  const savedRecordingHandoff = new SavedRecordingHandoff();
   recorder.onStatusChanged((status) => {
     broadcast(IPC.statusChanged, status);
     syncRecordingWindows(status);
+    const savedSessionId = savedRecordingHandoff.consume(status, Boolean(quitTask));
+    if (savedSessionId) openLibrary(savedSessionId);
   });
   recorderWindow = createRecorderWindow();
 
@@ -603,8 +665,14 @@ app.on("before-quit", (event) => {
     // flight, and is a harmless "Not recording" result when the app is idle.
     await recorder.stop(terminal.busy);
     await recorder.whenProcessed();
+    await enrichment.dispose();
+    await documentBuilder.dispose();
     quitReady = true;
     app.quit();
+    // In dev, Node/native handles may outlive the closed windows. Recording and
+    // task checkpoints are already flushed; release the old host before Vite
+    // launches its replacement (and before it rebinds the browser bridge).
+    if (process.env.VITE_DEV_SERVER_URL) setTimeout(() => app.exit(0), 250).unref();
   })()
     .catch((error) => {
       log.warn("graceful shutdown failed:", error);
@@ -616,10 +684,16 @@ app.on("before-quit", (event) => {
     });
 });
 
+if (process.env.VITE_DEV_SERVER_URL) {
+  process.on("SIGTERM", () => app.quit());
+  process.on("message", message => { if (message === "skill-recorder:dev-restart") app.quit(); });
+}
+
 app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   void describer.dispose();
   void builder.dispose();
+  void documentBuilder.dispose();
   void automationBuilder.dispose();
   microphones.dispose();
   void sensitiveModels.dispose();

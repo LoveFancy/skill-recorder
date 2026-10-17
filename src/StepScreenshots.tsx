@@ -8,16 +8,20 @@ function ScreenshotImage({ frame }: { frame: Screenshot }) {
 }
 const timestamp = (ms: number) => `${Math.floor(ms / 60000)}:${(ms / 1000 % 60).toFixed(1).padStart(4, "0")}`;
 
-export function StepScreenshots({ sessionId, startMs, endMs }: { sessionId: string; startMs?: number; endMs?: number }) {
+export function StepScreenshots({ sessionId, startMs, endMs, excludedFiles }: { sessionId: string; startMs?: number; endMs?: number; excludedFiles?: string[] }) {
   const [frames, setFrames] = useState<Screenshot[]>([]);
   const [status, setStatus] = useState("正在加载截图…");
   const [selected, setSelected] = useState<Screenshot | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const exclusions = JSON.stringify(excludedFiles ?? []);
   useEffect(() => {
     let active = true;
     setFrames([]);
     setStatus("正在加载截图…");
-    void window.skillRecorder.stepScreenshots(sessionId, startMs, endMs).then(result => {
+    const request = excludedFiles?.length
+      ? window.skillRecorder.stepScreenshots(sessionId, startMs, endMs, JSON.parse(exclusions))
+      : window.skillRecorder.stepScreenshots(sessionId, startMs, endMs);
+    void request.then(result => {
       if (!active) return;
       setFrames(result);
       setStatus(startMs === undefined ? "此步骤没有时间信息，无法匹配截图" : "此时间段没有对应截图");
@@ -26,7 +30,7 @@ export function StepScreenshots({ sessionId, startMs, endMs }: { sessionId: stri
       setStatus(message.includes("No handler") || message.includes("is not a function") ? "截图接口尚未加载，请重启应用" : `截图加载失败：${message}`);
     } });
     return () => { active = false; };
-  }, [sessionId, startMs, endMs]);
+  }, [sessionId, startMs, endMs, exclusions]);
   useEffect(() => {
     if (!selected) return;
     const previous = document.activeElement as HTMLElement | null;

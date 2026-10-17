@@ -1,3 +1,4 @@
+import claudeCodeCatalogueProvider from "./catalogues/claude-code-catalogue";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
@@ -54,6 +55,7 @@ test("the registry resolves enabled catalogues and derives unavailable errors", 
     scoutProvider,
     coworkProvider,
     agent技能Provider,
+    claudeCodeCatalogueProvider,
   ]);
 
   assert.deepEqual(registry.catalogueFor("scout", "skill"), scoutProvider.skill);
@@ -81,13 +83,14 @@ test("disabled targets stay unavailable even when catalogue content is staged", 
     scoutProvider,
     coworkProvider,
     agent技能Provider,
+    claudeCodeCatalogueProvider,
     stagedCopilotStudioProvider,
   ]);
 
   assert.equal(registry.catalogueFor("copilot-studio", "skill"), null);
   assert.throws(
     () => registry.requireCatalogue("copilot-studio", "skill"),
-    /That target architecture isn't available yet\. Choose Scout, Cowork, or 通用智能体技能\./,
+    /That target architecture isn't available yet\. Choose Scout, Cowork, 通用智能体技能, or Claude Code 项目技能\./,
   );
 });
 
@@ -178,6 +181,7 @@ test("real providers preserve versions, content, and the support matrix", () => 
     scoutCatalogueProvider,
     coworkCatalogueProvider,
     agent技能CatalogueProvider,
+    claudeCodeCatalogueProvider,
   ]);
 
   // These hashes prove catalogue moves are byte-for-byte. Intentional catalogue

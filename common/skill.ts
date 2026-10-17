@@ -41,6 +41,11 @@ export const PlanStepSchema = z.preprocess(
     title: z.string().default(""),
     /** Imperative, generalized description of the step. */
     text: z.string(),
+    /** Optional for legacy plans; new plans explain semantic equivalence and data flow. */
+    sourceStepIds: z.array(z.string()).optional(),
+    mappingReason: z.string().optional(),
+    inputSources: z.array(z.string()).optional(),
+    output: z.string().optional(),
     /** Concrete native tools/skills this step uses, in execution order. */
     tools: z
       .array(z.string())
@@ -54,6 +59,9 @@ export type PlanStep = z.infer<typeof PlanStepSchema>;
  * The agent's proposed plan, shown to the user before any skill is written.
  * This is what `propose_plan` submits and what the user refines in NL.
  */
+export const GenerationMetadataSchema=z.object({sourceFingerprint:z.string().optional(),inputRevision:z.string(),taskPackageRevision:z.number().nullable(),runId:z.string().nullable(),status:z.enum(['draft','reviewed']),gaps:z.array(z.string()),capabilitySnapshotId:z.string().nullable(),catalogueVersion:z.string(),executionVerified:z.literal(false)});
+export type GenerationMetadata=z.infer<typeof GenerationMetadataSchema>;
+
 export const SkillPlanSchema = z.preprocess(
   migrateLegacyInputsToValues,
   z.object({
@@ -67,6 +75,7 @@ export const SkillPlanSchema = z.preprocess(
   description: z.string(),
   /** Plain-language summary of what the skill does. */
   summary: z.string().default(""),
+  generation: GenerationMetadataSchema.optional(),
   /** How the recorded specifics are generalized (the loop/collection insight). */
   generalization: z.string().default(""),
   /** Named fixed literals (URLs / paths / constants) the steps reference by `{{id}}`. */
@@ -110,6 +119,7 @@ export const BuiltSkillSchema = z.object({
   /** The plan the skill was built from (for the UI / re-export). */
   plan: SkillPlanSchema.nullable().default(null),
   createdAt: z.number(),
+  generation: GenerationMetadataSchema.optional(),
   /** Absolute path of the exported SKILL.md, once exported. */
   exportedPath: z.string().optional(),
   exportedAt: z.number().optional(),
@@ -145,6 +155,7 @@ export function toBuiltSkill(
     values: plan?.values ?? [],
     plan,
     createdAt: Date.now(),
+    ...(plan?.generation ? {generation:plan.generation} : {}),
   });
 }
 
@@ -165,6 +176,10 @@ export function renderSkillMarkdown(skill: BuiltSkill): string {
     for (const t of tools) lines.push(`  - ${t}`);
   }
   lines.push("---", "");
+  if(skill.generation){
+    if(skill.generation.status==="draft")lines.push("> 待确认草稿：关键缺口尚未解决。",...skill.generation.gaps.map(g=>`> - ${g}`),"");
+    lines.push("> 内容已生成；尚未进行业务试运行。", "");
+  }
   lines.push(renderValues(skill.body, skill.values).trim(), "");
   return lines.join("\n");
 }

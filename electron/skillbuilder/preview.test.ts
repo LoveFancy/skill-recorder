@@ -10,6 +10,8 @@ import { AnalysisSchema } from "../../common/analysis";
 import type { SkillBuildProgress } from "../../common/ipc";
 import { renderSkillMarkdown, SkillPlanSchema, type SkillPlan } from "../../common/skill";
 import { loadPersistedSkill, SkillBuilder } from "./builder";
+import { emptyWorkflow, workflowStore } from "../enrichment/store";
+import { inputRevision } from "../enrichment/coordinator";
 
 const sessionId = "preview-test";
 const plan = SkillPlanSchema.parse({
@@ -20,6 +22,12 @@ const plan = SkillPlanSchema.parse({
   allowedTools: ["Bash(gh *)"],
   values: [{ id: "repo", name: "Repository", value: "example/repository" }],
   steps: [{ kind: "calculation", title: "List issues", text: "List issues for {{repo}}.", tools: ["bash"] }],
+});
+
+test("reviewed generation cannot introduce permissions beyond the approved plan", async t => {
+  const f = fixture(t);
+  workflowStore.save({ ...emptyWorkflow(sessionId), decision: { kind: "skip", at: 1, inputRevision: inputRevision(sessionId) } });
+  await assert.rejects(f.builder.prepare(sessionId, { ...plan, allowedTools: ["Bash(gh repo *)"] }), /计划之外的权限/);
 });
 
 function deferred() {

@@ -21,6 +21,7 @@ test("the manifest derives architecture validation and target availability", () 
     "scout",
     "cowork",
     "agent-skill",
+    "claude-code",
     "copilot-studio",
   ]);
   assert.equal(SkillArchitecture.safeParse("generic").success, false);
@@ -31,6 +32,7 @@ test("the manifest derives architecture validation and target availability", () 
       ["scout", true],
       ["cowork", true],
       ["agent-skill", true],
+      ["claude-code", true],
       ["copilot-studio", false],
     ],
   );
@@ -49,6 +51,7 @@ test("the manifest derives architecture validation and target availability", () 
       ["scout", "automation", true, ["install"], "Scout"],
       ["cowork", "skill", true, ["export"], "Microsoft 365 Copilot"],
       ["agent-skill", "skill", true, ["export"], "你的智能体"],
+      ["claude-code", "skill", true, ["export"], "Claude Code"],
       ["copilot-studio", "skill", false, ["export"], "Copilot Studio"],
     ],
   );
@@ -63,11 +66,13 @@ test("the manifest derives architecture validation and target availability", () 
     "Scout",
     "Cowork",
     "通用智能体技能",
+    "Claude Code 项目技能",
   ]);
   assert.deepEqual(enabledArchitectureLabels("automation"), ["Scout"]);
 });
 
 test("target placements are enforced from the manifest", () => {
+  assert.throws(()=>requireTargetPlacement("claude-code","skill","install"),/does not support/);
   assert.equal(requireTargetPlacement("scout", "skill", "install").architecture, "scout");
   assert.equal(requireTargetPlacement("cowork", "skill", "export").architecture, "cowork");
   assert.throws(

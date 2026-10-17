@@ -333,6 +333,10 @@ export class RecorderController {
 
   private async startInternal(options?: StartOptions): Promise<StartResult> {
     if (this.store) return { ok: false, error: "Already recording" };
+    if (options?.intent !== undefined && (typeof options.intent !== "string" || options.intent.trim().length === 0 || options.intent.length > 1200))
+      return { ok: false, error: "请填写有效的录制目标。" };
+    if (options?.outputKind !== undefined && !["sop", "skill", "manual", "undecided"].includes(options.outputKind))
+      return { ok: false, error: "请选择有效的产出类型。" };
     this.recordingScreen = { displayId: options?.screenDisplayId ?? "", sourceId: options?.screenSourceId ?? "" };
     if (
       options?.narrationLanguage !== undefined &&
@@ -357,6 +361,8 @@ export class RecorderController {
         stoppedAt: null,
         platform: process.platform,
         appVersion: app.getVersion(),
+        recordingIntent: options?.intent?.trim() || undefined,
+        requestedOutput: options?.outputKind,
       };
       store = new SessionStore(meta);
     } catch (error) {

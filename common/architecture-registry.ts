@@ -137,6 +137,11 @@ export const ARCHITECTURE_MANIFEST = defineArchitectures([
     ],
   },
   {
+    id: "claude-code", label: "Claude Code 项目技能", installTargetLabel: "Claude Code",
+    note: "依赖关联项目的 MCP / Skills 配置；仅导出，不安装、不试运行。",
+    targets: [{kind:"skill",label:"Claude Code 项目技能",enabled:true,note:"使用已核验的项目能力快照生成项目专用技能。",placements:["export"]}],
+  },
+  {
     id: "copilot-studio",
     label: "Copilot Studio",
     installTargetLabel: "Copilot Studio",

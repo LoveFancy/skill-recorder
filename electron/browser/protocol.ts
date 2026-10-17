@@ -26,5 +26,5 @@ export function validateBrowserEvent(raw:unknown,sessionId:string,startedAt:numb
   }
   // Avoid forwarding credentials in navigation URLs, even if supplied by a client.
   const url=new URL(e.url); url.username=""; url.password=""; url.search=""; url.hash="";
-  return {...e,url:url.toString(),receivedAt,scope:"user-bound-tab",coordinateSpace:"css-viewport"};
+  return {...e,url:url.toString(),receivedAt,scope:"browser-profile",coordinateSpace:"css-viewport"};
 }

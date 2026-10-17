@@ -214,3 +214,7 @@ trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
+
+## Browser UI tests
+
+Run `npm run test:ui:install` once, then `npm run test:ui` for Playwright tests against the real React renderer with synthetic Electron IPC. To use installed Chrome instead, run `PLAYWRIGHT_CHANNEL=chrome npm run test:ui`. See [UI testing](docs/ui-testing.md) for coverage, debugging, reports and CI details.

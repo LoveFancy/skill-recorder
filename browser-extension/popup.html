@@ -1,6 +1,7 @@
 <!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>浏览器采集</title>
-<style>body{width:300px;font:13px system-ui;margin:16px;color:#292524;background:#fafaf9}h2{font-size:16px}p{line-height:1.6}button{padding:8px 12px;border:1px solid #d6d3d1;border-radius:6px;background:white;cursor:pointer;margin-right:8px}#status{white-space:pre-line}small{color:#78716c}</style>
+<style>body{width:300px;font:13px system-ui;margin:16px;color:#292524;background:#fafaf9}h2{font-size:16px}p{line-height:1.6}button{padding:8px 12px;border:1px solid #d6d3d1;border-radius:6px;background:white;cursor:pointer;margin-right:8px}#status{white-space:pre-line}small{color:#78716c}.recording #status{color:#b91c1c;font-weight:600}</style>
 <h2>技能录制器 · 浏览器采集</h2><p id="status">正在连接…</p>
-<p>仅采集绑定标签页的真实操作。请将桌面录制源选为此 Chrome 窗口或所在屏幕。</p>
-<button id="bind">采集当前标签页</button><button id="unbind">解除绑定</button>
-<p><small>仅授权当前站点；跨站后请重新绑定。密码、密钥字段不采集内容。浏览器坐标不等同于截图坐标。</small></p><script src="popup.js"></script></html>
+<p>在技能录制器中开始或结束录制，插件自动同步，无需绑定标签页。支持跨标签页和跨 Chrome 窗口操作。</p>
+
+<button id="reconnect">重新连接</button>
+<p><small>采集当前 Chrome 配置文件的所有普通网页，仅记录前台真实操作。内部页和隐身模式不支持。密码、密钥字段不采集内容。浏览器坐标不等同于截图坐标。</small></p><script src="popup.js"></script></html>

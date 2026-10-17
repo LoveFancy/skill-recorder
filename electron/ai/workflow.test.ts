@@ -1,16 +1,26 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { Describer, loadPersistedAnalysis } from "../describer/describer";
 import { processSession } from "../pipeline";
 import { SkillBuilder } from "../skillbuilder/builder";
+import { AgentSession } from "./client";
+
+test("API execution reports configured model then server model",async()=>{
+  const models:(string|undefined)[]=[];
+  const session=new AgentSession({onExecution:(_title,_detail,model)=>models.push(model)},
+    {baseUrl:'http://api.test/v1',model:'configured-model',apiKey:''},
+    (async()=>new Response(JSON.stringify({model:'actual-model-v2',choices:[{message:{role:'assistant',content:'ok'}}]}))) as typeof fetch);
+  try{await session.sendAndWait('test');assert.deepEqual(models,['configured-model','actual-model-v2']);}
+  finally{await session.disconnect();}
+});
 
 test("real pipeline, describer and builder export the exact preview using only the model HTTP API", async (t) => {
   const root = mkdtempSync(path.join(os.tmpdir(), "model-workflow-"));
   const env = { SKILL_RECORDER_SESSIONS_DIR: root, SKILL_RECORDER_BASE_URL: "http://localhost:11434/v1",
-    SKILL_RECORDER_MODEL: "test-vision-model", SKILL_RECORDER_API_KEY: "" };
+    SKILL_RECORDER_PROCESSING_BACKEND: "api", SKILL_RECORDER_MODEL: "test-vision-model", SKILL_RECORDER_API_KEY: "" };
   for (const [key, value] of Object.entries(env)) {
     const prior = process.env[key]; process.env[key] = value;
     t.after(() => { if (prior === undefined) delete process.env[key]; else process.env[key] = prior; });
@@ -19,10 +29,14 @@ test("real pipeline, describer and builder export the exact preview using only t
   writeFileSync(path.join(dir, "session.json"), JSON.stringify({ id, startedAt: 1000, stoppedAt: 2000, platform: "darwin", appVersion: "test" }));
   writeFileSync(path.join(dir, "events.jsonl"), JSON.stringify({ seq: 0, t: 100, epoch: 1100, type: "app.activate", source: "test", payload: { app: "Editor", title: "Task notes" } }) + "\n");
   await processSession(dir);
+  writeFileSync(path.join(dir, "audio.json"), "{}");
+  utimesSync(path.join(dir, "audio.json"), 100, 100);
+  writeFileSync(path.join(dir, "narration.json"), JSON.stringify({ model: "test", language: "zh", segments: [{ atMs: 0, endMs: 1000, text: "请总结笔记" }] }));
   const planPayload = { name: "summarize-notes", title: "Summarize Notes", description: "Summarize a notes file",
     values: [], allowedTools: ["Read"], steps: [{ kind: "calculation", title: "Read notes", text: "Read the user-provided notes file and summarize it.", tools: ["view"] }] };
   const calls = [
     ["get_timeline", {}],
+    ["get_narration", {}],
     ["submit_analysis", { title: "Read Task Notes", intent: "Read and summarize task notes", steps: [{ id: "s1", title: "Opened notes", detail: "Opened the notes file in Editor." }] }],
     ["get_analysis", {}], ["propose_plan", planPayload],
     ["submit_skill", { name: "summarize-notes", description: "Summarize a notes file", allowedTools: ["Read"], body: "# Summarize notes\n\nRead the user-provided notes file and summarize it." }],
@@ -33,7 +47,8 @@ test("real pipeline, describer and builder export the exact preview using only t
     const request = JSON.parse(String(init.body));
     const call = calls[requests++]; assert.ok(call, "unexpected extra API call");
     assert.ok(request.tools.some((tool: { function: { name: string } }) => tool.function.name === call[0]));
-    if (requests === 2 || requests === 4) assert.equal(request.messages.at(-1).role, "tool");
+    if (requests === 3) assert.match(request.messages.at(-1).content, /请总结笔记/);
+    if (requests === 3 || requests === 5) assert.equal(request.messages.at(-1).role, "tool");
     return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: null,
       tool_calls: [{ id: `call-${requests}`, type: "function", function: { name: call[0], arguments: JSON.stringify(call[1]) } }],
     } }] }));
@@ -42,6 +57,8 @@ test("real pipeline, describer and builder export the exact preview using only t
   const builder = new SkillBuilder(() => undefined);
   t.after(async () => { await describer.dispose(); await builder.dispose(); rmSync(root, { recursive: true, force: true }); });
   const analysis = await describer.analyze(id);
+  assert.equal(analysis.narrationSourceUpdatedAt, statSync(path.join(dir, "narration.json")).mtimeMs);
+  assert.notEqual(analysis.narrationSourceUpdatedAt, statSync(path.join(dir, "audio.json")).mtimeMs);
   assert.equal(loadPersistedAnalysis(id)?.intent, analysis.intent);
   const plan = await builder.build({ sessionId: id, architecture: "agent-skill" });
   const preview = await builder.prepare(id, plan);
@@ -49,7 +66,7 @@ test("real pipeline, describer and builder export the exact preview using only t
   assert.ok(exported);
   assert.equal(readFileSync(exported.path, "utf8"), preview.markdown);
   assert.equal(exported.skill.architecture, "agent-skill");
-  assert.equal(requests, 5, "placing a preview must not generate again");
+  assert.equal(requests, 6, "placing a preview must not generate again");
 });
 
 test("annotation tool sends exact saved images and coordinates, and withholds protected images when OCR is unavailable", async () => {
@@ -104,7 +121,16 @@ test("analysis must inspect every annotation page, including crops, before submi
     const rejectRemaining = await invoke("submit_analysis",submission) as {textResultForLlm:string};
     assert.match(rejectRemaining.textResultForLlm,/offset=6/);
     await invoke("get_annotations",{offset:6});
+    const missingNarration = await invoke("submit_analysis",submission) as {textResultForLlm:string};
+    assert.match(missingNarration.textResultForLlm,/full current voice narration/);
+    await invoke("get_narration",{query:"保存"});
+    const partialNarration = await invoke("submit_analysis",submission) as {resultType:string};
+    assert.equal(partialNarration.resultType,"failure");
+    await invoke("get_narration");
     await invoke("submit_analysis",submission);
     assert.equal(submitted,true);
+    utimesSync(path.join(dir,"narration.json"), 100, 100);
+    const changedNarration = await invoke("submit_analysis",submission) as {resultType:string};
+    assert.equal(changedNarration.resultType,"failure");
   } finally { rmSync(dir,{recursive:true,force:true}); }
 });

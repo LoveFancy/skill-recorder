@@ -12,6 +12,7 @@ import {
 } from "../../common/analysis";
 import type { AnalyzeProgress } from "../../common/ipc";
 import type { SessionMeta } from "../../common/types";
+import { NARRATION_FILE } from "../../common/narration";
 import { FrameExtractor } from "../frames/extractor";
 import { createLogger } from "../logger";
 import { sessionsRoot, sessionDir, isValidSessionId } from "../recorder/session-store";
@@ -27,7 +28,7 @@ const TURN_TIMEOUT_MS = 180_000;
 const MAX_LIVE_SESSIONS = 4;
 
 const KICKOFF_PROMPT =
-  "Reconstruct what the user did in this recording. Start with get_timeline, then read events " +
+  "Reconstruct what the user did in this recording. Start with get_timeline and get_narration (without a query) to read the user's full spoken intent, then read events " +
   "where anything is unclear. If annotationCoverage.total is positive, first call get_annotations with offset=0 " +
   "and follow every nextOffset to inspect all user click markers, region selections, and cropped screenshots. " +
   "Treat them as priority intent evidence and combine them with nearby narration and surrounding events in your steps. If captureCoverage.capturedFrameCount is positive, call get_frames " +
@@ -57,6 +58,8 @@ interface LiveSession {
   holder: { submission: AnalysisSubmission | undefined };
   /** Mutable redaction slot; set per turn so tools mask outgoing data. */
   redaction: { current: RedactionContext | null };
+  recordingIntent?: string;
+  requestedOutput?: SessionMeta["requestedOutput"];
 }
 
 function readJson<T>(file: string): T | null {
@@ -98,7 +101,7 @@ export class Describer {
   constructor(private readonly emitProgress: (p: AnalyzeProgress) => void) {}
 
   /** First pass: reconstruct the session from scratch. */
-  async analyze(sessionId: string, redaction?: RedactionContext): Promise<Analysis> {
+  async analyze(sessionId: string, redaction?: RedactionContext, signal?:AbortSignal): Promise<Analysis> {
     if (this.active.has(sessionId)) throw new Error("An analysis is already running for this session.");
     this.active.add(sessionId);
     try {
@@ -106,14 +109,18 @@ export class Describer {
       await this.disposeLive(sessionId); // fresh conversation each explicit analyze
       const live = await this.createLive(sessionId);
       live.redaction.current = redaction ?? null;
-      return await this.runTurn(live, KICKOFF_PROMPT);
+      signal?.throwIfAborted();const abort=()=>void live.agent.abort();signal?.addEventListener("abort",abort,{once:true});
+      const declared = live.recordingIntent
+        ? `\nBefore recording, the user explicitly stated this goal: ${JSON.stringify(live.recordingIntent)}. Their preferred output was ${live.requestedOutput ?? "undecided"}. Use this as intent evidence, but do not treat planned actions or outcomes as completed unless the recording supports them.`
+        : "";
+      try{return await this.runTurn(live,KICKOFF_PROMPT + declared);}finally{signal?.removeEventListener("abort",abort);}
     } finally {
       this.active.delete(sessionId);
     }
   }
 
   /** Later pass: fold in NL feedback and revise holistically. */
-  async feedback(sessionId: string, fb: AnalysisFeedback, redaction?: RedactionContext): Promise<Analysis> {
+  async feedback(sessionId: string, fb: AnalysisFeedback, redaction?: RedactionContext, signal?:AbortSignal): Promise<Analysis> {
     if (this.active.has(sessionId)) throw new Error("An analysis is already running for this session.");
     this.active.add(sessionId);
     try {
@@ -123,7 +130,8 @@ export class Describer {
       const prior = loadPersistedAnalysis(sessionId);
       // The feedback round is recorded in runTurn only after it produces a
       // revision, so a failed turn never leaves a phantom log entry.
-      return await this.runTurn(live, renderFeedbackPrompt(fb, prior), fb);
+      signal?.throwIfAborted();const abort=()=>void live.agent.abort();signal?.addEventListener("abort",abort,{once:true});
+      try{return await this.runTurn(live,renderFeedbackPrompt(fb,prior),fb);}finally{signal?.removeEventListener("abort",abort);}
     } finally {
       this.active.delete(sessionId);
     }
@@ -142,7 +150,7 @@ export class Describer {
     if (this.active.has(sessionId)) throw new Error("Wait for the current analysis to finish before editing.");
     const prior = loadPersistedAnalysis(sessionId);
     if (!prior) throw new Error("There is no analysis to edit yet.");
-    const next: Analysis = { ...prior };
+    const next: Analysis = { ...prior, revision:prior.revision+1, approved:false, approvedAt:undefined };
     if (patch.title !== undefined) next.title = patch.title.trim();
     if (patch.intent !== undefined && patch.intent.trim()) next.intent = patch.intent.trim();
     if (patch.steps !== undefined) next.steps = patch.steps;
@@ -256,6 +264,8 @@ export class Describer {
       feedbackLog: prior?.feedbackLog ?? [],
       holder,
       redaction,
+      recordingIntent: meta.recordingIntent,
+      requestedOutput: meta.requestedOutput,
     };
     this.live.set(sessionId, live);
     this.evictOverflow(sessionId);
@@ -284,7 +294,7 @@ export class Describer {
     prompt: string,
     pendingFeedback?: AnalysisFeedback,
   ): Promise<Analysis> {
-    const narrationFile = path.join(live.sessionDir, "narration.json");
+    const narrationFile = path.join(live.sessionDir, NARRATION_FILE);
     const narrationSourceUpdatedAt = existsSync(narrationFile)
       ? statSync(narrationFile).mtimeMs
       : null;
@@ -336,7 +346,7 @@ export class Describer {
       writeFileSync(path.join(sessionDir, "analysis.json"), JSON.stringify(analysis, null, 2));
       writeFileSync(path.join(sessionDir, "analysis.md"), renderAnalysisMarkdown(analysis));
     } catch (err) {
-      log.warn("failed to persist analysis:", msg(err));
+      throw new Error("分析保存失败，请重试。");
     }
   }
 }

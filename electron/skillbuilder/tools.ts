@@ -101,6 +101,10 @@ export function createSkillBuilderTools(ctx: SkillToolContext): Tool[] {
                 description:
                   "Every concrete runtime tool/skill this step calls, in order, e.g. [\"workiq_get_my_profile\", \"workiq_search_chats\"] or [\"bash\"]. Use lowercase runtime identifiers here; permission patterns belong only in allowedTools.",
               },
+              sourceStepIds: { type: "array", items: { type: "string" }, description: "Real recorded step IDs supporting this mapping; empty for derived calculation steps." },
+              mappingReason: { type: "string", description: "Why the mapped tools preserve business semantics, identity, thread and attachment requirements." },
+              inputSources: { type: "array", items: { type: "string" }, description: "Sources of each input: user, runtime query, approved fixed value, or earlier step output." },
+              output: { type: "string", description: "Result passed to later steps or checked as completion evidence." },
             },
             required: ["kind", "title", "text", "tools"],
             additionalProperties: false,

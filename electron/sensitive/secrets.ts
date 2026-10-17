@@ -52,10 +52,10 @@ async function getEngine(): Promise<Engine | null> {
  * overlaps. Never logs or returns the raw value except inside the match's
  * in-memory `value` field.
  */
-export async function scanSecrets(text: string): Promise<SensitiveMatch[]> {
+export async function scanSecrets(text: string, options:{strict?:boolean}={}): Promise<SensitiveMatch[]> {
   if (!text || !text.trim()) return [];
   const engine = await getEngine();
-  if (!engine) return [];
+  if (!engine) {if(options.strict)throw new Error("敏感信息检测不可用，已停止增强材料提交。");return [];}
   try {
     const result = await engine.lintSource({
       source: { content: text, filePath: "session.txt", ext: ".txt", contentType: "text" },
@@ -68,6 +68,7 @@ export async function scanSecrets(text: string): Promise<SensitiveMatch[]> {
     }
     return matches;
   } catch (err) {
+    if(options.strict)throw new Error("敏感信息检测失败，已停止增强材料提交。");
     log.warn("secret scan failed:", err instanceof Error ? err.message : err);
     return [];
   }

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, rm, symlink } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
@@ -24,6 +24,11 @@ test("step screenshots select bounded chronological samples and reject escaped f
     const manifest = path.join(dir, "video-frames.json");
     await writeFile(manifest, JSON.stringify({ frames }));
     assert.deepEqual((await getStepScreenshots("session", 0, 4000)).map(f => f.timeMs), [0,2000,4000]);
+    await mkdir(path.join(dir,"frames"),{recursive:true});
+    await writeFile(path.join(dir,"frames/frames.json"),JSON.stringify([{file:"reviewed.jpg",tMs:12000}]));
+    assert.deepEqual((await getStepScreenshots("session",0,4000,["frames/reviewed.jpg"])).map(f=>f.timeMs),[0,1000,4000],"discard reviewed image before selecting replacement screenshots");
+    assert.deepEqual((await getStepScreenshots("session",0,4000,["frames/unknown.jpg","../video-frames/0.jpg"])).map(f=>f.timeMs),[0,2000,4000],"unknown paths must not hide other images");
+    assert.ok((await readFile(path.join(dir,"video-frames/2.jpg"))).length,"original remains recoverable");
     assert.equal((await getStepScreenshots("session", 1000, 1000)).length, 1);
     const region = { x:0.1,y:0.2,width:0.3,height:0.4 };
     await writeFile(path.join(dir,"events.jsonl"), JSON.stringify({ type:"marker",epoch:11000,payload:{ region,note:"重点" } })+"\n");

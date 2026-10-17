@@ -11,6 +11,7 @@ import {
 } from "./recording-controls-bounds";
 import { RECORDER_WINDOW_WIDTH } from "./recorder-window-sizing";
 import { windowIcon } from "./icons";
+import { loadWindowRoute } from "./window-route";
 export { fitRecorderHeight } from "./recorder-window-sizing";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,12 +29,9 @@ type Bounds = { x: number; y: number; width: number; height: number };
 let recordingControlsAnchor: { x: number; bottom: number } | null = null;
 
 function loadRoute(win: BrowserWindow, hash?: string): void {
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) {
-    void win.loadURL(hash ? `${devUrl}#${hash}` : devUrl);
-  } else {
-    void win.loadFile(path.join(dirname, "..", "dist", "index.html"), hash ? { hash } : undefined);
-  }
+  void loadWindowRoute(win,path.join(dirname,"..","dist","index.html"),process.env.VITE_DEV_SERVER_URL,hash,
+    ()=>console.warn('[Window] Development page unavailable; loading local build.',{route:hash??'recorder'}))
+    .catch(error=>console.error('[Window] Local page failed to load.',{route:hash??'recorder',code:(error as NodeJS.ErrnoException).code}));
 }
 
 function registerDevelopmentDevToolsShortcut(win: BrowserWindow): void {
@@ -44,6 +42,28 @@ function registerDevelopmentDevToolsShortcut(win: BrowserWindow): void {
     event.preventDefault();
     win.webContents.toggleDevTools();
   });
+}
+
+export function createRecordingPreparationWindow(parent: BrowserWindow): BrowserWindow {
+  const area = screen.getDisplayMatching(parent.getBounds()).workArea;
+  const win = new BrowserWindow({
+    width: Math.min(820, area.width - 24),
+    height: Math.min(650, area.height - 24),
+    minWidth: Math.min(420, area.width - 24),
+    minHeight: Math.min(650, area.height - 24),
+    parent, modal: true, show: false, resizable: true,
+    minimizable: false, fullscreenable: false,
+    title: "录制准备", backgroundColor: "#faf8f5",
+    icon: windowIcon(), autoHideMenuBar: true,
+    webPreferences: { preload: path.join(dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: false },
+  });
+  win.setPosition(
+    area.x + Math.round((area.width - win.getBounds().width) / 2),
+    area.y + Math.round((area.height - win.getBounds().height) / 2),
+  );
+  win.once("ready-to-show", () => { win.show(); win.focus(); });
+  loadRoute(win, "recording-preparation");
+  return win;
 }
 
 export function createRecorderWindow(): BrowserWindow {
@@ -210,7 +230,7 @@ function computeDock(recorder: BrowserWindow): { recorder: { x: number; y: numbe
   };
 }
 
-export function createLibraryWindow(recorder: BrowserWindow): BrowserWindow {
+export function createLibraryWindow(recorder: BrowserWindow, autoAnalyzeSessionId?: string): BrowserWindow {
   const layout = computeDock(recorder);
   const win = new BrowserWindow({
     ...layout.library,
@@ -233,7 +253,7 @@ export function createLibraryWindow(recorder: BrowserWindow): BrowserWindow {
     if (!recorder.isDestroyed()) recorder.setPosition(layout.recorder.x, layout.recorder.y, false);
     win.show();
   });
-  loadRoute(win, "library");
+  loadRoute(win, autoAnalyzeSessionId ? `library?autoAnalyze=${encodeURIComponent(autoAnalyzeSessionId)}` : "library");
   return win;
 }
 
@@ -243,4 +263,19 @@ export function redockLibrary(recorder: BrowserWindow, library: BrowserWindow): 
   const layout = computeDock(recorder);
   recorder.setPosition(layout.recorder.x, layout.recorder.y, false);
   library.setBounds(layout.library, false);
+}
+
+/** Independent settings dialog; never resizes or remounts the source recorder/library. */
+export function createSettingsWindow(parent: BrowserWindow, section: string): BrowserWindow {
+  const area = screen.getDisplayMatching(parent.getBounds()).workArea;
+  const win = new BrowserWindow({
+    width: Math.min(1104, area.width - 24), height: Math.min(798, area.height - 24),
+    minWidth: Math.min(640, area.width - 24), minHeight: Math.min(480, area.height - 24),
+    parent, show: false, title: "技能录制器：设置", backgroundColor: "#faf8f5",
+    icon: windowIcon(), autoHideMenuBar: true,
+    webPreferences: { preload: path.join(dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: false },
+  });
+  win.once("ready-to-show", () => { win.show(); win.focus(); });
+  loadRoute(win, `settings/${section}`);
+  return win;
 }

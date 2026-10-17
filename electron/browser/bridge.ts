@@ -12,7 +12,9 @@ import { validateBrowserEvent } from "./protocol";
 export class BrowserBridge implements Collector {
   readonly name="chrome-extension";
   private server:Server|null=null;
-  private socket:Socket|null=null;
+  private sockets=new Set<Socket>();
+  private clients=new Map<Socket,{name:"chrome"|"edge"|"unknown";bound:boolean;version?:string;error:string|null}>();
+  private drainPending=new Set<Socket>();
   private ctx:CollectorContext|null=null;
   private session:{id:string;startedAt:number}|null=null;
   private seen=new Set<string>();
@@ -25,7 +27,7 @@ export class BrowserBridge implements Collector {
   private drained:(()=>void)|null=null;
   readonly extensionDir:string;
   constructor(private userData:string,private resources:string){this.extensionDir=path.join(userData,"chrome-extension");}
-  status():BrowserStatus{return {connected:!!this.socket,sessionId:this.session?.id??null,bound:this.bound,eventCount:this.count,extensionDir:this.extensionDir,error:this.error};}
+  status():BrowserStatus{return {browsers:[...this.clients.values()].map(c=>({...c,connected:true})),connected:this.sockets.size>0,sessionId:this.session?.id??null,bound:this.bound,eventCount:this.count,extensionDir:this.extensionDir,error:this.error};}
   async initialize(registerNative=true):Promise<void>{
     const home=path.join(this.userData,"browser-companion");mkdirSync(home,{recursive:true,mode:0o700});
     const extension=path.join(this.resources,"browser-extension");
@@ -49,10 +51,14 @@ export class BrowserBridge implements Collector {
     writeFileSync(path.join(home,'bridge.json'),JSON.stringify({endpoint:this.endpoint,token:this.token}),{mode:0o600});
     const identity=JSON.parse(readFileSync(path.join(extension,'identity.json'),'utf8')) as {id:string};
     const manifest={name:'com.skillrecorder.browser',description:'Skill Recorder offline browser bridge',path:helper,type:'stdio',allowed_origins:[`chrome-extension://${identity.id}/`]};
-    const hostManifest=process.platform==='darwin'?path.join(os.homedir(),'Library/Application Support/Google/Chrome/NativeMessagingHosts/com.skillrecorder.browser.json'):path.join(home,'com.skillrecorder.browser.json');
     if(registerNative){
-    mkdirSync(path.dirname(hostManifest),{recursive:true});writeFileSync(hostManifest,JSON.stringify(manifest,null,2));
-    if(process.platform==='win32')execFileSync('reg.exe',['add','HKCU\\Software\\Google\\Chrome\\NativeMessagingHosts\\com.skillrecorder.browser','/ve','/t','REG_SZ','/d',hostManifest,'/f'],{windowsHide:true});
+      const manifests=process.platform==='darwin'
+        ? ['Google/Chrome','Microsoft Edge'].map(browser=>path.join(os.homedir(),'Library/Application Support',browser,'NativeMessagingHosts/com.skillrecorder.browser.json'))
+        : [path.join(home,'com.skillrecorder.browser.json')];
+      for(const hostManifest of manifests){
+        mkdirSync(path.dirname(hostManifest),{recursive:true});writeFileSync(hostManifest,JSON.stringify(manifest,null,2));
+        if(process.platform==='win32')for(const browser of ['Google\\Chrome','Microsoft\\Edge'])execFileSync('reg.exe',['add',`HKCU\\Software\\${browser}\\NativeMessagingHosts\\com.skillrecorder.browser`,'/ve','/t','REG_SZ','/d',hostManifest,'/f'],{windowsHide:true});
+      }
     }
     if(process.platform!=='win32' && existsSync(this.endpoint))rmSync(this.endpoint);
     this.server=createServer(socket=>this.accept(socket));
@@ -60,13 +66,13 @@ export class BrowserBridge implements Collector {
     this.server.on('error',e=>{this.error=e.message;});
     if(process.platform!=='win32')chmodSync(this.endpoint,0o600);
   }
-  private send(value:unknown,socket=this.socket):void {if(socket && !socket.destroyed)socket.write(JSON.stringify(value)+'\n');}
+  private send(value:unknown,socket?:Socket):void {for(const target of socket?[socket]:this.sockets)if(!target.destroyed)target.write(JSON.stringify(value)+'\n');}
   private accept(socket:Socket):void {
     socket.setEncoding('utf8');
     let buffer='';let authenticated=false;let queued=0;
     const authTimer=setTimeout(()=>socket.destroy(),3000);
     socket.on('error',()=>{});
-    socket.on('close',()=>{clearTimeout(authTimer);if(this.socket===socket){this.socket=null;this.bound=false;}});
+    socket.on('close',()=>{clearTimeout(authTimer);this.sockets.delete(socket);this.clients.delete(socket);this.bound=[...this.clients.values()].some(c=>c.bound);this.drainPending.delete(socket);if(!this.sockets.size)this.bound=false;if(!this.drainPending.size)this.drained?.();});
     socket.on('data',chunk=>{
       buffer+=chunk.toString();if(buffer.length>256*1024){socket.destroy();return;}
       for(let newline;(newline=buffer.indexOf('\n'))>=0;){
@@ -74,7 +80,7 @@ export class BrowserBridge implements Collector {
         let message:any;try{message=JSON.parse(line);}catch{socket.destroy();return;}
         if(!authenticated){
           if(message.kind!=='hello'||message.token!==this.token){socket.destroy();return;}
-          authenticated=true;clearTimeout(authTimer);this.socket?.destroy();this.socket=socket;
+          authenticated=true;clearTimeout(authTimer);this.sockets.add(socket);this.clients.set(socket,{name:"unknown",bound:false,error:null});
           this.send({kind:'session',session:this.session},socket);continue;
         }
         if(++queued>100){socket.destroy();return;}
@@ -83,10 +89,11 @@ export class BrowserBridge implements Collector {
     });
   }
   private async receive(message:any,socket:Socket):Promise<void>{
-    if(socket!==this.socket)return;
-    if(message.kind==='bound'){this.bound=message.bound===true;return;}
-    if(message.kind==='drained'){this.drained?.();return;}
-    if(message.kind==='capture-error'){this.error=String(message.error).slice(0,512);return;}
+    if(!this.sockets.has(socket))return;
+    if(message.kind==='client-info'){const c=this.clients.get(socket);if(c){c.name=message.browser==='edge'?'edge':message.browser==='chrome'?'chrome':'unknown';c.version=typeof message.version==='string'?message.version.slice(0,40):undefined;}return;}
+    if(message.kind==='bound'){const c=this.clients.get(socket);if(c)c.bound=message.bound===true;this.bound=[...this.clients.values()].some(c=>c.bound);return;}
+    if(message.kind==='drained'){this.drainPending.delete(socket);if(!this.drainPending.size)this.drained?.();return;}
+    if(message.kind==='capture-error'){const c=this.clients.get(socket);if(c)c.error=String(message.error).slice(0,512);return;}
     if(message.kind!=='events'||!Array.isArray(message.events)||message.events.length>50)throw new Error('invalid batch');
     if(!this.ctx||!this.session){this.send({kind:'session',session:null},socket);return;}
     const ack:string[]=[];
@@ -104,15 +111,22 @@ export class BrowserBridge implements Collector {
   }
   start(ctx:CollectorContext):void {
     const meta=JSON.parse(readFileSync(path.join(ctx.sessionDir,'session.json'),'utf8'));
-    this.ctx=ctx;this.session={id:meta.id,startedAt:meta.startedAt};this.seen.clear();this.count=0;this.error=null;
+    this.ctx=ctx;this.session={id:meta.id,startedAt:meta.startedAt};this.bound=false;this.seen.clear();this.count=0;this.error=null;for(const c of this.clients.values()){c.bound=false;c.error=null;}
     this.send({kind:'session',session:this.session});
   }
   async stop():Promise<void>{
-    if(this.socket){await new Promise<void>(resolve=>{
+    if(this.sockets.size){this.drainPending=new Set(this.sockets);await new Promise<void>(resolve=>{
       const timer=setTimeout(()=>{this.error='浏览器结束同步超时；请检查最后的操作是否已采集';this.drained=null;resolve();},2500);
       this.drained=()=>{clearTimeout(timer);this.drained=null;resolve();};this.send({kind:'drain'});
     });}
-    await this.pending;this.ctx=null;this.session=null;this.send({kind:'session',session:null});
+    await this.pending;this.ctx=null;this.session=null;this.bound=false;this.send({kind:'session',session:null});
   }
-  close():void{this.socket?.destroy();this.server?.close();}
+  async reconnect():Promise<void>{
+    for(const socket of this.sockets)socket.destroy();this.sockets.clear();this.clients.clear();this.bound=false;
+    const server=this.server;this.server=null;
+    if(server?.listening)await new Promise<void>(resolve=>server.close(()=>resolve()));
+    this.error=null;
+    await this.initialize();
+  }
+  close():void{for(const socket of this.sockets)socket.destroy();this.sockets.clear();this.clients.clear();this.server?.close();}
 }

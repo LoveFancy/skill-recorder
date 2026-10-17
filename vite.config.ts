@@ -48,14 +48,25 @@ export default defineConfig({
     react(),
     electron([
       {
-        entry: "electron/main.ts",
-        onstart(args) {
+        entry: { main: "electron/main.ts", "builtin-mcp": "electron/agents/builtin-mcp.ts" },
+        async onstart(args) {
           copyStaticAssets();
           // A parent Electron host (e.g. the launcher) can leak ELECTRON_RUN_AS_NODE,
           // which would start our process as a bare Node runtime instead of a GUI app.
           const env = { ...process.env };
           delete env.ELECTRON_RUN_AS_NODE;
-          void args.startup([".", "--no-sandbox"], { env });
+          const previous = (process as typeof process & {electronApp?: import("node:child_process").ChildProcess}).electronApp;
+          if (previous && previous.exitCode === null && previous.signalCode === null) {
+            await new Promise<void>((resolve, reject) => {
+              const timeout = setTimeout(() => { previous.off("exit", done); reject(new Error("旧开发实例尚未退出；为避免重复录制器，未启动新实例。")); }, 15000);
+              const done = () => { clearTimeout(timeout); resolve(); };
+              previous.removeAllListeners("exit");
+              previous.once("exit", done);
+              if (previous.connected) previous.send("skill-recorder:dev-restart");
+              else previous.kill("SIGTERM");
+            });
+          }
+          await args.startup([".", "--no-sandbox"], { env });
         },
         vite: {
           build: {
@@ -74,6 +85,7 @@ export default defineConfig({
                 "onnxruntime-node",
                 "sherpa-onnx-node",
                 "tesseract.js",
+                "playwright-core", "imapflow", "nodemailer", "mailparser",
               ],
             },
           },

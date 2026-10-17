@@ -1,4 +1,8 @@
 import { readModelSettings, type ModelSettings } from "./settings";
+import { processingStatus } from "../agents/service";
+import { localRequest } from "../agents/local-request";
+import { executionModel } from "../agents/claude-progress";
+import type { AgentWorkspace } from "../../common/agents";
 
 export interface Tool {
   name: string;
@@ -11,6 +15,9 @@ export interface SessionConfig {
   tools?: Tool[];
   availableTools?: string[];
   model?: string;
+  terminalTools?: string[];
+  onExecution?: (title:string,detail:string,model?:string)=>void;
+  connectionCheck?: boolean;
 }
 interface ToolCall { id: string; type: "function"; function: { name: string; arguments: string } }
 interface Message {
@@ -44,6 +51,7 @@ export class AgentSession {
     this.messages.push({ role: "user", content: typeof input === "string" ? input : input.prompt });
     const tools = (this.config.tools ?? []).filter((tool) => !this.config.availableTools || this.config.availableTools.includes(tool.name));
     try {
+      if(settings.baseUrl!=="http://local")this.config.onExecution?.('正在调用模型','使用已配置的 API 模型。',executionModel(model));
       for (let turn = 0; turn < 40; turn++) {
         controller.signal.throwIfAborted();
         const response = await this.request(`${settings.baseUrl}/chat/completions`, {
@@ -57,7 +65,8 @@ export class AgentSession {
         });
         // Do not echo response bodies, which can include credentials or recording contents.
         if (!response.ok) throw new Error(`Model API returned HTTP ${response.status}. Check the API URL, key and model in AI settings.`);
-        const data = await response.json() as { choices?: { message?: Message; finish_reason?: string }[] };
+        const data = await response.json() as { model?:unknown; choices?: { message?: Message; finish_reason?: string }[] };
+        if(settings.baseUrl!=="http://local" && executionModel(data.model))this.config.onExecution?.('模型已确认','已获取服务返回的模型。',executionModel(data.model));
         controller.signal.throwIfAborted();
         const choice = data.choices?.[0];
         const message = choice?.message;
@@ -90,7 +99,7 @@ export class AgentSession {
             if (image.description) images.push({ type: "text", text: image.description });
             images.push({ type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.data}` } });
           }
-          if (tool && /^(submit_analysis|submit_skill|propose_plan|propose_automation_plan|submit_judgement)$/.test(tool.name) && structured?.resultType !== "failure") submitted = true;
+          if (tool && (this.config.terminalTools?.includes(tool.name) || /^(submit_analysis|submit_skill|propose_plan|propose_automation_plan|submit_judgement)$/.test(tool.name)) && structured?.resultType !== "failure") submitted = true;
         }
         if (images.length) this.messages.push({ role: "user", content: [{ type: "text", text: "Images returned by the preceding tool calls:" }, ...images] });
         if (submitted) return;
@@ -114,11 +123,16 @@ export class AgentSession {
 
 export class AgentClient {
   private sessions = new Set<AgentSession>();
+  private backend: "api"|"local-agent" = "api";
+  private workspace: AgentWorkspace | null = null;
   async start(): Promise<void> {
-    if (!readModelSettings().model) throw new Error("Configure an AI model in AI settings before analyzing or building.");
+    const status=await processingStatus();
+    if(!status.ready || !status.backend)throw new Error(status.error??"智能处理配置不可用。");
+    this.backend=status.backend;
+    this.workspace=status.settings.workspaces.find(w=>w.id===status.settings.defaultProcessingWorkspaceId)??null;
   }
   async createSession(config: SessionConfig): Promise<AgentSession> {
-    const session = new AgentSession(config, readModelSettings(), fetch, () => this.sessions.delete(session));
+    const session = new AgentSession(config, this.backend==="local-agent" ? {baseUrl:"http://local",model:"local-claude",apiKey:""} : readModelSettings(), this.backend==="local-agent" && this.workspace ? localRequest(this.workspace,config.onExecution,{includeSkillContext:!config.connectionCheck}) : fetch, () => this.sessions.delete(session));
     this.sessions.add(session);
     return session;
   }

@@ -1,20 +1,27 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import type { StartOptions } from "../common/ipc";
+import { IntentVoiceInput } from "./IntentVoiceInput";
 
-export function RecordingPrivacyWarning({
-  starting,
-  onStart,
-  onReview,
-  onClose,
-}: {
+export function RecordingPrivacyWarning({ starting, onStart, onReview, onClose, error, disclosure, detailsExpanded = false, onVoiceBusyChange }: {
+  onVoiceBusyChange?: (busy: boolean) => void;
+  detailsExpanded?: boolean;
+  disclosure?: ReactNode;
+  error?: string | null;
   starting: boolean;
-  onStart: () => void;
-  onReview: () => void;
+  onStart: (options: Pick<StartOptions, "intent" | "outputKind">) => void;
+  onReview?: () => void;
   onClose: () => void;
 }) {
-  const startRef = useRef<HTMLButtonElement>(null);
+  const intentRef = useRef<HTMLTextAreaElement>(null);
+  const [outputKind, setOutputKind] = useState<StartOptions["outputKind"]>();
+  const [intent, setIntent] = useState("");
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const voicePrefix = useRef("");
+  const ready = !!outputKind && !!intent.trim() && !starting && !voiceBusy;
 
   useEffect(() => {
-    startRef.current?.focus({ preventScroll: true });
+    intentRef.current?.focus({ preventScroll: true });
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !starting) onClose();
     };
@@ -24,50 +31,45 @@ export function RecordingPrivacyWarning({
 
   return (
     <div className="sheet-backdrop" onClick={starting ? undefined : onClose}>
-      <div
-        className="recording-warning"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recording-warning-title"
-        aria-describedby="recording-warning-copy recording-warning-detail"
-        aria-busy={starting}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="recording-warning-head">
-          <span className="recording-warning-icon" aria-hidden>
-            <svg width="19" height="19" viewBox="0 0 20 20" fill="none">
-              <path
-                d="M10 2.5 4 4.8v4.3c0 3.4 2.4 6.2 6 7.4 3.6-1.2 6-4 6-7.4V4.8L10 2.5Z"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinejoin="round"
-              />
-              <path
-                d="M10 6.4v4.1M10 13.4h.01"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-          <h2 id="recording-warning-title">录制前须知</h2>
+      <form className={`recording-intent${detailsExpanded ? " details-expanded" : ""}`} role="dialog" aria-modal="true" aria-labelledby="recording-intent-title" aria-busy={starting}
+        onClick={(event) => event.stopPropagation()} onSubmit={(event) => { event.preventDefault(); if (ready) onStart({ intent: intent.trim(), outputKind }); }}>
+        <header className="recording-intent-head">
+          <h2 id="recording-intent-title">{detailsExpanded ? "采集内容与隐私说明" : "这次想记录什么？"}</h2>
+          <button type="button" className="intent-close" onClick={onClose} disabled={starting} aria-label="关闭">×</button>
         </header>
 
-        <p id="recording-warning-copy" className="recording-warning-copy">请勿在屏幕或旁白中包含密码、访问令牌、API 密钥等敏感或机密信息。</p>
-        <p id="recording-warning-detail" className="recording-warning-detail">请查看具体采集内容，以及之后可能发送给 AI 服务进行分析的数据。</p>
+        <div className="recording-intent-body">
+        <fieldset className="intent-output-options" disabled={starting}>
+          <legend>希望产出什么</legend>
+          {([ ["sop", "操作说明（SOP）"], ["skill", "可复用技能（Skill）"], ["manual", "使用手册"], ["undecided", "暂不确定"] ] as const).map(([value, label]) => (
+            <label key={value} className={outputKind === value ? "selected" : ""}>
+              <input type="radio" name="output-kind" checked={outputKind === value} onChange={() => setOutputKind(value)} />
+              <span>{label}</span>
+            </label>
+          ))}
+        </fieldset>
 
-        <div className="recording-warning-actions">
-          <button className="secondary" onClick={onReview} disabled={starting}>查看具体采集内容</button>
-          <button
-            ref={startRef}
-            className="record-cta"
-            onClick={onStart}
-            disabled={starting}
-          >
-            {starting ? "正在启动…" : "开始录制"}
-          </button>
+        <label className="intent-goal">
+          <span>你想让它帮你完成什么？</span>
+          <div className="intent-textarea-shell">
+          <textarea ref={intentRef} value={intent} maxLength={1200} disabled={starting} readOnly={voiceBusy} onChange={(event) => setIntent(event.target.value)}
+            placeholder="例如：根据订单准备报价单，确认后发给客户。" />
+          <IntentVoiceInput disabled={starting || (intent.length >= 1200 && !voiceBusy)} onBusyChange={(busy) => {
+            if (busy) voicePrefix.current = `${intent}${intent && !/\s$/.test(intent) ? "\n" : ""}`;
+            else intentRef.current?.focus();
+            setVoiceBusy(busy); onVoiceBusyChange?.(busy);
+          }} onText={(text) => setIntent(`${voicePrefix.current}${text}`.slice(0, 1200))} />
+          </div>
+        </label>
+
+        {disclosure ?? (onReview && <button type="button" className="intent-disclosure" onClick={onReview}>查看本次会采集哪些内容</button>)}
+        {error && <p className="intent-error" role="alert">{error}</p>}
         </div>
-      </div>
+        <footer className="recording-intent-actions">
+          <button type="button" className="linky" onClick={onClose} disabled={starting}>取消</button>
+          <button type="submit" className="record-cta" disabled={!ready}>{starting ? "正在启动…" : "确认并开始录制"}</button>
+        </footer>
+      </form>
     </div>
   );
 }

@@ -75,6 +75,12 @@ because the recording used it once.
   (e.g. \`Bash(gh *)\`) and write commands for the device OS (zsh/bash on macOS,
   PowerShell on Windows).
 - Record every concrete runtime tool a step needs in execution order (the step's \`tools\`).
+  Also provide sourceStepIds (recorded step IDs), mappingReason (why the substitution
+  preserves business semantics), inputSources, and output for each new plan step.
+  Preserve account identity, reply threads, attachment semantics and authorization;
+  a "reply" must not silently become a new email. Missing verified capabilities are
+  dependency gaps. Only Skill generation performs this translation; SOP and manuals
+  retain the original interaction method.
   Use runtime identifiers such as \`glob\`, \`workiq_search_chats\`, and \`bash\` here; do
   not put permission patterns such as \`Glob\` or \`Bash(gh *)\` in \`tools\`.
 - Set \`allowedTools\` separately to the canonical permission patterns the skill actually

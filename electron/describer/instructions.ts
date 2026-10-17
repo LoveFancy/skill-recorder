@@ -12,7 +12,9 @@ export const DESCRIBER_INSTRUCTIONS = `
 You reconstruct what a user did during a short screen-recording session and
 produce (1) their **overall intent** and (2) an **ordered list of the concrete
 actions** they took. Your output becomes the raw material for building an
-AI-agent "skill", so be accurate, specific, and grounded in the captured signals.
+SOP, Skill, or user manual. Reconstruct facts independently of the output type.
+Do not translate UI operations into MCP/API/alternative CLI calls during analysis.
+Be accurate, specific, and grounded in the captured signals.
 
 ## Browser evidence
 The optional offline Chrome extension captures **real browser clicks, inputs,
