@@ -136,7 +136,7 @@ try {
   assert.equal(retryActions[2].continueRun,false);assert.notEqual(retryActions[2].runId,'run');
   const identifying={version:1,package:{preparationId:'prep',status:'identifying',questions:[],answers:[],gaps:[],materials:[],userNotes:'',revision:1,clarificationPolicyVersion:2},run:null};
   await settle(()=>enhanceRoot.render(createElement(EnhancementWorkspace,{sessionId:'synthetic',workflow:identifying,analysis:{steps:[]},onWorkflow:()=>{},onGenerate:()=>{}})));
-  assert.match(document.body.textContent,/正在深度分析/);
+  assert.match(document.body.textContent,/正在补充分析/);
   assert.match(document.body.textContent,/规划分析与匹配工具/);
   assert.equal(document.querySelectorAll('[aria-current="step"]').length,1);
   const checking={...identifying,package:{...identifying.package,backend:'local-agent',preparedAt:Date.now()-1000},progress:[{sequence:100,at:Date.now(),phase:'checking',status:'running',title:'正在自检 Claude 与模型',detail:'等待模型返回有效结果。',model:'test-model[1m]'}]};
@@ -187,6 +187,8 @@ try {
   assert.match(document.querySelectorAll('.deep-result-step')[1].textContent,/待确认/);
   assert.doesNotMatch(document.querySelector('.deep-result-story').textContent,/查看依据|展开分析与依据|事件与截图一致|导航事件依据|LONG_TECHNICAL_SUMMARY|本次分析使用/);
   assert.equal(document.querySelectorAll('.deep-result-step')[0].textContent.split('通过导航链接进入页面').length-1,1);
+  assert.match(document.querySelector('.deep-foot .ws-foot-back').textContent,/重新分析/);
+  assert.match(document.querySelector('.deep-foot .ws-foot-actions').textContent,/确认并生成/);
   assert.deepEqual(screenshotRequests,[['synthetic',1000,2000],['synthetic',3000,4000]]);
   await settle(()=>document.querySelector('[aria-label="放大 0:01.0 的截图"]').click());
   assert.ok(document.querySelector('[role="dialog"][aria-label="查看步骤截图"]'));

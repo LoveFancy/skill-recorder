@@ -51,6 +51,8 @@ try {
   assert.equal(document.querySelector('.doc-customization'), null, 'SOP has no customization form');
   await settle(() => button('生成 SOP').click());
   assert.ok(button('确认内容并保存'));
+  assert.match(document.querySelector('.doc-foot .ws-foot-back').textContent,/返回产物选择/);
+  assert.match(document.querySelector('.doc-foot .ws-foot-actions').textContent,/保存草稿.*确认内容并保存/);
   assert.equal(calls.filter(c => c.kind === 'generate').length, 1, 'StrictMode does not double submit');
   assert.equal(calls.find(c => c.kind === 'generate').request.audience, '业务操作者');
   assert.equal(calls.find(c => c.kind === 'generate').request.scope, '本次录制及已确认材料覆盖的任务与功能');
