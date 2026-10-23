@@ -1,0 +1,2016 @@
+<!doctype html><html lang="zh-CN" data-theme="tech-blue"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="依据课题答辩逐页稿制作的 16 页科技蓝 HTML 演示文稿"><title>让工作本身，成为输入 · 课题答辩</title><style>
+/* html-ppt :: base.css — reset + shared tokens + layout primitives */
+/* Default tokens. Themes in assets/themes/*.css override the :root block. */
+:root {
+  --bg: #ffffff;
+  --bg-soft: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f2f2f4;
+  --border: rgba(0,0,0,.08);
+  --border-strong: rgba(0,0,0,.16);
+  --text-1: #111216;
+  --text-2: #55596a;
+  --text-3: #8a8f9e;
+  --accent: #3b6cff;
+  --accent-2: #7a5cff;
+  --accent-3: #ff5c8a;
+  --good: #1aaf6c;
+  --warn: #f5a524;
+  --bad:  #e0445a;
+  --grad: linear-gradient(135deg,#3b6cff,#7a5cff 55%,#ff5c8a);
+  --grad-soft: linear-gradient(135deg,#eef2ff,#f5ecff 55%,#ffeef5);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-lg: 26px;
+  --shadow: 0 10px 30px rgba(18,24,40,.08), 0 2px 6px rgba(18,24,40,.04);
+  --shadow-lg: 0 24px 60px rgba(18,24,40,.14), 0 6px 16px rgba(18,24,40,.06);
+  --font-sans: 'Inter','Noto Sans SC',-apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif;
+  --font-serif: 'Playfair Display','Noto Serif SC',Georgia,serif;
+  --font-mono: 'JetBrains Mono','IBM Plex Mono',SFMono-Regular,Menlo,monospace;
+  --font-display: var(--font-sans);
+  --letter-tight: -.03em;
+  --letter-normal: -.01em;
+  --ease: cubic-bezier(.4,0,.2,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text-1);
+  font-family:var(--font-sans);font-weight:400;line-height:1.6;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  letter-spacing:var(--letter-normal)}
+img,svg,video{max-width:100%;display:block}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,kbd,pre,samp{font-family:var(--font-mono)}
+
+/* ================= SLIDE SYSTEM ================= */
+.deck{position:relative;width:100vw;height:100vh;overflow:hidden;background:var(--bg)}
+.slide{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:72px 96px;
+  box-sizing:border-box;
+  opacity:0;pointer-events:none;
+  transition:opacity .5s var(--ease), transform .5s var(--ease);
+  transform:translateX(30px);
+  overflow:hidden;
+}
+.slide.is-active{opacity:1;pointer-events:auto;transform:translateX(0);z-index:2}
+.slide.is-prev{transform:translateX(-30px)}
+
+/* single-page standalone (used when a layout file is opened directly) */
+body.single .slide{position:relative;width:100vw;height:100vh;opacity:1;transform:none;pointer-events:auto}
+
+/* ================= TYPOGRAPHY ================= */
+.eyebrow{font-size:13px;font-weight:500;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+.kicker{font-size:14px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+h1.title,.h1{font-family:var(--font-display);font-size:72px;line-height:1.05;font-weight:800;letter-spacing:var(--letter-tight);margin:0 0 18px;color:var(--text-1)}
+h2.title,.h2{font-family:var(--font-display);font-size:54px;line-height:1.1;font-weight:700;letter-spacing:var(--letter-tight);margin:0 0 14px}
+h3,.h3{font-size:32px;line-height:1.2;font-weight:600;letter-spacing:var(--letter-normal);margin:0 0 10px}
+h4,.h4{font-size:22px;line-height:1.3;font-weight:600;margin:0 0 8px}
+.lede{font-size:22px;line-height:1.55;color:var(--text-2);font-weight:300;max-width:62ch}
+.dim{color:var(--text-2)}
+.dim2{color:var(--text-3)}
+.mono{font-family:var(--font-mono)}
+.serif{font-family:var(--font-serif)}
+.gradient-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+
+/* ================= LAYOUT PRIMITIVES ================= */
+.stack>*+*{margin-top:14px}
+.row{display:flex;gap:24px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.grid{display:grid;gap:24px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+.center{display:flex;align-items:center;justify-content:center;text-align:center}
+.fill{flex:1}
+.sp-t{padding-top:24px}.sp-b{padding-bottom:24px}
+.mt-s{margin-top:8px}.mt-m{margin-top:18px}.mt-l{margin-top:32px}
+.mb-s{margin-bottom:8px}.mb-m{margin-bottom:18px}.mb-l{margin-bottom:32px}
+
+/* ================= CARDS ================= */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:26px 28px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.card-soft{background:var(--surface-2);border:1px solid var(--border)}
+.card-outline{background:transparent;border:1.5px solid var(--border-strong);box-shadow:none}
+.card-accent{background:var(--surface);border-top:3px solid var(--accent)}
+.card-hover{transition:transform .3s var(--ease),box-shadow .3s var(--ease)}
+.card-hover:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+
+.pill{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:500;
+  background:var(--surface-2);color:var(--text-2);border:1px solid var(--border)}
+.pill-accent{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);border-color:color-mix(in srgb,var(--accent) 28%,transparent)}
+
+/* ================= BARS / DIVIDERS ================= */
+.divider{height:1px;background:var(--border);width:100%}
+.divider-accent{height:3px;width:72px;background:var(--accent);border-radius:2px}
+
+/* ================= CHROME (header/footer/progress) ================= */
+.deck-header{position:absolute;top:24px;left:40px;right:40px;display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:var(--text-3);letter-spacing:.12em;text-transform:uppercase;z-index:10;pointer-events:none}
+.deck-footer{position:absolute;bottom:24px;left:40px;right:40px;display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;color:var(--text-3);z-index:10;pointer-events:none}
+.slide-number::before{content:attr(data-current)}
+.slide-number::after{content:" / " attr(data-total)}
+.progress-bar{position:fixed;left:0;right:0;bottom:0;height:3px;background:transparent;z-index:20}
+.progress-bar > span{display:block;height:100%;width:0;background:var(--accent);transition:width .3s var(--ease)}
+
+/* ================= PRESENTER / OVERVIEW ================= */
+.notes{display:none!important}
+.notes-overlay{position:fixed;inset:auto 0 0 0;max-height:42vh;background:rgba(20,22,30,.95);color:#e8ebf4;
+  padding:20px 32px;font-size:16px;line-height:1.6;border-top:1px solid rgba(255,255,255,.1);transform:translateY(100%);
+  transition:transform .3s var(--ease);z-index:40;overflow:auto;font-family:var(--font-sans)}
+.notes-overlay.open{transform:translateY(0)}
+.overview{position:fixed;inset:0;background:rgba(10,12,18,.92);backdrop-filter:blur(12px);z-index:50;
+  display:none;padding:40px;overflow:auto}
+.overview.open{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;align-content:start}
+.overview .thumb{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  aspect-ratio:16/9;overflow:hidden;cursor:pointer;position:relative;color:var(--text-1);padding:16px;
+  font-size:11px;transition:transform .2s var(--ease)}
+.overview .thumb:hover{transform:scale(1.04)}
+.overview .thumb .n{position:absolute;top:8px;left:10px;font-weight:700;font-size:14px;color:var(--text-3)}
+.overview .thumb .t{position:absolute;bottom:10px;left:14px;right:14px;font-weight:600;color:var(--text-1)}
+
+/* ================= PRESENTER VIEW ================= */
+/* Presenter view opens in a separate popup window (S key).
+ * All presenter styles are self-contained in the popup HTML generated by runtime.js.
+ * The audience window (this file) is NOT affected — it stays as normal deck view.
+ * Only the .notes class below is needed to hide speaker notes from audience. */
+
+/* ================= UTILITY ================= */
+.hidden{display:none!important}
+.nowrap{white-space:nowrap}
+.tr{text-align:right}.tc{text-align:center}.tl{text-align:left}
+.uppercase{text-transform:uppercase;letter-spacing:.12em}
+
+/* ================= PRINT ================= */
+@media print{
+  .slide{position:relative;opacity:1!important;transform:none!important;page-break-after:always;height:100vh}
+  .deck-header,.deck-footer,.progress-bar,.notes-overlay,.overview{display:none!important}
+}
+
+</style><style>
+/* Tech blue presentation · adapted from html-ppt cover, comparison, table and flow layouts. */
+:root{--bg:#fff;--bg-soft:#f5f8fd;--surface:#fff;--surface-2:#edf4fd;--border:#dbe5f1;--border-strong:#bfd2ec;--text-1:#152c49;--text-2:#526983;--text-3:#788ba3;--accent:#1765dc;--accent-2:#399df1;--blue-deep:#124a9b;--blue-pale:#eaf3ff;--navy:#123c74;--on-accent:#fff;--red:#b74a4c;--red-soft:#fff4f3;--green:#1a7c69;--green-soft:#eaf6f1;--amber:#926b26;--amber-soft:#fff5e1;--canvas:#e5ecf5;--shadow:0 10px 35px #1b47730d;--shadow-lg:0 25px 70px #16417026;--radius:10px;--radius-sm:6px;--font-sans:'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',Arial,sans-serif;--font-display:var(--font-sans);--letter-normal:0;--letter-tight:-.03em}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--canvas)}body{display:flex;align-items:center;justify-content:center}p,figure{margin:0}em{font-style:normal;color:var(--accent)}b,strong{font-weight:650}.blue{color:var(--accent)}
+.deck{width:1600px;height:900px;flex-shrink:0;transform:scale(var(--deck-scale,1));transform-origin:center center;box-shadow:var(--shadow-lg)}
+.slide{padding:104px 76px 72px;justify-content:flex-start;transform:none;background:var(--bg);transition:opacity .18s ease}.slide.is-prev{transform:none}.slide:before{content:'';position:absolute;inset:0 auto 0 0;width:5px;background:var(--accent)}
+.deck-header{top:30px;left:76px;right:76px;font-size:13px;color:var(--text-3);letter-spacing:.08em}.brand{display:flex;align-items:center;gap:12px;color:var(--text-2);font-size:14px;font-weight:600}.brand i{width:13px;height:13px;border:3px solid var(--accent);border-radius:2px}.section-name:before{content:'RESEARCH / ';font-family:Arial,sans-serif;font-size:10px;letter-spacing:.15em;margin-right:6px;color:var(--text-3)}
+.deck-footer{bottom:23px;left:76px;right:76px;font-size:11px;color:var(--text-3);letter-spacing:.06em;border-top:1px solid var(--border);padding-top:12px}.slide-number{font-family:Arial,sans-serif;font-size:13px;font-weight:550;color:var(--text-2)}
+.page-heading{flex:none;margin-bottom:25px}.kicker{font-size:15px;font-weight:550;color:var(--accent);letter-spacing:.09em;margin:0 0 10px}.h2{font-size:44px;line-height:1.28;letter-spacing:-.025em;font-weight:650;margin:0}.lede{font-size:20px;max-width:none;line-height:1.6;margin-top:13px}.page-body{flex:1;min-height:0;display:flex;flex-direction:column;gap:20px;position:relative}.two{display:grid;grid-template-columns:1fr 1fr;gap:32px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.four{display:grid;grid-template-columns:repeat(4,1fr);gap:19px}h3{font-size:26px;font-weight:600;line-height:1.4;margin:0 0 12px}p{line-height:1.65}.support{font-size:21px;color:var(--text-2)}.caption{font-size:17px;line-height:1.7;color:var(--text-2)}.boundary{font-size:14px;line-height:1.7;color:var(--text-3)}.pending{font-size:14px;background:var(--bg-soft);border:1px dashed var(--border-strong);border-radius:var(--radius-sm);padding:7px 12px;color:var(--text-3)}.pending-text{font-size:14px;color:var(--text-3)}.overline{font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--accent);margin-bottom:10px}.column{min-width:0}.clean-list{list-style:none;padding:0;margin:0;display:grid;gap:12px}.clean-list li{position:relative;padding-left:19px;font-size:19px;color:var(--text-2);line-height:1.7}.clean-list li:before{content:'';position:absolute;left:0;top:13px;width:5px;height:5px;background:var(--accent);border-radius:1px}
+.takeaway{border-left:3px solid var(--accent);background:var(--blue-pale);padding:18px 24px;color:var(--text-1);font-size:21px;line-height:1.6;margin-top:auto}.takeaway strong{color:var(--accent)}.takeaway.dark{background:var(--navy);color:var(--on-accent);border:none}.takeaway.dark strong{color:var(--on-accent)}.mini{padding:21px 24px;background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius)}.mini h3{font-size:22px;margin-bottom:9px}.mini p{font-size:17px;color:var(--text-2);line-height:1.7}.mini.accent{background:var(--blue-pale);border-color:var(--border-strong)}.mini.accent h3,.mini.accent strong{color:var(--blue-deep)}
+.t{border-collapse:collapse;width:100%;font-size:19px;line-height:1.6;text-align:left;table-layout:fixed}.t th,.t td{padding:15px 18px;vertical-align:middle;border-bottom:1px solid var(--border);overflow-wrap:break-word}.t th{font-size:14px;color:var(--text-3);font-weight:550;background:var(--bg-soft)}.t tbody tr:last-child td{border-bottom:0}.t tbody td{color:var(--text-2)}.t td:first-child{color:var(--text-1);font-weight:550}.t.compact{font-size:17px}.t.compact th,.t.compact td{padding:10px 13px}.t.compact th{font-size:13px}
+/* Empty image areas are explicitly evidence placeholders, never mock interfaces. */
+.shot{border:1px dashed var(--border-strong);background:var(--bg-soft);border-radius:var(--radius-sm);display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;position:relative;cursor:pointer}.shot-heading{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;font-size:11px;color:var(--text-3);letter-spacing:.04em;flex:none}.shot-heading>span:first-child{color:var(--accent);font-weight:600}.missing{font-size:10px;color:var(--text-3)}.shot-placeholder{display:flex;flex:1;min-height:65px;align-items:center;justify-content:center;gap:12px;position:relative;padding:12px 16px;color:var(--text-3);text-align:center}.shot-placeholder b{font-size:17px;font-weight:450}.photo-icon{width:27px;flex-shrink:0}.photo-icon svg{width:100%;fill:none;stroke:var(--border-strong);stroke-width:1.4}.upload-hint{position:absolute;right:12px;bottom:8px;font-size:10px;color:var(--accent);opacity:0}.shot:hover .upload-hint{opacity:1}.shot:focus-visible{outline:3px solid var(--accent)}.shot figcaption{padding:9px 14px;border-top:1px solid var(--border);font-size:12px;line-height:1.5;color:var(--text-2);flex:none;background:var(--surface)}.shot figcaption>span{color:var(--red);font-weight:550;margin-right:10px}.shot.has-image{border-style:solid;cursor:zoom-in}.shot-image{display:block;width:100%;height:100%;object-fit:contain;min-height:0}.shot.has-image .shot-placeholder{padding:0;overflow:hidden}.shot.has-image .missing{color:var(--green)}
+/* P1 · pure type. */
+.cover{padding:0}.cover .page-body{display:block}.cover-content{position:absolute;left:104px;top:137px;right:100px}.cover-eyebrow{display:flex;align-items:center;gap:15px;color:var(--accent);font-size:20px;font-weight:550;letter-spacing:.12em}.cover-eyebrow span{height:2px;width:44px;background:var(--accent)}.cover h1{font-size:109px;line-height:1.2;font-weight:650;letter-spacing:-.05em;margin:31px 0 27px}.cover-claim{font-size:28px;letter-spacing:.02em}.cover-description{font-size:21px;color:var(--text-2);line-height:1.9;margin-top:23px}.cover-description strong{color:var(--accent);font-weight:550}.cover-subtitle{display:flex;gap:25px;align-items:center;border-top:1px solid var(--border);padding-top:22px;margin-top:37px;font-size:16px;color:var(--text-2)}.cover-subtitle span{font-size:14px;color:var(--text-3)}
+/* P2 · comparison template. */
+.claim .page-body{gap:16px}.hero-sentence{font-size:27px;font-weight:550}.claim .support{font-size:19px;margin-top:-9px}.channel-table th:first-child{width:150px}.channel-table th:nth-child(2){width:46%}.channel-table th:nth-child(3),.channel-table td:nth-child(3){background:var(--blue-pale);color:var(--blue-deep)}.channel-table th{font-size:19px;padding:15px 22px}.channel-table td{font-size:20px;padding:14px 22px}.channel-table td:first-child{font-size:15px;font-weight:450;color:var(--text-3)}.questions{margin-top:auto}.questions .mini{padding:17px 22px}.questions .mini h3{font-size:20px}.questions .mini p{font-size:16px}
+/* P3 · two sources. */
+.discovery .page-body{gap:20px}.discovery-grid{gap:48px}.discovery-grid .column{display:flex;flex-direction:column;gap:14px}.discovery-grid h3{margin:0;font-size:25px}.discovery-grid .overline{margin:0}.discovery-grid .shot{height:172px;margin-top:auto}.discovery-grid .clean-list{gap:10px;min-height:180px;align-content:start;padding-top:9px}.discovery-grid .clean-list li{font-size:18px}.discovery-grid .t td:first-child{width:90px}.discovery-grid .t th:first-child{width:100px}.discovery .takeaway{font-size:20px;padding:17px 24px}.discovery .takeaway strong{margin-left:12px}
+/* P4 · two layers. */
+.mismatch .page-body{gap:25px}.mismatch-top,.mismatch-bottom{display:grid;grid-template-columns:225px 1fr;gap:35px}.layer-title{display:grid;grid-template-columns:49px 1fr;column-gap:10px;align-content:start}.layer-title>span{font-family:Arial,sans-serif;font-size:37px;color:var(--accent);line-height:1.1}.layer-title h3{font-size:23px;padding-top:3px;margin:0}.layer-title p{grid-column:2;color:var(--text-3);font-size:15px;line-height:1.8;margin-top:11px}.mismatch-top .t th:first-child{width:42%}.mismatch-top .t td{padding:10px 18px;font-size:19px}.mismatch-top .caption{margin-top:12px}.mismatch-bottom{border-top:1px solid var(--border);padding-top:25px}.mismatch-bottom .mini{padding:18px 22px}.mismatch-bottom .mini h3{color:var(--accent);font-size:25px}.redline{font-size:16px;color:var(--red);border:1px solid var(--border);padding:11px 17px;margin-top:17px}.mismatch .takeaway{font-size:19px}
+/* P5 · two costs. */
+.costs .column{display:flex;flex-direction:column;gap:12px}.costs .column+.column{border-left:1px solid var(--border);padding-left:32px}.costs h3{font-size:27px;margin:0 0 3px}.costs .overline{margin:0}.compare-lines{display:grid;gap:10px;font-size:18px;color:var(--text-2)}.compare-lines p{display:flex;gap:17px}.compare-lines p>span{font-size:14px;min-width:67px;padding-top:3px;color:var(--text-3)}.costs .shot{height:175px;margin-top:7px}.costs .caption{font-size:16px}.cost-page .page-body{gap:16px}.cost-page .boundary{margin-top:-7px}.cost-page .takeaway{font-size:20px;padding:15px 22px}
+/* P6 · value staircase. */
+.value-layout{gap:64px;flex:1;align-items:start}.pull-quote{font-size:31px;line-height:1.55;margin-bottom:24px;font-weight:500}.value-layout .t th:first-child{width:27%}.analogy{font-size:18px;color:var(--text-2);border-left:2px solid var(--accent);padding-left:19px;margin-top:22px}.analogy strong{color:var(--accent)}.staircase{display:flex;flex-direction:column;gap:17px;padding-top:5px}.stair{padding:24px 27px;border-radius:var(--radius-sm);border:1px solid var(--border)}.stair>span{font-size:12px;letter-spacing:.06em}.stair h3{font-size:25px;margin:9px 0 5px}.stair p{font-size:16px}.stair.future{margin-left:62px;color:var(--text-3);background:var(--bg-soft)}.stair.next{margin-left:31px;background:var(--blue-pale);color:var(--blue-deep)}.stair.current{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}.value-page .takeaway{font-size:21px}
+/* P7 · coverage blind spots. */
+.blind-table th:first-child{width:25%}.blind-table th:nth-child(2){width:26%}.blind-table th:nth-child(3),.blind-table td:nth-child(3){background:var(--red-soft)}.blind-table td{padding:19px 21px;font-size:20px}.blind-table th{padding:17px 21px}.blind-page .takeaway{padding:21px 26px;font-size:24px}
+/* P8 · facts to rules. */
+.fact-layout{grid-template-columns:1.75fr 1fr;gap:35px}.fact-equation{display:flex;align-items:center;gap:24px;margin:-5px 0 11px;font-size:31px}.fact-equation i{font-style:normal;color:var(--text-3);font-size:35px}.fact-equation strong{color:var(--accent)}.fact-table{font-size:18px}.fact-table th:first-child{width:26%}.fact-table th:nth-child(2){width:49%}.fact-table td{font-size:17px;padding:14px 13px}.fact-table td:last-child{font-weight:550;color:var(--accent)}.fact-layout .shot{margin-top:6px;height:333px}.redlines{gap:19px}.redlines .mini{padding:17px 22px;border-top:2px solid var(--red)}.redlines .mini h3{font-size:20px}.redlines .mini p{font-size:16px}.fact-page .takeaway{font-size:21px;padding:19px 24px}
+/* P9 · stages. */
+.architecture{grid-template-columns:1.6fr 1fr;gap:42px}.stage-list{display:grid;gap:13px}.stage{display:flex;gap:20px;position:relative;padding:15px 22px;background:var(--bg-soft);border-left:2px solid var(--border-strong)}.stage-number{font-size:24px;font-family:Arial,sans-serif;color:var(--accent);font-weight:500;line-height:1.3}.stage h3{font-size:21px;margin:0 0 5px}.stage h3 small{font-size:13px;font-weight:400;color:var(--text-3);margin-left:19px}.stage p{font-size:16px;color:var(--text-2)}.human{font-size:12px;color:var(--accent);display:inline-block;margin-top:6px}.architecture .shot{height:378px}.architecture-caption{font-size:15px;margin-top:-8px}.principles{margin-top:auto}.principles .mini{padding:17px 19px}.principles h3{font-size:18px}.principles p{font-size:15px}
+/* P10 · four mechanisms; evidence and review is the main figure. */
+.mechanism-grid{height:100%;display:grid;grid-template-columns:1fr 1.12fr;grid-template-rows:1fr 1.12fr;gap:22px}.mechanism{min-height:0;border:1px solid var(--border);border-radius:var(--radius);padding:20px 23px;display:flex;flex-direction:column;gap:13px}.mechanism-copy{position:relative;padding-left:43px}.mechanism-id{position:absolute;left:0;top:0;font:22px Arial,sans-serif;color:var(--accent)}.mechanism h3{font-size:22px;margin:0 0 8px}.mechanism p{font-size:16px;color:var(--text-2);line-height:1.8}.mechanism .shot{flex:1;min-height:114px}.mechanism .shot-heading{padding:7px 11px}.mechanism .shot figcaption{font-size:11px;padding:7px 11px}.mechanism .shot-placeholder{min-height:41px;padding:8px}.mechanism .shot-placeholder b{font-size:14px}.primary-mechanism{background:var(--blue-pale);border:1px solid var(--border-strong);box-shadow:var(--shadow)}.primary-mechanism h3{color:var(--blue-deep)}.primary-mechanism .shot{background:var(--surface);border-color:var(--accent);border-style:solid}
+/* P11 · execution priority ladder. */
+.execution-page .page-body{gap:15px}.execution-layout{grid-template-columns:1fr 1fr;gap:47px}.execution-tier{padding:15px 23px;margin:0 auto 12px;border-radius:var(--radius-sm)}.execution-tier>span{float:right;font-size:11px;padding-top:6px}.execution-tier h3{font-size:21px;margin:0 0 5px}.execution-tier p{font-size:14px}.tier-one{background:var(--accent);color:var(--on-accent);width:100%}.tier-two{width:87%;background:var(--blue-pale);color:var(--blue-deep)}.tier-three{width:72%;background:var(--bg-soft);border:1px solid var(--border);color:var(--text-2)}.execution-layout .pending{margin-top:17px}.mapping{padding:5px 0}.mapping>h3{font-size:23px}.mapping ol{padding-left:25px;display:grid;gap:13px;margin:15px 0}.mapping li{font-size:18px;padding-left:5px;color:var(--accent)}.mapping li span{display:block;color:var(--text-2);font-size:16px;margin-top:2px}.design-example{background:var(--bg-soft);border:1px solid var(--border);border-radius:var(--radius-sm);padding:13px 20px}.design-label{font-size:11px;letter-spacing:.08em;color:var(--accent)}.design-example p{display:flex;gap:20px;align-items:center;font-size:16px;margin-top:5px}.design-example p span{color:var(--accent)}.design-example small{display:block;color:var(--text-3);font-size:12px;margin-top:7px}.execution-page .takeaway{padding:14px 23px;font-size:22px}.execution-page .boundary{margin-top:-6px;font-size:13px}
+/* P12 · source and three output types. */
+.outputs-page .page-body{gap:16px}.shared-source{font-size:20px;color:var(--text-2);text-align:center;border-bottom:1px solid var(--border);padding-bottom:13px}.shared-source strong{color:var(--text-1)}.outputs .mini{padding:18px 23px}.outputs h3{font-size:23px}.outputs p{font-size:16px;line-height:1.8}.render-strip{display:flex;justify-content:center;align-items:center;gap:21px;font-size:16px;color:var(--text-2);padding:4px 0}.render-strip i{font-style:normal;color:var(--accent)}.render-strip b{color:var(--accent)}.output-shots{gap:24px}.output-shots .shot{height:192px}.outputs-page .takeaway{font-size:20px;padding:14px 23px}.outputs-page .boundary{margin-top:-5px;font-size:13px}
+/* P13 · comparative assessment. */
+.comparison-page .page-body{gap:15px}.route-table{font-size:16px}.route-table th:first-child{width:14%}.route-table th:nth-child(2){width:17%}.route-table th:nth-child(3){width:19%}.route-table th:nth-child(4){width:17%}.route-table td,.route-table th{padding:10px 14px}.route-table th{font-size:13px}.route-table td:last-child{color:var(--blue-deep);background:var(--bg-soft)}.route-table tr:nth-child(2) td,.route-table tr:nth-child(3) td{background:var(--blue-pale);color:var(--blue-deep)}.formula{display:flex;align-items:center;justify-content:center;gap:18px;font-size:18px;padding:16px 18px;background:var(--blue-pale)}.formula>span:first-child{color:var(--accent);font-size:25px;font-weight:600}.formula b{font-size:22px;color:var(--accent);font-weight:400}.metrics{gap:35px}.metrics>div{border-left:2px solid var(--border-strong);padding:2px 0 0 18px}.metrics h3{font-size:19px;margin-bottom:5px}.metrics p{font-size:15px;line-height:1.8;color:var(--text-2)}.comparison-page .boundary{font-size:12px;margin-top:auto}
+/* P14 · actual prototype status. */
+.status-page .page-body{gap:17px}.status-table th:first-child{width:27%}.status-table th:nth-child(2){width:27%}.status-table th{font-size:13px;padding:12px 17px}.status-table td{font-size:16px;padding:10px 17px;line-height:1.5}.status-table td:first-child{font-weight:500}.status{display:inline-flex;align-items:center;gap:8px;font-size:13px;padding:4px 9px;border-radius:4px;white-space:nowrap}.status:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}.status.done{background:var(--green-soft);color:var(--green)}.status.partial{background:var(--amber-soft);color:var(--amber)}.status.future{background:var(--bg-soft);color:var(--text-3)}.status-table tr:nth-child(7) td{background:var(--amber-soft);font-weight:600}.status-table tr:nth-child(9) td{border-bottom-color:var(--border-strong)}.status-page .takeaway{font-size:23px;padding:16px 23px}
+/* P15 · evidence-led demo. */
+.demo-page .page-body{gap:20px}.demo-scenarios{display:flex;gap:32px;align-items:center;flex-wrap:wrap;padding-bottom:15px;border-bottom:1px solid var(--border);font-size:16px;color:var(--text-2)}.demo-scenarios p b{font-size:12px;font-weight:550;color:var(--accent);margin-right:12px}.demo-scenarios>span{font-size:12px;color:var(--text-3);margin-left:auto}.demo-steps{display:grid;grid-template-columns:repeat(7,1fr);gap:16px}.demo-step{border-top:2px solid var(--border-strong);padding-top:14px}.demo-step>span{font-size:22px;font-family:Arial,sans-serif;color:var(--accent)}.demo-step h3{font-size:20px;margin:7px 0 6px}.demo-step p{font-size:14px;line-height:1.8;color:var(--text-2)}.demo-step:last-child{border-color:var(--accent)}.demo-step:last-child h3{color:var(--accent)}.demo-bottom{display:grid;grid-template-columns:360px 1fr;gap:30px;margin-top:8px}.evidence-list h3{font-size:21px;margin-bottom:13px}.evidence-list .clean-list{gap:8px}.evidence-list li{font-size:16px}.evidence-list li:before{top:10px}.evidence-list .boundary{font-size:12px;margin-top:15px}.demo-shots{gap:20px}.demo-shots .shot{height:274px}.demo-shots .shot-placeholder{flex-direction:column;gap:12px}.demo-shots .shot-placeholder b{font-size:15px}.demo-shots .shot figcaption{font-size:11px}.demo-page .takeaway{font-size:20px;padding:15px 23px}.demo-page .boundary{font-size:13px;margin-top:-8px}
+/* P16 · lifecycle and closing thesis. */
+.closing-top{display:grid;grid-template-columns:550px 1fr;gap:61px;align-items:center}.lifecycle{position:relative;width:520px;height:420px;flex-shrink:0}.lifecycle>svg{position:absolute;width:100%;height:100%;fill:none;stroke:var(--border-strong);stroke-width:1.5;stroke-dasharray:5 6}.life-node{position:absolute;transform:translate(-50%,-50%);background:var(--surface);border:1px solid var(--border);border-radius:7px;min-width:120px;text-align:center;padding:10px 14px;font-size:16px;color:var(--text-2);box-shadow:var(--shadow)}.life-node>span{font:12px Arial,sans-serif;display:block;color:var(--text-3);margin-bottom:3px}.life-node.current{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}.life-node.current>span{color:var(--on-accent)}.ring-center{position:absolute;left:260px;top:207px;transform:translate(-50%,-50%);text-align:center;display:grid;gap:3px}.ring-center>span{font:36px Arial,sans-serif;color:var(--accent);font-weight:500}.ring-center b{font-size:23px;font-weight:550}.ring-center small{font-size:12px;color:var(--text-3)}.directions{display:grid;gap:12px}.directions>.overline{margin:0}.directions .mini{padding:15px 21px}.directions h3{font-size:20px;margin-bottom:5px}.directions p{font-size:16px}.directions .boundary{font-size:12px}.closing-line{border-top:1px solid var(--border);padding-top:19px;margin-top:auto}.closing-line>p{font-size:16px;color:var(--text-2);margin:5px 0}.closing-line>p>span{font-size:12px;color:var(--accent);font-weight:600;margin-right:15px}.closing-line h3{font-size:30px;line-height:1.55;font-weight:600;margin:16px 0 0}.closing-line h3 em{color:var(--accent)}
+/* Controls and secondary views. */
+.deck-controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:5px 9px;box-shadow:var(--shadow);z-index:30;opacity:0;transition:opacity .2s}.deck-controls:hover,.deck-controls:focus-within,body.show-controls .deck-controls{opacity:1}.deck-controls button{font:17px var(--font-sans);border:0;background:transparent;color:var(--text-2);cursor:pointer;width:31px;height:30px;border-radius:5px}.deck-controls button:hover{background:var(--blue-pale);color:var(--accent)}.deck-controls button:disabled{opacity:.3;cursor:default}.deck-controls button:focus-visible{outline:2px solid var(--accent)}#nav-count{font:12px Arial,sans-serif;min-width:57px;text-align:center;color:var(--text-2)}.control-divider{height:17px;width:1px;background:var(--border)}.progress-bar{height:2px}.overview.open{grid-template-columns:repeat(4,1fr);padding:30px;gap:18px}.overview .thumb{box-shadow:var(--shadow)}.overview .thumb .t{font-size:12px;line-height:1.3}.notes-overlay{font-size:17px;padding:25px 55px}.notes-overlay .speaker-script{max-width:1000px;margin:auto}.notes-overlay p{margin-bottom:12px}.notes-overlay details{max-width:1000px;margin:16px auto;font-size:14px}.notes-overlay summary{cursor:pointer}.notes-overlay code{color:inherit}.notes-overlay strong{color:inherit}html[data-preview] .deck-controls{display:none}
+.shot-lightbox{position:fixed;inset:0;background:var(--navy);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4vh 5vw;gap:15px}.shot-lightbox img{max-width:100%;max-height:82vh;object-fit:contain;background:var(--surface)}.shot-lightbox button{font:15px var(--font-sans);background:var(--surface);border:0;padding:8px 18px;border-radius:var(--radius-sm);color:var(--text-1);cursor:pointer}.shot-lightbox-controls{display:flex;gap:15px}.toast{position:fixed;bottom:65px;left:50%;transform:translateX(-50%);padding:10px 20px;background:var(--navy);color:var(--on-accent);z-index:120;border-radius:6px;font-size:14px}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important}}
+@media print{@page{size:1600px 900px;margin:0}html,body{width:1600px;height:auto;overflow:visible;background:var(--bg);display:block}.deck{width:1600px;height:auto;overflow:visible;transform:none!important;box-shadow:none}.slide{width:1600px;height:900px;position:relative;display:flex!important;opacity:1!important;transform:none!important;break-after:page;page-break-after:always}.slide:last-child{break-after:auto;page-break-after:auto}.deck-header,.deck-footer{display:flex!important}.deck-controls,.upload-hint{display:none!important}.slide,.mini,.takeaway,.t,.shot{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+/* Final fit at the 1600 × 900 design size. */
+.discovery-grid .t.compact th,.discovery-grid .t.compact td{padding:6px 13px}.discovery-grid .clean-list{min-height:160px}.discovery-grid .shot{height:155px}.discovery-grid{gap:44px}
+.execution-page .page-body{gap:12px}.execution-tier{padding:13px 23px;margin-bottom:9px}.execution-page .takeaway{padding:13px 23px}
+.route-table td,.route-table th{padding-top:9px;padding-bottom:9px}
+.status-table td{font-size:15px;padding:7px 17px}.status{font-size:12px;padding:3px 8px}.status-table th{padding-top:10px;padding-bottom:10px}
+.closing-top{height:375px;grid-template-columns:535px 1fr;gap:55px}.lifecycle{transform:scale(.88);transform-origin:left center;margin-top:-18px}.directions{gap:9px}.directions .mini{padding:12px 19px}.directions .mini h3{font-size:19px}.directions .mini p{font-size:15px}.closing-line{padding-top:15px}.closing-line h3{font-size:29px;line-height:1.5;margin-top:12px}
+
+</style></head><body><main class="deck" aria-label="课题答辩 · 16 页"><section class="slide is-active cover" data-title="让工作本身，成为输入" data-page="1"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">研究主张</span></div><div class="page-body"><div class="cover-content"><p class="cover-eyebrow"><span></span>课题答辩 · 2026</p><h1>让工作本身，<br><em>成为输入。</em></h1><p class="cover-claim">人最擅长的是「做」，不是「说」。</p><p class="cover-description">直接演示一遍，让真实操作转化为<br><strong>可理解、可复用、可审核</strong>的工作知识。</p><p class="cover-subtitle">人机协同新范式：从“描述”到“演示”<span>让大模型理解人的真实工作</span></p></div></div><div class="deck-footer"><span>问题 · 方案 · 原型　 |　 汇报人【待补】　 |　 2026-10</span><span class="slide-number" data-current="1" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>今天我们只能用&quot;描述&quot;把工作交给 AI。但人对自己的工作，最擅长的是&quot;做&quot;，不是&quot;说&quot;。</p>
+<p>本课题研究的是：如何让人<strong>直接演示一遍</strong>，由系统把这次演示，转化为大模型可理解、可复用、可审核的工作知识。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 封面：让工作本身，成为输入</p>
+<p><strong>版式</strong>：封面大字，主张单独上屏，不放任何图表。</p>
+<p><strong>上屏</strong></p>
+<p>让工作本身，成为输入</p>
+<p>人最擅长的是「做」，不是「说」。</p>
+<p>直接演示一遍，让系统把真实操作转化为<strong>可理解、可复用、可审核</strong>的工作知识。</p>
+<p>副标题行：人机协同新范式：从&quot;描述&quot;到&quot;演示&quot;——让大模型理解人的真实工作</p>
+<p>页脚：问题 · 方案 · 原型 | 汇报人【待补】 | 2026-10</p>
+<p><strong>讲稿</strong>（30 秒，照念即可）</p>
+<p>今天我们只能用&quot;描述&quot;把工作交给 AI。但人对自己的工作，最擅长的是&quot;做&quot;，不是&quot;说&quot;。</p>
+<p>本课题研究的是：如何让人<strong>直接演示一遍</strong>，由系统把这次演示，转化为大模型可理解、可复用、可审核的工作知识。</p>
+<p><strong>来源</strong>：§0</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide claim" data-title="让工作本身，成为输入" data-page="2"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">研究主张</span></div><div class="page-heading"><p class="kicker">核心主张</p><h2 class="h2">让工作本身，<span class="blue">成为输入</span></h2></div><div class="page-body"><p class="hero-sentence">人最擅长的是「做」，不是「说」。</p><p class="support">与其跟大模型讲非常多，不如<strong>给它实际演示一遍</strong>。</p><table class="t channel-table"><thead><tr><th></th><th>今天 · 描述式输入</th><th>本课题 · 演示式输入</th></tr></thead><tbody><tr><td>用户要做</td><td>写完整指令，自备截图与样例</td><td><strong>按平时方法做一遍，再回答几个问题</strong></td></tr><tr><td>需要具备</td><td>流程表达能力 + AI 使用经验</td><td><strong>只需会做这项工作本身</strong></td></tr><tr><td>信息来源</td><td>事后回忆重构 + 人工挑选素材</td><td>真实操作证据，时序完整</td></tr><tr><td>跨系统工作</td><td>成本随系统数线性上升，衔接易丢</td><td>一次通过，衔接自动连上</td></tr></tbody></table><div class="three questions"><div class="mini "><h3>谁来教？</h3><p>门槛从“会写指令”降到“会做工作”。</p></div><div class="mini "><h3>用什么教？</h3><p>做一遍给它看，比堆截图讲得更全。</p></div><div class="mini accent"><h3>教完怎么跑？</h3><p><strong>演示是输入方式，不是执行方式。</strong></p></div></div></div><div class="deck-footer"><span>课题答辩　 /　 §0（整页基调：&quot;大处着眼，小处着手&quot;可做页脚一行小字）</span><span class="slide-number" data-current="2" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>我的主张只有一句：<strong>让工作本身，成为输入。</strong> 人最擅长的是做，不是说——那就别再要求他说，让他做一遍。</p>
+<p>这个主张同时回答三个被忽略的问题。谁来教——最需要 AI 帮忙的是一线业务人员，但把工作翻译成 AI 指令需要 AI 使用经验，这两种能力几乎不在同一个人身上。用什么教——跨系统的复杂工作，拿截图加文字拼凑着喂，既费力又讲不全。</p>
+<p>第三条最关键，我放在开场讲，不等被问：<strong>演示只是输入方式，不是执行方式。</strong> 系统不回放用户的点击，而是把演示出来的业务目标，翻译成对公司内既有 MCP、业务接口和内部 CLI 的稳定调用；只有确实没有可用能力的 UI 专属环节，才退回浏览器兜底。</p>
+<p>这句话，就是本课题与 RPA、与各类&quot;录屏回放&quot;产品的分界线。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 核心主张：让工作本身，成为输入</p>
+<p><strong>版式</strong>：顶部主张条（承接封面，不换说法）；中部左右对照（两列卡片）；下半三问横排小卡。</p>
+<p><strong>上屏 · 主张条</strong>（页眉位置，字号仅次于封面）</p>
+<p><strong>让工作本身，成为输入</strong></p>
+<p>人最擅长的是「做」，不是「说」。</p>
+<p>与其跟大模型讲非常多，不如<strong>给它实际演示一遍</strong>——由系统把这次演示转化为可理解、可复用、可审核的工作知识。</p>
+<p><strong>措辞纪律</strong>：这一页的标题与主张必须与封面<strong>同一句话</strong>，不要替换成&quot;从会写指令到会做工作&quot;之类的概括。后者只是主张在&quot;门槛&quot;这一个侧面上的推论（见下方三问之一），<strong>不能代表主张本身</strong>——主张讲的是<strong>输入通道换了</strong>（说 → 做），不是&quot;用户换了一种技能&quot;。</p>
+<p><strong>上屏 · 左右对照</strong>（主张的证据面；只保留 4 行，耗时行有数据才上）</p>
+<p>| | 今天：描述式输入 | 本课题：演示式输入 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 用户要做的事 | 写一份完整无歧义的指令，自备截图样例 | 按平时的方法做一遍，再回答几个问题 |</p>
+<p>| 需要具备 | 流程表达能力 + AI 使用经验 | 只需会做这项工作本身 |</p>
+<p>| 信息来源 | 事后回忆的重构 + 人工挑选素材 | 当场发生的真实操作证据，时序完整 |</p>
+<p>| 跨系统工作 | 成本随系统数线性上升，衔接最易丢 | 一次通过，衔接自动连上 |</p>
+<p>| 典型耗时 | 【待补：写一份完整指令实际花了多久】 | 【待补：演示 + 澄清实际花了多久】 |</p>
+<p><strong>上屏 · 三问</strong>（三张小卡，每卡一问一答，各不超过 20 字）</p>
+<p>1. <strong>谁来教？</strong> 门槛从&quot;会写指令&quot;降到&quot;会做工作&quot;。</p>
+<p>2. <strong>用什么教？</strong> 做一遍给它看，比堆截图讲得更全。</p>
+<p>3. <strong>教完怎么跑？</strong> <strong>演示是输入方式，不是执行方式。</strong></p>
+<p><strong>图示</strong>：左右对照建议做成&quot;两条通道&quot;示意——左侧人→文字→AI（通道上标三个漏斗表示损耗），右侧人→操作→系统→AI（通道完整）。</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>我的主张只有一句：<strong>让工作本身，成为输入。</strong> 人最擅长的是做，不是说——那就别再要求他说，让他做一遍。</p>
+<p>这个主张同时回答三个被忽略的问题。谁来教——最需要 AI 帮忙的是一线业务人员，但把工作翻译成 AI 指令需要 AI 使用经验，这两种能力几乎不在同一个人身上。用什么教——跨系统的复杂工作，拿截图加文字拼凑着喂，既费力又讲不全。</p>
+<p>第三条最关键，我放在开场讲，不等被问：<strong>演示只是输入方式，不是执行方式。</strong> 系统不回放用户的点击，而是把演示出来的业务目标，翻译成对公司内既有 MCP、业务接口和内部 CLI 的稳定调用；只有确实没有可用能力的 UI 专属环节，才退回浏览器兜底。</p>
+<p>这句话，就是本课题与 RPA、与各类&quot;录屏回放&quot;产品的分界线。</p>
+<p><strong>来源</strong>：§0（整页基调：&quot;大处着眼，小处着手&quot;可做页脚一行小字）</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide discovery" data-title="问题的发现：两个方向同时撞上来" data-page="3"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">01 / 问题的起点</p><h2 class="h2">问题的发现：<span class="blue">两个方向同时撞上来</span></h2></div><div class="page-body"><div class="two discovery-grid"><div class="column"><p class="overline">渠道一 · 我自己</p><h3>“说清楚”远比“做一遍”贵</h3><table class="t compact"><thead><tr><th>动作</th><th>真实工作量</th></tr></thead><tbody><tr><td>回忆</td><td>默认动作太熟，反而想不起来</td></tr><tr><td>截图</td><td>逐张裁剪、打码、标箭头</td></tr><tr><td>组织文字</td><td>把跳跃操作写成线性步骤</td></tr><tr><td>返工</td><td>漏步 / 误把样本值写死</td></tr></tbody></table><p class="pending">自己做【待补：时长】 · 写清楚【待补：时长 / 返工轮次】</p><figure class="shot " data-shot="1"><div class="shot-heading"><span>实物截图 01</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>素材文件夹 · 长说明 · 文档草稿</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>沉淀一次工作的真实工作量</figcaption></figure></div><div class="column"><p class="overline">渠道二 · 一线员工</p><h3>是工作专家，却不会“讲”给模型</h3><ul class="clean-list"><li>口径、例外、判断依据，问他都答得上。</li><li>不知道说到多细，哪些是模型猜不到的。</li><li>找懂 AI 的人一对一“翻译”，<strong>覆盖不过来</strong>。</li></ul><p class="pending">【待补：员工真实原话，须脱敏】</p><figure class="shot " data-shot="2"><div class="shot-heading"><span>实物截图 02</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>聊天记录 · 流程说明 · 翻译前后对照</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>不是员工不努力，而是给错了工具</figcaption></figure></div></div><div class="takeaway dark">两边卡的是同一件事：把“会做的事”先翻译成“说得清的话”。<strong>不如，实际演示一遍。</strong></div></div><div class="deck-footer"><span>课题答辩　 /　 §1.1</span><span class="slide-number" data-current="3" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>这个问题不是从文献里读到的，是从两个完全不同的方向同时撞上来的：一个来自我自己，一个来自一线员工。</p>
+<p>（左栏）我要把【待补：具体工作】交给 Agent，动手写 Skill、顺手沉淀 SOP。时间全花在回忆、截图、组织文字和返工上——做这件事本身只要【待补】，写清楚花了【待补】。</p>
+<p>（右栏）推广 workmate 时反复看到：员工对业务极其专业，但面对&quot;把工作交给 AI&quot;，他卡在不知道说到多细、哪些 AI 猜不到。最后只能找懂 AI 的人一对一翻译，而这种人根本不够。</p>
+<p>两个渠道互相印证——这说明不是我个人体感，而是一类普遍卡点。</p>
+<p><strong>本页纪律</strong>：不出现任何技术词。评委在这里只需要信一件事：这个问题是你亲身撞上的，而且不止你一个人撞上。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 问题的发现：两个方向同时撞上来</p>
+<p><strong>版式</strong>：左右双栏（渠道一 / 渠道二），每栏一张实物截图 + 三行要点；底部一条通栏&quot;顿悟&quot;深色条。</p>
+<p><strong>上屏 · 左栏：渠道一（我自己）</strong></p>
+<p>标题：<strong>整理 Skill 与 SOP 时，发现&quot;说清楚&quot;远比&quot;做一遍&quot;贵</strong></p>
+<p>| 动作 | 实际在干什么 | 耗时 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 回忆 | 先看哪个字段、先排除哪类记录——熟到不用想，所以想不起来 | 【待补】 |</p>
+<p>| 截图 | 一步一张，还要裁剪、打码、标箭头 | 【待补】 |</p>
+<p>| 组织文字 | 把跳跃的操作写成线性步骤 | 【待补】 |</p>
+<p>| 返工 | Agent 漏步 / 把样本值当成固定值 | 【待补：几轮】 |</p>
+<p>红字一行：<strong>自己做只要【待补】，写清楚却花了【待补】。我不是不会做，我是说不清——越熟练，越说不清。</strong></p>
+<p>📷<strong>【截图位 1】</strong>：当时攒的素材摊开——截图文件夹（几十张图）、很长的那版提示词、改了几轮的 SOP 草稿。</p>
+<p>评委要看到：<strong>&quot;沉淀一次工作&quot;今天的真实工作量长什么样。</strong> 这页不讲道理，让图说话。</p>
+<p><strong>上屏 · 右栏：渠道二（一线员工）</strong></p>
+<p>标题：<strong>他们是工作专家，但不知道怎么把工作&quot;讲&quot;给大模型</strong></p>
+<p>- 对自己的业务极其专业：口径、例外、为什么这么判断，问他都答得上；</p>
+<p>- 卡在一个本不该由他们解决的问题上：<strong>不知道要说到多细、哪些是 AI 根本猜不到的、怎么把工作变成 MCP / Skill</strong>；</p>
+<p>- 典型原话：【待补：真实原话，脱敏】；</p>
+<p>- 现行解法是找一个懂 AI 的人来&quot;翻译&quot;——<strong>覆盖不过来</strong>。</p>
+<p>📷<strong>【截图位 2】</strong>：员工尝试描述自己工作的真实痕迹（<strong>务必脱敏</strong>）——聊天记录 / 写了一半的流程说明 / 你替他翻译前后的两版对照。</p>
+<p>评委要看到：<strong>不是员工不努力，是我们给错了工具。</strong></p>
+<p><strong>上屏 · 通栏顿悟条</strong></p>
+<p>两边卡的是同一件事：<strong>我们一直要求人把&quot;会做的事&quot;先翻译成&quot;说得清的话&quot;。</strong></p>
+<p><strong>与其跟大模型讲非常多，不如给它实际演示一遍。</strong></p>
+<p><strong>讲稿</strong>（120 秒）</p>
+<p>这个问题不是从文献里读到的，是从两个完全不同的方向同时撞上来的：一个来自我自己，一个来自一线员工。</p>
+<p>（左栏）我要把【待补：具体工作】交给 Agent，动手写 Skill、顺手沉淀 SOP。时间全花在回忆、截图、组织文字和返工上——做这件事本身只要【待补】，写清楚花了【待补】。</p>
+<p>（右栏）推广 workmate 时反复看到：员工对业务极其专业，但面对&quot;把工作交给 AI&quot;，他卡在不知道说到多细、哪些 AI 猜不到。最后只能找懂 AI 的人一对一翻译，而这种人根本不够。</p>
+<p>两个渠道互相印证——这说明不是我个人体感，而是一类普遍卡点。</p>
+<p><strong>本页纪律</strong>：不出现任何技术词。评委在这里只需要信一件事：这个问题是你亲身撞上的，而且不止你一个人撞上。</p>
+<p><strong>来源</strong>：§1.1</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide mismatch" data-title="问题的本质：两层错配" data-page="4"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">02 / 从现象到问题定义</p><h2 class="h2">问题的本质：<span class="blue">两层错配</span></h2></div><div class="page-body"><div class="mismatch-top"><div class="layer-title"><span>01</span><h3>谁来教</h3><p>工作知识与 AI 能力<br>长在不同的人身上</p></div><div><table class="t "><thead><tr><th></th><th>一线业务人员</th><th>熟悉 AI 的人</th></tr></thead><tbody><tr><td>工作知识与判断口径</td><td><b class="blue">有</b></td><td>没有</td></tr><tr><td>把工作讲成可执行指令</td><td>没有</td><td><b class="blue">有</b></td></tr><tr><td>被繁琐重复工作消耗</td><td><b>严重</b></td><td>相对少</td></tr></tbody></table><p class="caption">找人“翻译”有二次损耗，更关键是<strong>不可规模化</strong>。</p></div></div><div class="mismatch-bottom"><div class="layer-title"><span>02</span><h3>怎么教</h3><p>描述通道有<br>结构性损耗</p></div><div><div class="three"><div class="mini "><h3>遗漏</h3><p>默认动作是“不值得说的常识”。</p></div><div class="mini "><h3>失真</h3><p>回忆是重构，不是记录。</p></div><div class="mini "><h3>成本</h3><p>完整写清楚，往往比做一遍更慢。</p></div></div><p class="redline">与表达能力无关：越熟练，越容易遗漏。培训写 Prompt 解决不了这一层。</p></div></div><div class="takeaway ">隐性知识：<strong>可被执行，却难被完整言说。</strong>单一“言说”通道，既挡住使用者，也丢失工作知识。</div></div><div class="deck-footer"><span>课题答辩　 /　 §1.2</span><span class="slide-number" data-current="4" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>把个人经历上升为可论证的问题定义，这里有两层，不能只讲一层。</p>
+<p>层一是&quot;谁来教&quot;：最值得交给 AI 的繁琐重复工作，恰恰集中在一线业务人员手上；他们知道怎么做，但不知道怎么才能让 AI 做对。现实解法是找人翻译，而翻译不可规模化。所以瓶颈既不在模型，也不在业务能力，而在于<strong>我们要求业务人员先掌握一项他本不需要掌握的技能</strong>。</p>
+<p>层二是&quot;怎么教&quot;：即便换一个很会表达的人来写，描述通道本身仍有三重结构性损耗。注意，这三条与表达能力无关。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 问题的本质：两层错配</p>
+<p><strong>版式</strong>：上下两段。上段&quot;层一&quot;用三行对照表（两列人群），下段&quot;层二&quot;用三张损耗卡片；底部一句学术化定义。</p>
+<p><strong>上屏 · 层一：谁来教——工作知识与 AI 能力长在不同的人身上</strong></p>
+<p>| | 一线业务人员 | 熟悉 AI 的人 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 工作知识与判断口径 | <strong>有</strong> | 没有 |</p>
+<p>| 会把工作讲成 AI 能执行的指令 | 没有 | <strong>有</strong> |</p>
+<p>| 被繁琐重复工作消耗 | <strong>严重</strong> | 相对少 |</p>
+<p>一行结论：找人&quot;翻译&quot;会二次损耗，更关键是<strong>不可规模化</strong>。</p>
+<p><strong>上屏 · 层二：怎么教——描述通道的三重损耗</strong>（三张卡，每卡标题 + 一句话）</p>
+<p>| 损耗 | 一句话 |</p>
+<p>| --- | --- |</p>
+<p>| <strong>遗漏</strong> | 下意识的默认动作写不出来——对本人是&quot;不值得说的常识&quot; |</p>
+<p>| <strong>失真</strong> | 回忆是重构，不是记录；人会把流程讲成理想化的样子 |</p>
+<p>| <strong>成本</strong> | 写一份足够完整的指令，往往比亲手做一遍更慢 |</p>
+<p>红框强调：<strong>这三条与表达能力无关——越熟练的人遗漏越多。所以&quot;培训业务人员写 Prompt&quot;能提升下限，解决不了这一层。</strong></p>
+<p><strong>上屏 · 底部定义条</strong>（给评委一句可引用的话）</p>
+<p>人类工作知识中存在大量<strong>隐性成分</strong>，可被执行但难被完整言说。当前人机协作把&quot;言说&quot;作为唯一输入通道，于是<strong>既筛掉了不擅长言说但最需要帮助的使用者，又系统性地丢失了难以言说的那部分知识</strong>。</p>
+<p><strong>图示</strong>：层二建议画一个漏斗——输入&quot;真实工作&quot;，经过&quot;言说&quot;这道窄口，输出被削掉三块（遗漏/失真/成本）。</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>把个人经历上升为可论证的问题定义，这里有两层，不能只讲一层。</p>
+<p>层一是&quot;谁来教&quot;：最值得交给 AI 的繁琐重复工作，恰恰集中在一线业务人员手上；他们知道怎么做，但不知道怎么才能让 AI 做对。现实解法是找人翻译，而翻译不可规模化。所以瓶颈既不在模型，也不在业务能力，而在于<strong>我们要求业务人员先掌握一项他本不需要掌握的技能</strong>。</p>
+<p>层二是&quot;怎么教&quot;：即便换一个很会表达的人来写，描述通道本身仍有三重结构性损耗。注意，这三条与表达能力无关。</p>
+<p><strong>来源</strong>：§1.2</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide cost-page" data-title="描述通道的两个长期代价" data-page="5"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">03 / 同一个病根，两个症状</p><h2 class="h2">描述通道的<span class="blue">两个长期代价</span></h2></div><div class="page-body"><div class="two costs"><div class="column"><p class="overline">跨系统工作</p><h3>越复杂，越讲不全</h3><div class="compare-lines"><p><span>准备</span>步骤与系统越多，堆素材越不可行</p><p><span>衔接</span>静态截图丢时序，跨系统动作最易漏</p><p><span>中间态</span>复制内容、命令与查询返回难还原</p><p><span>为什么</span>演示时口述一句，自动对齐步骤</p></div><figure class="shot " data-shot="3"><div class="shot-heading"><span>实物截图 03</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>真实跨系统界面拼图</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>步骤【待补】 / 系统【待补】 / 切换【待补】</figcaption></figure><p class="caption">优先投向：<strong>跨系统、多步骤、高频重复</strong>的工作。</p></div><div class="column"><p class="overline">SOP 与操作手册</p><h3>第一版很完善，写完即过期</h3><div class="compare-lines"><p><span>额外工作</span>脱离日常操作，要单独挤时间</p><p><span>维护很贵</span>界面一改，截图与描述要重做</p><p><span>没有触发</span>流程变了，没人提醒该更新</p><p><span>收益错位</span>写的人已经会，受益的是后来者</p></div><figure class="shot " data-shot="4"><div class="shot-heading"><span>实物截图 04</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>旧文档截图 ↔ 当前系统界面</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>红框标出失配按钮 / 字段；更新日期【待补】</figcaption></figure><p class="caption">下一步：文档成为操作的副产品，<strong>从“维护”走向“保鲜”</strong>。</p></div></div><div class="takeaway ">延伸价值不依赖 AI 执行成功：即使只给人看，也有收益。</div><p class="boundary">边界：独立 SOP / 手册首版已实现、尚未发布，内容质量未经业务验证；版本与变更提示尚未实现。</p></div><div class="deck-footer"><span>课题答辩　 /　 §1.3、§1.4</span><span class="slide-number" data-current="5" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>描述成本高，伤害的不只是 AI，也是人。左边：日常最繁琐的工作往往不在单一系统内，而在多个系统之间来回衔接；今天要讲给 AI，只能堆素材，而挑素材本身就是一次人工流程重构，又回到失真。</p>
+<p>右边是同一个病根的第二个症状。SOP 腐坏的根因不是责任心，是机制：写文档是脱离日常操作的额外工作，维护成本和初次编写相当，流程变了还没有任何触发点。一个人嫌麻烦是效率问题，全公司都嫌麻烦就是机制问题。</p>
+<p>如果流程记录能从日常真实操作中自动产生，它就不再是额外工作，而是工作的副产品。</p>
+<p>⚠️ <strong>诚实边界</strong>：当前原型产物是面向 Agent 的 Skill 文件；面向人阅读的独立 SOP/手册导出<strong>已有首版实现但尚未发布、内容质量未经业务验证</strong>。这一页讲&quot;方案的延伸价值与下一步&quot;，不要讲成&quot;现在就能用&quot;。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 描述通道的两个长期代价</p>
+<p><strong>版式</strong>：左右分屏，各占半页，各一张实物图。两边标题对称。</p>
+<p><strong>上屏 · 左半：跨系统工作讲不全</strong></p>
+<p>标题：<strong>工作越跨系统、越复杂，演示相对描述的优势越大</strong></p>
+<p>| 维度 | 截图 + 文本堆砌 | 一次演示 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 准备成本 | 步骤与系统越多越不可行 | 做一遍即可，与复杂度脱钩 |</p>
+<p>| 时序与因果 | 系统之间的衔接动作最易漏 | 时序天然完整 |</p>
+<p>| 中间态 | 抓不到剪贴板、命令、查询返回 | 自动关联到对应步骤 |</p>
+<p>| &quot;为什么&quot; | 需另写说明 | 口述一句，自动对齐 |</p>
+<p>一行推论：<strong>价值不是均匀分布的</strong>——优先投向跨系统、多步骤、高频重复的工作。</p>
+<p>📷<strong>【截图位 3】</strong>：跨系统拼图——真实涉及的 N 个系统界面并排拼一页（<strong>脱敏</strong>），下方标注&quot;步骤数 N / 系统数 M / 来回切换 K 次&quot;【待补】。</p>
+<p>评委要看到：<strong>要把这件事用文字讲全，工作量是不可接受的。</strong></p>
+<p><strong>上屏 · 右半：SOP 与手册写完即过期</strong></p>
+<p>标题：<strong>第一版很完善，之后没人维护，最终与实际流程脱节</strong></p>
+<p>| 根因 | 表现 |</p>
+<p>| --- | --- |</p>
+<p>| 写文档是<strong>额外工作</strong> | 必须单独挤时间 |</p>
+<p>| 维护成本≈初次编写 | 界面一改版，截图全作废 |</p>
+<p>| 变更没有触发点 | 没人提醒&quot;该更新了&quot; |</p>
+<p>| 成本与收益不在同一人 | 写的人已经会了 |</p>
+<p>对比箭头（本方案含义）：<strong>文档从&quot;需要维护&quot;→&quot;持续保鲜&quot;</strong>；产生方式从&quot;事后回忆排版&quot;→&quot;日常操作的副产品&quot;；更新从&quot;有人想起来&quot;→&quot;下一次真实操作即刷新&quot;。</p>
+<p>📷<strong>【截图位 4】</strong>：<strong>真实腐坏的 SOP</strong> 左右对照——左边文档里的截图，右边系统现在的界面，红框圈出对不上的按钮/字段，标注&quot;文档最后更新：X / 界面实际改版：Y&quot;【待补】。</p>
+<p>评委要看到：<strong>这不是别人家的问题，是我们自己文档的现状。</strong> 全篇最易共鸣的一张图，优先准备。</p>
+<p><strong>上屏 · 通栏一行</strong></p>
+<p><strong>这一层价值不依赖 AI 执行成功——即使产物只给人看，价值已经产生。</strong></p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>描述成本高，伤害的不只是 AI，也是人。左边：日常最繁琐的工作往往不在单一系统内，而在多个系统之间来回衔接；今天要讲给 AI，只能堆素材，而挑素材本身就是一次人工流程重构，又回到失真。</p>
+<p>右边是同一个病根的第二个症状。SOP 腐坏的根因不是责任心，是机制：写文档是脱离日常操作的额外工作，维护成本和初次编写相当，流程变了还没有任何触发点。一个人嫌麻烦是效率问题，全公司都嫌麻烦就是机制问题。</p>
+<p>如果流程记录能从日常真实操作中自动产生，它就不再是额外工作，而是工作的副产品。</p>
+<p>⚠️ <strong>诚实边界</strong>：当前原型产物是面向 Agent 的 Skill 文件；面向人阅读的独立 SOP/手册导出<strong>已有首版实现但尚未发布、内容质量未经业务验证</strong>。这一页讲&quot;方案的延伸价值与下一步&quot;，不要讲成&quot;现在就能用&quot;。</p>
+<p><strong>来源</strong>：§1.3、§1.4</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide value-page" data-title="模型能买，工作方式买不到" data-page="6"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">04 / 从个人效率到组织能力</p><h2 class="h2">模型能买，<span class="blue">工作方式买不到</span></h2></div><div class="page-body"><div class="two value-layout"><div><p class="pull-quote">企业独有的“手艺”，<br>仍然锁在员工个体身上。</p><table class="t compact"><thead><tr><th>现象</th><th>组织后果</th></tr></thead><tbody><tr><td>知识随人走</td><td>离职、轮岗即能力流失</td></tr><tr><td>知识靠人传</td><td>培训成本高，口径逐层衰减</td></tr><tr><td>口径不统一</td><td>同一项工作，不同结果</td></tr><tr><td><strong>AI 接不进来</strong></td><td><strong>有最强模型，却喂不进工作方式</strong></td></tr></tbody></table><p class="analogy">从师徒相传的手艺，走向可复制的工艺标准。<br><strong>本课题：AI 时代的工艺标准化。</strong></p></div><div class="staircase"><div class="stair future"><span>L3 · 未来演进</span><h3>企业 AI 生产力基础设施</h3><p>可管理、可发布、可度量的 Skill 资产体系</p></div><div class="stair next"><span>L2 · 已设计，部分待实现</span><h3>组织知识资产</h3><p>可交接、可审计、口径统一的流程资产</p></div><div class="stair current"><span>L1 · 当前验证重点</span><h3>个人效率</h3><p>演示者自己的可复用 Skill</p></div></div></div><div class="takeaway ">企业 AI 的瓶颈：从“有没有模型”，转向<strong>“能不能把自己的工作方式交给模型”</strong>。</div></div><div class="deck-footer"><span>课题答辩　 /　 §1.5</span><span class="slide-number" data-current="6" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>AI 模型正在迅速变成公共品：同行买得到同样的模型、同样的算力，<strong>模型本身不构成竞争力</strong>。企业真正独有的是业务判断口径、风控尺度、客户处理惯例、跨系统衔接方式——它们构成这家企业实际的运行方式，而今天这部分几乎全部以隐性形式锁在员工个体身上。</p>
+<p>收束一句：<strong>企业引入 AI 的瓶颈，正在从&quot;有没有模型&quot;转向&quot;能不能把自己的工作方式交给模型&quot;。本课题提供的，是后者的入口。</strong></p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 模型能买，工作方式买不到</p>
+<p><strong>版式</strong>：顶部一句大字；中部四行&quot;组织后果&quot;表；底部三级台阶图（L1/L2/L3）。</p>
+<p><strong>上屏 · 大字</strong></p>
+<p>模型能力是可以买的，企业自己的工作方式买不到。</p>
+<p><strong>上屏 · 组织后果</strong></p>
+<p>| 现象 | 组织层面的后果 |</p>
+<p>| --- | --- |</p>
+<p>| 知识随人走 | 骨干离职、轮岗即能力流失 |</p>
+<p>| 知识靠人传 | 培训成本高，口径在传递中衰减 |</p>
+<p>| 口径不统一 | 同一项工作不同人不同结果，不可审计 |</p>
+<p>| <strong>AI 接不进来</strong> | <strong>买了最强的模型，却喂不进自己的工作方式</strong> |</p>
+<p><strong>上屏 · 类比条</strong>（整页最有升华力的一句）</p>
+<p>工业革命真正的跃迁，不在于有了机器，而在于<strong>把师徒相传的手艺，转化为可复制的工艺标准</strong>。</p>
+<p>今天 AI 是新的机器，企业的&quot;手艺&quot;仍锁在人脑里。<strong>本课题要做的，是 AI 时代的工艺标准化。</strong></p>
+<p><strong>图示 · 三级台阶</strong>（每级一行标签，当前位置用色块标出）</p>
+<p>| 层级 | 谁受益 | 产出形态 | 本课题位置 |</p>
+<p>| --- | --- | --- | --- |</p>
+<p>| <strong>L1 个人效率</strong> | 演示者本人 | 自己的可复用 Skill | ✅ 当前验证重点 |</p>
+<p>| <strong>L2 组织知识资产</strong> | 团队、后来者、交接方 | 可交接、可审计、口径统一的流程资产 | 🔸 已设计，部分待实现 |</p>
+<p>| <strong>L3 企业 AI 生产力基础设施</strong> | 整个企业 | 可管理、可发布、可度量的 Skill 资产体系 | ⬜ 未来演进 |</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>AI 模型正在迅速变成公共品：同行买得到同样的模型、同样的算力，<strong>模型本身不构成竞争力</strong>。企业真正独有的是业务判断口径、风控尺度、客户处理惯例、跨系统衔接方式——它们构成这家企业实际的运行方式，而今天这部分几乎全部以隐性形式锁在员工个体身上。</p>
+<p>收束一句：<strong>企业引入 AI 的瓶颈，正在从&quot;有没有模型&quot;转向&quot;能不能把自己的工作方式交给模型&quot;。本课题提供的，是后者的入口。</strong></p>
+<p><strong>来源</strong>：§1.5</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide blind-page" data-title="现有方案的覆盖盲区" data-page="7"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">05 / 核心问题尚未被覆盖</p><h2 class="h2">现有方案的<span class="blue">覆盖盲区</span></h2></div><div class="page-body"><table class="t blind-table"><thead><tr><th>现有方案</th><th>它解决了什么</th><th>为什么覆盖不了本问题</th></tr></thead><tbody><tr><td>Prompt 工程 / 指令模板</td><td>提升已写出内容的表达质量</td><td>仍以“用户能说清”为前提，<strong>两层错配未触及</strong></td></tr><tr><td>人工编写 SOP / 手册</td><td>把流程固化成可读文档</td><td>生产维护成本高，无变更触发点，<strong>写完即过期</strong></td></tr><tr><td>知识库 / RAG</td><td>检索已经被写下来的文档</td><td><strong>隐性知识从未被写下来</strong>，无从检索</td></tr><tr><td>流程挖掘</td><td>从系统日志还原流程骨架</td><td>难覆盖跨系统、本地操作，也拿不到<strong>“为什么”</strong></td></tr><tr><td>RPA / UI 录制回放</td><td>固化确定的点击路径</td><td>学到的是<strong>路径</strong>，不是<strong>规则</strong></td></tr><tr><td>多模态 / Computer Use</td><td>看懂屏幕、操作界面</td><td>解决“看见与动手”，未沉淀为<strong>可复用、可审核的资产</strong></td></tr></tbody></table><div class="takeaway dark">本课题聚焦这一段：<strong>一次演示，如何可信地变成可复用规则？</strong></div></div><div class="deck-footer"><span>课题答辩　 /　 §1.6</span><span class="slide-number" data-current="7" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>这是三点自检里最容易被挑战的一条，我正面回答。六类现有方案各自解决了一部分问题，但都绕开了同一段：Prompt 工程仍要求你能说清；RAG 检索不到从未被写下来的东西；流程挖掘只看得见落进系统的事件；RPA 学到的是路径不是规则；多模态理解解决的是看见与动手。<strong>方向有人提，这一段没人解。</strong></p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 现有方案的覆盖盲区</p>
+<p><strong>版式</strong>：单张对比表占满，底部一句加粗结论。表格第三列用浅红底强调。</p>
+<p><strong>上屏</strong></p>
+<p>| 现有方案 | 它解决了什么 | 为什么覆盖不了本问题 |</p>
+<p>| --- | --- | --- |</p>
+<p>| Prompt 工程 / 指令模板 | 提升已写出内容的表达质量 | 仍以&quot;用户能说清&quot;为前提，<strong>两层错配均未触及</strong> |</p>
+<p>| 人工编写 SOP / 手册 | 把流程固化成可读文档 | 生产维护成本高、无变更触发点，<strong>写完即开始过期</strong> |</p>
+<p>| 知识库 / RAG | 检索已被写下来的文档 | <strong>隐性知识从未被写下来</strong>，检索不到不存在的东西 |</p>
+<p>| 流程挖掘 Process Mining | 从系统日志还原流程骨架 | 看不见跨系统、本地文件、浏览器操作，拿不到&quot;为什么&quot; |</p>
+<p>| RPA / UI 录制回放 | 固化一条确定的点击路径 | 学到的是<strong>路径</strong>不是<strong>规则</strong>，界面一变即失效 |</p>
+<p>| 多模态理解 / Computer Use | 看得懂屏幕、能操作界面 | 解决&quot;看见与动手&quot;，不解决&quot;沉淀为可复用可审核的资产&quot; |</p>
+<p><strong>上屏 · 结论条</strong></p>
+<p>方向已有人提出，<strong>但&quot;一次演示如何可信地变成可复用规则&quot;这个核心技术问题，现有方案均未有效解决。</strong> 本课题针对的正是这一段。</p>
+<p><strong>讲稿</strong>（60 秒）</p>
+<p>这是三点自检里最容易被挑战的一条，我正面回答。六类现有方案各自解决了一部分问题，但都绕开了同一段：Prompt 工程仍要求你能说清；RAG 检索不到从未被写下来的东西；流程挖掘只看得见落进系统的事件；RPA 学到的是路径不是规则；多模态理解解决的是看见与动手。<strong>方向有人提，这一段没人解。</strong></p>
+<p><strong>来源</strong>：§1.6</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide fact-page" data-title="演示给出事实，Skill 需要规则" data-page="8"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">问题</span></div><div class="page-heading"><p class="kicker">06 / 核心技术问题</p><h2 class="h2">演示给出<span class="blue">事实</span>，Skill 需要<span class="blue">规则</span></h2></div><div class="page-body"><div class="two fact-layout"><div><div class="fact-equation"><span>事实</span><i>≠</i><strong>规则</strong></div><table class="t fact-table"><thead><tr><th>录到的事实</th><th>为什么不能直接当规则</th><th>必须确认</th></tr></thead><tbody><tr><td>打开第一封邮件</td><td>第一封，还是所有未处理的？</td><td>集合范围</td></tr><tr><td>复制某个邮箱</td><td>固定联系人，还是本次客户？</td><td>配置 / 输入</td></tr><tr><td>跳过一条记录</td><td>重复、无效，还是暂缓？</td><td>条件与处置</td></tr><tr><td>周一上午演示</td><td>不等于每周一自动运行</td><td>触发条件</td></tr></tbody></table></div><figure class="shot " data-shot="5"><div class="shot-heading"><span>实物截图 05</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>真实录制的原始步骤 / 事件列表</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>这一条，到底是规则，还是本次样本？</figcaption></figure></div><div class="three redlines"><div class="mini "><h3>样本 ≠ 配置</h3><p>不能把本次取值，固化成长期常量。</p></div><div class="mini "><h3>成功 ≠ 制度</h3><p>不能猜演示外的异常分支。</p></div><div class="mini "><h3>时间 ≠ 触发</h3><p>不能由单次演示推定调度条件。</p></div></div><div class="takeaway dark"><strong>自动补证 + 最小化人工澄清</strong> → 有证据、有边界的知识 → 目标环境中确实可用的能力</div></div><div class="deck-footer"><span>课题答辩　 /　 §1.7</span><span class="slide-number" data-current="8" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>这是整份材料的技术锚点。演示录到的是事实，Skill 需要的是规则，中间有一道鸿沟。看这四条：用户打开了第一封邮件，到底是&quot;处理第一封&quot;还是&quot;处理所有未处理的&quot;？复制了一个邮箱，是固定联系人还是本次客户？这些都不能由模型自己猜——猜错就是把错误固化进资产里。</p>
+<p>所以我的技术命题是这一句。<strong>请特别注意后半句</strong>：规则提炼得再准，如果最终只能靠回放点击执行，稳定性仍然等同于 RPA。这一段我在机制五专门回答。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 核心技术问题：事实 ≠ 规则（技术锚点）</p>
+<p><strong>版式</strong>：顶部大字鸿沟；中部四行&quot;事实→为什么不能当规则&quot;表；右侧配截图；底部三条&quot;不能让模型自己猜&quot;。</p>
+<p><strong>上屏 · 大字</strong></p>
+<p>演示提供的是&quot;事实&quot;，Skill 需要的是&quot;规则&quot;。</p>
+<p>两者之间存在一道鸿沟。</p>
+<p><strong>上屏 · 鸿沟表</strong></p>
+<p>| 录到的事实 | 不能直接当规则的原因 | 必须确认 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 打开了列表第一封邮件 | 是&quot;处理第一封&quot;还是&quot;处理所有未处理的&quot;？ | 集合范围 |</p>
+<p>| 复制了某个邮箱地址 | 固定联系人，还是本次客户信息？ | 配置 or 输入 |</p>
+<p>| 跳过了一条记录 | 重复？无效？暂缓？ | 跳过条件与处置 |</p>
+<p>| 在周一上午演示 | 不代表&quot;以后每周一上午自动运行&quot; | 触发条件不得推定 |</p>
+<p><strong>上屏 · 三条红线</strong></p>
+<p>1. 哪些值是本次样本、哪些是长期配置——<strong>猜错即错误固化</strong>；</p>
+<p>2. 演示中未出现的异常分支如何处理——<strong>一次成功案例不包含业务制度</strong>；</p>
+<p>3. 这项工作以后在什么条件下运行——<strong>单次演示不含调度信息</strong>。</p>
+<p>📷<strong>【截图位 5】</strong>：一次真实录制还原出的<strong>原始步骤/事件列表</strong>（脱敏），旁边手写标注&quot;这一条到底是规则还是本次样本？&quot;</p>
+<p>评委要看到：<strong>事实本身是不够的。</strong> 这张图把&quot;鸿沟&quot;从一句论断变成可见的东西。</p>
+<p><strong>上屏 · 技术命题（大字收尾，整份材料的技术锚点）</strong></p>
+<p>如何在一次演示之上，通过<strong>自动补证</strong>与<strong>最小化人工澄清</strong>，产出一份<strong>有证据支撑、标明泛化边界与适用条件</strong>的可复用工作知识，</p>
+<p>并把它<strong>落到目标环境中确实可用的能力上</strong>，而不是一串脆弱的界面点击。</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>这是整份材料的技术锚点。演示录到的是事实，Skill 需要的是规则，中间有一道鸿沟。看这四条：用户打开了第一封邮件，到底是&quot;处理第一封&quot;还是&quot;处理所有未处理的&quot;？复制了一个邮箱，是固定联系人还是本次客户？这些都不能由模型自己猜——猜错就是把错误固化进资产里。</p>
+<p>所以我的技术命题是这一句。<strong>请特别注意后半句</strong>：规则提炼得再准，如果最终只能靠回放点击执行，稳定性仍然等同于 RPA。这一段我在机制五专门回答。</p>
+<p><strong>来源</strong>：§1.7</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide architecture-page" data-title="总体架构：三步与四条原则" data-page="9"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">方案</span></div><div class="page-heading"><p class="kicker">07 / 方案总览</p><h2 class="h2">总体架构：<span class="blue">三步与四条原则</span></h2></div><div class="page-body"><div class="two architecture"><div class="stage-list"><div class="stage"><span class="stage-number">01</span><div><h3>演示与忠实还原<small>你做了什么</small></h3><p>录制 → 基础分析 → 用户确认</p><span class="human">① 确认素材</span></div></div><div class="stage"><span class="stage-number">02</span><div><h3>证据化深度分析<small>哪些是规则、证据在哪</small></h3><p>权限判定 → 自动补证 → 一次澄清 → 人工审核</p><span class="human">② 回答一次澄清　③ 逐条审核结论</span></div></div><div class="stage"><span class="stage-number">03</span><div><h3>知识资产生成<small>以后靠什么执行</small></h3><p>能力映射 → 确定性渲染 → 导出</p><span class="human">生成后查看正文，再显式保存 / 导出</span></div></div></div><figure class="shot " data-shot="6"><div class="shot-heading"><span>实物截图 06</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>产品真实流程界面 · 阶段导航</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>对照真实界面，看三步如何落地</figcaption></figure></div><p class="caption architecture-caption">分析阶段三个介入点：确认素材、一次澄清、逐条审核；生成后另需查看正文并显式保存。</p><div class="four principles"><div class="mini "><h3>忠实复述 ≠ 业务判断</h3><p>基础分析不读文件系统、不调业务系统。</p></div><div class="mini "><h3>证据优先</h3><p>结论带来源；模型无权自评通过。</p></div><div class="mini "><h3>连续运行，一次澄清</h3><p>能查的一次查完，只问人能决定的。</p></div><div class="mini accent"><h3>演示输入，能力执行</h3><p>优先原生工具 / CLI / MCP，UI 专属才兜底。</p></div></div></div><div class="deck-footer"><span>课题答辩　 /　 §2.1、§2.2</span><span class="slide-number" data-current="9" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>三步，各自回答一个问题：步骤一回答&quot;你做了什么&quot;——忠实还原，不做任何业务推断；步骤二回答&quot;哪些是规则、规则的证据在哪&quot;；步骤三回答&quot;以后靠什么执行&quot;——把规则映射到公司既有能力，而不是回放点击。</p>
+<p>四条原则对应四个硬约束。第四条是本轮重点强化的，也是本方案与&quot;录屏回放&quot;类方案的分界线，下一组机制里我会展开。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 总体架构：三步与四条原则</p>
+<p><strong>版式</strong>：上半纵向流程图（三步，标出人介入的三个点）+ 右侧真实界面截图并置；下半四条原则横排。</p>
+<p><strong>上屏 · 架构图</strong></p>
+<p><code>`</code></p>
+<p>步骤一：演示与忠实还原        步骤二：证据化深度分析                      步骤三：知识资产生成</p>
+<p>录制 → 基础分析 → 用户确认     权限判定 → 自动补证 → 一次澄清 → 人工审核     能力映射 → 渲染 → 导出</p>
+<p>     （你做了什么）              （哪些是规则、证据在哪）                  （以后靠什么执行）</p>
+<p><code>`</code></p>
+<p>图上必须标注：<strong>人在环的三个点</strong>——① 确认素材 ② 回答一次澄清 ③ 逐条审核结论。配一行小字：<strong>人始终在环，但只被打断三次。</strong></p>
+<p><strong>上屏 · 四条原则</strong>（四张小卡）</p>
+<p>| 原则 | 设计约束 |</p>
+<p>| --- | --- |</p>
+<p>| <strong>忠实复述与业务判断分离</strong> | 基础分析阶段不读文件系统、不调用业务系统 |</p>
+<p>| <strong>证据优先，拒绝模型自评</strong> | 结论须带证据来源；模型无权把审核状态标为通过 |</p>
+<p>| <strong>一次连续运行、一次澄清</strong> | 能自动查清的一次查完，只问真正需要人决定的 |</p>
+<p>| <strong>演示是输入方式，不是执行方式</strong> | 优先映射原生工具 / CLI / 已授权 MCP，<strong>UI 专属才用浏览器</strong> |</p>
+<p>📷<strong>【截图位 6】</strong>：直接放产品里的真实流程界面（四步导航 / 阶段进度），<strong>与手绘架构图左右并置效果最好</strong>。</p>
+<p>评委要看到：<strong>这是一个跑起来的东西，不是一张架构图。</strong></p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>三步，各自回答一个问题：步骤一回答&quot;你做了什么&quot;——忠实还原，不做任何业务推断；步骤二回答&quot;哪些是规则、规则的证据在哪&quot;；步骤三回答&quot;以后靠什么执行&quot;——把规则映射到公司既有能力，而不是回放点击。</p>
+<p>四条原则对应四个硬约束。第四条是本轮重点强化的，也是本方案与&quot;录屏回放&quot;类方案的分界线，下一组机制里我会展开。</p>
+<p><strong>来源</strong>：§2.1、§2.2</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide mechanisms" data-title="关键机制：把演示变成可信知识" data-page="10"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">方案</span></div><div class="page-heading"><p class="kicker">08 / 机制一至四</p><h2 class="h2">关键机制：<span class="blue">把演示变成可信知识</span></h2></div><div class="page-body"><div class="mechanism-grid"><article class="mechanism"><div class="mechanism-copy"><span class="mechanism-id">01</span><h3>多源采集 · 端侧隐私</h3><p>窗口、浏览器事件、剪贴板、终端、快照与口述。<br><strong>录制 / 存储 / 抽帧 / 转写在本机完成。</strong></p></div><figure class="shot " data-shot="7"><div class="shot-heading"><span>实物截图 07</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>真实录制会话目录</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>快照、事件、剪贴板、命令输出、转写文本</figcaption></figure></article><article class="mechanism"><div class="mechanism-copy"><span class="mechanism-id">02</span><h3>范围判定 · 最小授权</h3><p>已授权内自动放行；新增能力只确认一次。<br><strong>业务访问只读，会话只拿本次通过的能力。</strong></p></div><figure class="shot " data-shot="8"><div class="shot-heading"><span>实物截图 08</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>能力勾选与授权确认</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>权限被声明、被确认、被收窄</figcaption></figure></article><article class="mechanism"><div class="mechanism-copy"><span class="mechanism-id">03</span><h3>隔离会话 · 自动补证</h3><p>只读素材、分层写权限、预算、暂停续跑、落盘校验。<br><strong>自动解决【待补：M 条】 / 仍需问【待补：N 条】</strong></p></div><figure class="shot " data-shot="9"><div class="shot-heading"><span>实物截图 09</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>补证运行过程与缺口前后对比</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>先自己查，查不到才问人；需实测复核</figcaption></figure></article><article class="mechanism primary-mechanism"><div class="mechanism-copy"><span class="mechanism-id">04</span><h3>证据化澄清 · 逐条审核</h3><p><strong>不变规则</strong>可固化 · <strong>运行时查询</strong>每次查 · <strong>历史事实</strong>仅本次。<br>关键缺口不能无证据消失，<strong>模型不得自行通过审核。</strong></p></div><figure class="shot " data-shot="10"><div class="shot-heading"><span>实物截图 10</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>澄清清单与逐条审核界面</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>来源可追溯、时间属性三分、接受 / 拒绝</figcaption></figure></article></div></div><div class="deck-footer"><span>课题答辩　 /　 §2.3 机制一～四</span><span class="slide-number" data-current="10" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>机制一，多源采集。为什么不只录屏？因为屏幕录像无法知道用户复制了什么、执行了什么命令。隐私上，录制、抽帧、语音转写全部在本机完成。</p>
+<p>机制二，能力范围判定。先判定这次分析要用什么能力，全在授权内就自动放行、用户无感；含未授权的只弹一次确认。业务访问限定只读。</p>
+<p>机制三，自动补证，这是技术难点。本地 Agent 在隔离目录里自己去查，带预算、能续跑、产出落盘后再校验。它的价值是把要问用户的问题从几十条压到几条。</p>
+<p>机制四，是本方案最具差异化的一环。每条结论必须按时间属性三分，并且模型不得自己判定审核通过——必须用户逐条接受或拒绝。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 关键机制一～四</p>
+<p><strong>版式</strong>：四宫格。机制一/二/三用小卡 + 缩略截图；<strong>机制四占右下大格，作为本页主图</strong>（它最有说服力）。</p>
+<p>若时间宽裕，建议拆为两页：P10a（机制一、二）+ P10b（机制三、四）。</p>
+<p><strong>格 1 · 机制一：多源演示信号采集 + 端侧隐私处理</strong></p>
+<p>- 采集：应用/窗口切换、浏览器真实交互事件（自研离线插件）、剪贴板、会话内终端命令与完整输出、变化驱动的屏幕快照、可选口述讲解；</p>
+<p>- 为什么多源：<strong>屏幕录像看不出复制了什么、执行了什么命令</strong>；口述是捕获&quot;为什么&quot;的最低成本通道；</p>
+<p>- 隐私（必问）：<strong>录制、存储、抽帧、语音转写全部在本机</strong>；端侧小模型转写；敏感信息本机扫描后再参与处理。</p>
+<p>📷<strong>【截图位 7】</strong>：一次真实录制的<strong>会话目录</strong>，展开到能看见快照、浏览器事件、剪贴板、终端输出、转写文本各自的文件。</p>
+<p>评委要看到：<strong>&quot;多源&quot;不是形容词，是目录里真实存在的几类文件。</strong></p>
+<p><strong>格 2 · 机制二：能力范围判定与无感放行</strong></p>
+<p>- 先判定&quot;这次分析要用哪些能力&quot;，再与用户预先勾选的能力集合比对：全在授权内→<strong>自动放行、用户无感</strong>；含未授权→<strong>只弹一次确认</strong>；</p>
+<p>- 业务系统访问<strong>限定只读</strong>；每次会话只拿到本次判定通过的能力，<strong>不是能力全集任取</strong>。</p>
+<p>📷<strong>【截图位 8】</strong>：能力勾选界面 + 授权确认弹窗（&quot;本次分析需要使用：XX MCP（只读），是否同意？&quot;）。</p>
+<p>评委要看到：<strong>权限是被声明、被确认、被收窄的。</strong> 风控类评委最在意这一格。</p>
+<p><strong>格 3 · 机制三：一次性隔离会话完成自动补证（技术难点）</strong></p>
+<p>- 本地 Agent 在隔离任务目录中自主规划、读取演示素材、调用已授权只读能力，把能自己查清的缺口尽量查清；</p>
+<p>- 工程约束：隔离基线、分层写权限、素材只读引用、调用次数与时长预算、超预算自动暂停与续跑、落盘后再校验；</p>
+<p>- 价值：<strong>把要问用户的问题从几十条压到真正只有人能决定的几条</strong>。</p>
+<p>📷<strong>【截图位 9】</strong>：自动补证运行过程（能力匹配 → 读取 → 补充完成的阶段态）+ 跑完后的<strong>缺口数前后对比</strong>【待补：M 条自动解决 vs N 条仍需问】。</p>
+<p>评委要看到：<strong>系统先自己去查，查不到才来问你。</strong></p>
+<p><strong>格 4（主图）· 机制四：证据化澄清与人工审核</strong></p>
+<p>每条结论按时间属性三分——这正是对&quot;错误固化&quot;的直接回答：</p>
+<p>| 分类 | 含义 |</p>
+<p>| --- | --- |</p>
+<p>| <strong>不变规则</strong> | 可长期固化（匹配口径、容差） |</p>
+<p>| <strong>运行时查询</strong> | 每次必须重新查，<strong>不得固化为常量</strong> |</p>
+<p>| <strong>历史事实</strong> | 仅描述本次，<strong>不得当作未来规则</strong> |</p>
+<p>校验层强制：关键缺口不得无证据消失；<strong>模型不得自行通过审核</strong>；用户逐条接受或拒绝后才定稿。</p>
+<p>📷<strong>【截图位 10】</strong>：澄清问题清单 + 逐条审核界面（证据来源标签、三分标记、接受/拒绝按钮）。</p>
+<p>评委要看到：<strong>&quot;有证据&quot;是界面上一个个可点开的来源，不是一句承诺。</strong> 方案部分最有说服力的一张图。</p>
+<p><strong>讲稿</strong>（180 秒，四格各约 45 秒）</p>
+<p>机制一，多源采集。为什么不只录屏？因为屏幕录像无法知道用户复制了什么、执行了什么命令。隐私上，录制、抽帧、语音转写全部在本机完成。</p>
+<p>机制二，能力范围判定。先判定这次分析要用什么能力，全在授权内就自动放行、用户无感；含未授权的只弹一次确认。业务访问限定只读。</p>
+<p>机制三，自动补证，这是技术难点。本地 Agent 在隔离目录里自己去查，带预算、能续跑、产出落盘后再校验。它的价值是把要问用户的问题从几十条压到几条。</p>
+<p>机制四，是本方案最具差异化的一环。每条结论必须按时间属性三分，并且模型不得自己判定审核通过——必须用户逐条接受或拒绝。</p>
+<p><strong>来源</strong>：§2.3 机制一～四</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide execution-page" data-title="机制五：我们不回放点击" data-page="11"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">方案</span></div><div class="page-heading"><p class="kicker">09 / 核心差异点</p><h2 class="h2">机制五：<span class="blue">我们不回放点击</span></h2></div><div class="page-body"><p class="support">演示确定业务目标；执行路径，到目标环境既有能力中重新选择。</p><div class="two execution-layout"><div><div class="execution-tier tier-one"><span>01 / 首选</span><h3>原生工具 · 内部 CLI · 已开放接口</h3><p>业务目标完整覆盖 · 与界面改版解耦</p></div><div class="execution-tier tier-two"><span>02 / 次选</span><h3>已授权业务 MCP</h3><p>复用已有能力 · 按只读 / 范围收窄</p></div><div class="execution-tier tier-three"><span>03 / 兜底</span><h3>浏览器自动化</h3><p>仅 UI 专属环节 · 显式标注脆弱</p></div><p class="pending">【待补：演示工作映射后，三级分别占几步】</p></div><div class="mapping"><h3>四步映射：按目标，不按按钮</h3><ol><li><b>能力编目</b><span>语义能力快照，作为唯一候选集</span></li><li><b>语义等价</b><span>保留账号、线程、附件、数据与授权范围</span></li><li><b>禁止猜名</b><span>工具必须可核验；判不了的交人审核</span></li><li><b>降级标注</b><span>写明执行载体、依赖与稳定性</span></li></ol></div></div><div class="design-example" data-shot="11"><span class="design-label">11 · 设计示意</span><p><b>网页回复客户邮件</b><span>→</span><b>仅当 MCP 支持“回复线程”才映射</b><span>→</span><b>若仅能新建邮件：不等价，降级 / 待审核</b></p><small>映射理由：必须保留线程归属；所需依赖：经核验且已授权的邮箱能力。</small></div><div class="takeaway dark">演示是<strong>需求说明书</strong>，不是执行脚本。</div><p class="boundary">方案已定，本期不作为已实现能力展示：受控业务 MCP 自动调用链路尚未接通；版本化依赖声明未实施。</p></div><div class="deck-footer"><span>课题答辩　 /　 §2.3 机制五</span><span class="slide-number" data-current="11" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>这一页正面回答现场几乎必问的一句话：录下来的点击，凭什么能稳定跑起来？答案是我们不回放点击。</p>
+<p>执行载体按优先级分三级：首选原生工具、内部 CLI 或已开放接口，因为它与界面改版解耦，而且权限和审计通道是现成的；其次是已授权的业务 MCP，复用公司已建资产；只有前两级都不存在、确属 UI 专属的环节，才退回浏览器兜底，而且必须显式标注为脆弱。</p>
+<p>映射怎么做出来？关键是第二步：按业务目标对齐，不按按钮对齐，而且等价判定必须保留账号、线程、附件、数据范围、授权这些关键语义——像这个邮件例子，若邮箱 MCP 只能新建邮件不能回复线程，就不算等价。</p>
+<p>它带来四个工程收益：抗改版、可治理、不重复建设，以及补全了我们与 RPA 的差异——不只是学的是规则，落地时也落在更稳的载体上。</p>
+<p>⚠️ <strong>口径（极重要）</strong>：本页按&quot;<strong>方案已定、本期不作为已实现能力展示</strong>&quot;来讲。</p>
+<p>- <strong>已成文的设计</strong>：产物分流（只有 Skill 做执行方式翻译）、映射语义与正文一致性校验要求；</p>
+<p>- <strong>尚未实施</strong>：受控业务 MCP 的自动调用链路、版本化依赖声明（executionRequirements）；Computer Use / Replay 不在本期范围；</p>
+<p>- 建议话术：&quot;<strong>这是本方案已经定下来的执行方式，也是我们认为它区别于 RPA 的根本所在；当前实现程度到哪一步，我在原型部分如实说明。</strong>&quot;</p>
+<p>- 本页<strong>可以</strong>讲满（讲&quot;应该怎么做&quot;）；<strong>但不能</strong>暗示它已跑通——P14 必须列为未接通。两件事分开说，可信度不降反升。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 机制五：我们不回放点击（核心差异点）</p>
+<p><strong>版式</strong>：顶部问答大字；中部倒三角/阶梯图（三级执行载体）；右侧四步映射法；底部具体例子 + 截图。</p>
+<p><strong>上屏 · 问答大字</strong>（答辩必问，开门见山）</p>
+<p>录下来的点击，凭什么能稳定跑起来？</p>
+<p>答案是：我们不回放点击。</p>
+<p>演示只用来确定&quot;这一步要达成什么业务目标&quot;；<strong>真正的执行路径，由系统到公司既有资产里重新选一条更稳的。</strong></p>
+<p><strong>图示 · 三级执行载体（倒三角，这一页的视觉主体）</strong></p>
+<p>| 优先级 | 执行载体 | 适用判据 | 稳定性 |</p>
+<p>| --- | --- | --- | --- |</p>
+<p>| <strong>一（首选）</strong> | 原生工具 / 内部 CLI / 已开放业务接口 | 业务目标能被既有能力完整覆盖 | 高：与界面改版解耦，权限审计现成 |</p>
+<p>| <strong>二</strong> | 已授权业务 MCP（含应用侧代理） | 无现成 CLI，但公司已有对应 MCP | 中高：复用已建资产，按只读/范围收窄 |</p>
+<p>| <strong>三（兜底）</strong> | 浏览器自动化（真实事件 + 页面语义定位） | 前两级都不存在，确属 UI 专属环节 | 低：界面一改可能失效 |</p>
+<p>【待补：把演示那项工作逐步骤映射一遍，三级各占几步——<strong>纸面推演即可，不依赖实现</strong>，却是本页最有说服力的数字】</p>
+<p><strong>上屏 · 四步映射法</strong></p>
+<p>1. <strong>能力编目</strong>：把目标环境可用的原生工具、内部 CLI、已授权 MCP 编成<strong>带语义描述的能力快照</strong>，作为唯一候选集；</p>
+<p>2. <strong>按业务目标对齐，不按按钮对齐</strong>：看&quot;这一步改变了什么业务状态&quot;，再找<strong>语义等价</strong>能力。等价必须保留<strong>账号身份、回复线程归属、附件、数据范围、授权边界</strong>，任一项对不上即不等价；</p>
+<p>3. <strong>不许凭名字猜</strong>：工具标识必须可核验；判不了的<strong>列为待审核交人</strong>；模型不得编造不存在的工具；</p>
+<p>4. <strong>降级与显式标注</strong>：匹配不到就降级，并在产物里标明执行载体、依赖与<strong>稳定性等级</strong>——让使用者一眼看出哪几步最脆弱。</p>
+<p><strong>上屏 · 分水岭一句（加粗上屏）</strong></p>
+<p>RPA 的失效根因不是&quot;录得不准&quot;，而是<strong>把界面路径当成了工作本身</strong>。</p>
+<p>本方案把演示当作<strong>需求说明书</strong>，不是<strong>执行脚本</strong>：<strong>演示给人看怎么做，系统去找更稳的做法。</strong></p>
+<p><strong>上屏 · 具体例子</strong>（比抽象描述有效得多）</p>
+<p>录的是&quot;在网页里回复一封客户邮件&quot;。</p>
+<p><strong>SOP 保留真实界面操作</strong>（打开 → 点回复 → 填写 → 发送）；</p>
+<p><strong>Skill 在确认邮箱 MCP 确实支持&quot;回复线程&quot;语义后</strong>，才翻译为对该 MCP 的调用——不是简单换成&quot;发一封新邮件&quot;，那会丢掉线程归属。</p>
+<p>若该 MCP 只能新建邮件，<strong>就不能认定等价，必须降级或列为待审核。</strong></p>
+<p>📷<strong>【截图位 11】</strong>：逐步骤列出&quot;原始界面操作 → 映射到的能力 → 映射理由 → 所需依赖&quot;，并指出哪一步只能走浏览器兜底。</p>
+<p>优先用产物里真实生成的工具映射说明；若产物尚无该段落，画一张<strong>明确标注&quot;设计示意&quot;</strong>的表（<strong>不要让它看起来像界面截图</strong>）。</p>
+<p>评委要看到：<strong>映射是有理由、有依据、可被质疑的</strong>，不是模型随手写了个工具名。</p>
+<p><strong>讲稿</strong>（150 秒）</p>
+<p>这一页正面回答现场几乎必问的一句话：录下来的点击，凭什么能稳定跑起来？答案是我们不回放点击。</p>
+<p>执行载体按优先级分三级：首选原生工具、内部 CLI 或已开放接口，因为它与界面改版解耦，而且权限和审计通道是现成的；其次是已授权的业务 MCP，复用公司已建资产；只有前两级都不存在、确属 UI 专属的环节，才退回浏览器兜底，而且必须显式标注为脆弱。</p>
+<p>映射怎么做出来？关键是第二步：按业务目标对齐，不按按钮对齐，而且等价判定必须保留账号、线程、附件、数据范围、授权这些关键语义——像这个邮件例子，若邮箱 MCP 只能新建邮件不能回复线程，就不算等价。</p>
+<p>它带来四个工程收益：抗改版、可治理、不重复建设，以及补全了我们与 RPA 的差异——不只是学的是规则，落地时也落在更稳的载体上。</p>
+<p>⚠️ <strong>口径（极重要）</strong>：本页按&quot;<strong>方案已定、本期不作为已实现能力展示</strong>&quot;来讲。</p>
+<p>- <strong>已成文的设计</strong>：产物分流（只有 Skill 做执行方式翻译）、映射语义与正文一致性校验要求；</p>
+<p>- <strong>尚未实施</strong>：受控业务 MCP 的自动调用链路、版本化依赖声明（executionRequirements）；Computer Use / Replay 不在本期范围；</p>
+<p>- 建议话术：&quot;<strong>这是本方案已经定下来的执行方式，也是我们认为它区别于 RPA 的根本所在；当前实现程度到哪一步，我在原型部分如实说明。</strong>&quot;</p>
+<p>- 本页<strong>可以</strong>讲满（讲&quot;应该怎么做&quot;）；<strong>但不能</strong>暗示它已跑通——P14 必须列为未接通。两件事分开说，可信度不降反升。</p>
+<p><strong>来源</strong>：§2.3 机制五</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide outputs-page" data-title="同源三产出，读者决定形态" data-page="12"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">方案</span></div><div class="page-heading"><p class="kicker">10 / 机制六 · 确定性渲染与导出</p><h2 class="h2">同源三产出，<span class="blue">读者决定形态</span></h2></div><div class="page-body"><p class="shared-source">共用同一份<strong>已审核的步骤、规则、证据与适用边界</strong></p><div class="three outputs"><div class="mini "><h3>SOP · 给操作者</h3><p>按任务顺序，保留真实界面操作。<br><b>不翻译执行方式</b> · 不依赖能力快照。</p></div><div class="mini accent"><h3>Skill · 给执行 Agent</h3><p>按流程与工具依赖，映射语义等价能力。<br><b>翻译执行方式</b> · 依赖能力快照。</p></div><div class="mini "><h3>使用手册 · 给学习者</h3><p>按功能、场景与导航层级组织。<br><b>不翻译</b> · 命令行录制保留实际命令。</p></div></div><div class="render-strip"><span>冻结可追溯输入</span><i>→</i><span>确定性代码渲染</span><i>→</i><span>保存前成果检查</span><i>→</i><b>正文查看 + 显式保存</b></div><div class="two output-shots"><figure class="shot " data-shot="12"><div class="shot-heading"><span>实物截图 12</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>SKILL.md 正文</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>配置 / 输入、尚未试运行、映射 / 依赖三处边界</figcaption></figure><figure class="shot " data-shot="13"><div class="shot-heading"><span>实物截图 13</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>SOP ↔ Skill · 同一步骤对照</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>一个写“点哪个按钮”，一个写“调哪个能力”</figcaption></figure></div><div class="takeaway ">固定标注：<strong>内容已生成，尚未进行业务试运行。</strong>生成成功 ≠ 执行可靠。</div><p class="boundary">Skill 验证最充分；SOP / 手册首版已实现但尚未发布，内容质量未经业务验证。【待补：答辩前以实际运行结果复核】</p></div><div class="deck-footer"><span>课题答辩　 /　 §2.4、§2.3 机制六</span><span class="slide-number" data-current="12" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>一次演示，三类不同读者。三者共用同一份经人工审核的事实与规则，区别在渲染目标，<strong>以及要不要做执行方式翻译</strong>——只有 Skill 做。</p>
+<p>三个要点：第一，瓶颈是同一个，就是把一次操作提炼成可复用规则；这一步做好了，渲染成哪种形态只是确定性代码加上要不要翻译。第二，收益是分级的——SOP 和手册不依赖 Agent 执行成功、不依赖能力快照，事实充分就能产出；风险是分层的，不是全押一处。第三，保鲜：同一项工作的后续录制可作为新版本输入，版本管理与变更提示属下一步工作。</p>
+<p>⚠️ <strong>口径两处</strong>（避免现场演示与讲稿不一致）：</p>
+<p>- <strong>人工审核</strong>只落在两处：<strong>步骤二的逐条结论审核</strong> + <strong>生成后的正文查看与显式保存</strong>。Skill 交互已简化为生成后直接查看正文再显式保存/导出，内部 <code>SkillPlan</code> 只用于一致性与权限边界校验，<strong>不代表&quot;用户已批准计划&quot;</strong>——不要再讲成&quot;先审核技能计划再生成&quot;。</p>
+<p>- <strong>三产出状态</strong>：链路均已打通，Skill 验证最充分；SOP 与手册<strong>首版已实现（尚未发布），内容质量未经真实业务检验</strong>。不要讲成&quot;只实现了 Skill&quot;，也不要讲成&quot;三类都已交付可用&quot;。【待补：答辩前以工作区实际运行结果核实一次】</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 同源三产出与产物边界</p>
+<p><strong>版式</strong>：上半三栏（SOP / Skill / 使用手册），中间一行高亮&quot;是否做执行方式翻译&quot;；下半左右两张截图（产物正文 + SOP·Skill 对照）。</p>
+<p><strong>上屏 · 三栏表</strong></p>
+<p>| | SOP（给操作者） | Skill（给执行 Agent） | 使用手册（给学习者） |</p>
+<p>| --- | --- | --- | --- |</p>
+<p>| 核心问题 | 这项任务应该怎样操作 | 如何用目标环境能力重复完成业务目标 | 功能在哪里、怎么用 |</p>
+<p>| 组织方式 | 按任务先后顺序 | 按业务流程与工具调用依赖 | 按功能、场景与导航层级 |</p>
+<p>| <strong>是否做执行方式翻译</strong> | <strong>否，保留真实界面操作</strong> | <strong>是，映射为语义等价的能力</strong> | 否（CLI 录制则保留实际命令） |</p>
+<p>| 依赖目标能力快照 | 否 | 是 | 否 |</p>
+<p>| 共用 | <strong>同一份已审核的步骤、规则、证据与适用边界</strong> | 同左 | 同左 |</p>
+<p>高亮一句（接住机制五）：</p>
+<p>若三类产物都写成 <code>send_email</code>，SOP 就没人能照着做；若都保留点击步骤，Skill 就退化成 RPA。<strong>产物分流，正是因为读者不同。</strong></p>
+<p><strong>上屏 · 机制六：确定性渲染与多目标导出</strong>（三行短句）</p>
+<p>- 生成器只接收<strong>被冻结且可追溯</strong>的输入（分析版本、审核结果、证据索引、已脱敏截图、模板；Skill 另加能力快照）；</p>
+<p>- <strong>最终文件由确定性代码渲染，不由模型直接写文件</strong>，避免生成期漂移；<strong>生成后保存前有成果检查</strong>——正文出现未批准写操作或不存在的工具即阻止定稿；</p>
+<p>- <strong>始终标注&quot;内容已生成，尚未进行业务试运行&quot;</strong>——不把&quot;生成成功&quot;冒充为&quot;执行可靠&quot;。</p>
+<p>📷<strong>【截图位 12】</strong>：产物正文（SKILL.md），红框圈出三处：①&quot;固定配置 vs 运行时输入&quot;的区分；②&quot;尚未业务试运行&quot;标注；③工具映射/依赖段落。</p>
+<p>📷<strong>【截图位 13】</strong>：SOP 与 Skill <strong>同一步骤</strong>左右对照——SOP 写&quot;点哪个按钮&quot;，Skill 写&quot;调哪个能力&quot;。</p>
+<p>评委要看到：<strong>一次演示，两种落地形态，而且不是简单换个措辞；产物是克制的、带边界标注的。</strong></p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>一次演示，三类不同读者。三者共用同一份经人工审核的事实与规则，区别在渲染目标，<strong>以及要不要做执行方式翻译</strong>——只有 Skill 做。</p>
+<p>三个要点：第一，瓶颈是同一个，就是把一次操作提炼成可复用规则；这一步做好了，渲染成哪种形态只是确定性代码加上要不要翻译。第二，收益是分级的——SOP 和手册不依赖 Agent 执行成功、不依赖能力快照，事实充分就能产出；风险是分层的，不是全押一处。第三，保鲜：同一项工作的后续录制可作为新版本输入，版本管理与变更提示属下一步工作。</p>
+<p>⚠️ <strong>口径两处</strong>（避免现场演示与讲稿不一致）：</p>
+<p>- <strong>人工审核</strong>只落在两处：<strong>步骤二的逐条结论审核</strong> + <strong>生成后的正文查看与显式保存</strong>。Skill 交互已简化为生成后直接查看正文再显式保存/导出，内部 <code>SkillPlan</code> 只用于一致性与权限边界校验，<strong>不代表&quot;用户已批准计划&quot;</strong>——不要再讲成&quot;先审核技能计划再生成&quot;。</p>
+<p>- <strong>三产出状态</strong>：链路均已打通，Skill 验证最充分；SOP 与手册<strong>首版已实现（尚未发布），内容质量未经真实业务检验</strong>。不要讲成&quot;只实现了 Skill&quot;，也不要讲成&quot;三类都已交付可用&quot;。【待补：答辩前以工作区实际运行结果核实一次】</p>
+<p><strong>来源</strong>：§2.4、§2.3 机制六</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide comparison-page" data-title="不仅学得准，还要回答以后靠什么跑" data-page="13"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">方案</span></div><div class="page-heading"><p class="kicker">11 / 路线对比与价值度量</p><h2 class="h2">不仅学得准，还要回答<span class="blue">以后靠什么跑</span></h2></div><div class="page-body"><table class="t route-table"><thead><tr><th>维度</th><th>RPA 录制回放</th><th>上游开源 Recorder</th><th>Watch&Learn 类</th><th>本方案</th></tr></thead><tbody><tr><td>学到什么</td><td>点击路径</td><td>泛化后的流程</td><td>对外称流程与偏好</td><td>有证据、有边界的规则</td></tr><tr><td><b>以后靠什么执行</b></td><td><b>回放界面路径</b></td><td>目标环境通用能力</td><td>未公开</td><td><b>原生工具 / CLI / MCP 优先</b></td></tr><tr><td><b>界面改版后</b></td><td><b>直接失效</b></td><td>取决于能力可用性</td><td>未公开</td><td><b>接口步骤解耦；兜底标明脆弱</b></td></tr><tr><td>结论可追溯</td><td>不涉及</td><td>模型自述</td><td>未公开</td><td>每条结论挂证据来源</td></tr><tr><td>样本误固化防护</td><td>无</td><td>依赖模型自觉</td><td>未公开</td><td>时间属性三分 + 强制校验</td></tr><tr><td>人工审核</td><td>无</td><td>计划确认</td><td>结果审阅</td><td>逐条审核 + 正文查看才可保存</td></tr><tr><td>效果承诺</td><td>—</td><td>生成即交付</td><td>教一次长期运行</td><td>生成质量与执行可靠性分开验收</td></tr></tbody></table><div class="formula"><span>净收益</span><b>=</b><span>原手工总耗时</span><b>−</b><span>首次演示与审核</span><b>−</b><span>后续执行复核与维护</span></div><div class="two metrics"><div><h3>分阶段指标</h3><p><b>提炼</b>：漏步骤数 / 关键规则覆盖率<br><b>交付</b>：样本误固化数 / 依赖遗漏数<br><b>执行</b>：新输入完成率 / 人工介入次数</p></div><div><h3>文档保鲜指标 · 不依赖执行成功</h3><p>沉淀成本 · 文档新鲜度 · 刷新成本 · 交接可用性<br><span class="pending-text">【待补：同事能否不追问原作者即正确执行】</span></p></div></div><p class="boundary">以上为逐页稿中的路线与方案对比；机制五实现边界见下一页。模型时间与用户投入分开记录，不设未经验证的节省比例。</p></div><div class="deck-footer"><span>课题答辩　 /　 §2.5、§2.6</span><span class="slide-number" data-current="13" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>这张表里第二、三行是最该被记住的两行：别人比的是学得准不准，我们还要回答学完之后靠什么跑、跑多久会坏。</p>
+<p>度量我主动给出口径：净收益等于原手工耗时减去首次演示与审核、再减去后续复核维护；模型时间和人的时间分开记。<strong>我不承诺节省百分之多少</strong>——这句话我认为是本课题可信度最高的一句。</p>
+<p>下面一组是文档保鲜指标，它不依赖 Agent 执行成功，所以是最容易先拿到真实数据的一组。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 与现有路线对比 · 价值如何度量</p>
+<p><strong>版式</strong>：上半对比表（四列），<strong>第二、三行用高亮底色</strong>；下半度量公式条 + 两组指标。</p>
+<p><strong>上屏 · 对比表</strong></p>
+<p>| 维度 | RPA 录制回放 | 上游开源 Skill Recorder | Watch&amp;Learn 类 | 本方案 |</p>
+<p>| --- | --- | --- | --- | --- |</p>
+<p>| 学到的是什么 | 点击路径 | 泛化后的流程 | 对外称流程与偏好 | 带证据与适用边界的规则 |</p>
+<p>| <strong>以后靠什么执行</strong> | <strong>回放同一条界面路径</strong> | 目标环境通用能力 | 未公开 | <strong>优先映射既有原生工具/CLI/MCP，浏览器仅兜底</strong> |</p>
+<p>| <strong>界面改版后</strong> | <strong>直接失效</strong> | 取决于能力是否可用 | 未公开 | <strong>接口层步骤不受影响；兜底步骤已显式标注脆弱</strong> |</p>
+<p>| 结论可追溯 | 不涉及 | 模型自述 | 未公开 | 每条结论挂证据来源 |</p>
+<p>| 样本值误固化防护 | 无 | 依赖模型自觉 | 未公开 | 时间属性三分 + 强制校验 |</p>
+<p>| 人工审核 | 无 | 计划确认 | 结果审阅 | 逐条结论审核 + 生成后正文查看才可保存 |</p>
+<p>| 效果承诺 | — | 生成即交付 | 教一次长期运行 | 生成与执行可靠性<strong>分开验收</strong> |</p>
+<p>一行小字：<strong>别人比的是&quot;学得准不准&quot;，本方案还要回答&quot;学完之后靠什么跑、跑多久会坏&quot;。</strong></p>
+<p><strong>上屏 · 度量公式条</strong></p>
+<p><strong>净收益 = 原手工总耗时 − 首次演示与审核耗时 − 后续执行复核与维护耗时</strong></p>
+<p>模型运行时间与用户实际投入时间分开记录；<strong>不设未经验证的节省比例</strong>。</p>
+<p><strong>上屏 · 两组指标</strong></p>
+<p>| 分阶段指标 | 看什么 |</p>
+<p>| --- | --- |</p>
+<p>| 流程提炼 | 漏步骤数、关键规则覆盖率 |</p>
+<p>| 交付 | 样本值误固化数、依赖遗漏数 |</p>
+<p>| 执行 | 新输入完成率、人工介入次数 |</p>
+<p>| 文档保鲜指标（不依赖执行成功，最易先拿到数据） | 口径 |</p>
+<p>| --- | --- |</p>
+<p>| 沉淀成本 | 产出一份可用记录的用户投入 vs 人工撰写同一文档 |</p>
+<p>| 文档新鲜度 | 记录最后更新时间与流程实际变更时间的间隔 |</p>
+<p>| 刷新成本 | 流程/界面变更后让记录重新可用所需时间 |</p>
+<p>| 交接可用性 | 接收方能否不追问原作者即正确执行【待补：找同事实测】 |</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>这张表里第二、三行是最该被记住的两行：别人比的是学得准不准，我们还要回答学完之后靠什么跑、跑多久会坏。</p>
+<p>度量我主动给出口径：净收益等于原手工耗时减去首次演示与审核、再减去后续复核维护；模型时间和人的时间分开记。<strong>我不承诺节省百分之多少</strong>——这句话我认为是本课题可信度最高的一句。</p>
+<p>下面一组是文档保鲜指标，它不依赖 Agent 执行成功，所以是最容易先拿到真实数据的一组。</p>
+<p><strong>来源</strong>：§2.5、§2.6</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide status-page" data-title="原型现状：已跑通 vs 待补齐" data-page="14"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">原型</span></div><div class="page-heading"><p class="kicker">12 / 先讲边界，再看演示</p><h2 class="h2">原型现状：<span class="blue">已跑通 vs 待补齐</span></h2></div><div class="page-body"><table class="t status-table"><thead><tr><th>环节</th><th>状态</th><th>说明</th></tr></thead><tbody><tr><td>多源录制与基础分析</td><td><span class="status done">已实现</span></td><td>窗口 / URL / 剪贴板 / 终端 / 快照 / 端侧转写</td></tr><tr><td>浏览器真实事件采集</td><td><span class="status done">首版已实现并验证</span></td><td>自研离线插件</td></tr><tr><td>能力发现与范围判定</td><td><span class="status done">已实现</span></td><td>候选发现、哈希校验、能力清单快照</td></tr><tr><td>隔离会话自动补证</td><td><span class="status partial">已有实现，需实测复核</span></td><td>预算、续跑、暂停、证据落盘已具备</td></tr><tr><td>证据化澄清与逐条审核</td><td><span class="status done">已实现</span></td><td>强制校验，模型不得自评通过</td></tr><tr><td>确定性渲染与多目标导出</td><td><span class="status done">已实现</span></td><td>多目标导出、草稿提醒、保存前成果检查</td></tr><tr><td><strong>执行方式翻译 · 机制五</strong></td><td><span class="status partial">方案已定，非已实现能力</span></td><td><strong>受控业务 MCP 自动调用链路尚未接通</strong></td></tr><tr><td>版本化依赖声明</td><td><span class="status future">未实施</span></td><td>正文声明依赖，尚无结构化版本绑定</td></tr><tr><td>独立 SOP / 使用手册</td><td><span class="status partial">首版已实现，尚未发布</span></td><td>内容质量未经业务验证；不依赖能力快照</td></tr><tr><td>真实业务试运行</td><td><span class="status future">本期不做</span></td><td>产物固定标注“尚未进行业务试运行”</td></tr><tr><td>Computer Use / Replay / 定时运行</td><td><span class="status future">不在本期范围</span></td><td>属于后续演进方向</td></tr></tbody></table><div class="takeaway dark">方案讲多远都可以，<strong>原型到哪了必须如实。</strong></div></div><div class="deck-footer"><span>课题答辩　 /　 §3.1</span><span class="slide-number" data-current="14" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>先说清边界，后面所有演示才显得可信；反之一旦被发现&quot;演示的和说的不一样&quot;，整份材料的可信度会一次性归零。</p>
+<p>特别点出一条：机制五是本次最有分量的机制，也最容易被讲过头。它在方案部分我作为核心主张讲满了，那里讲的是&quot;应该怎么做&quot;；但在这一页，<strong>受控业务 MCP 的自动调用链路明确尚未接通</strong>。主动把两件事分开，比被追问出来强得多。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 原型现状：已跑通 vs 待补齐</p>
+<p><strong>版式</strong>：单张状态表，用 ✅ / ⚠️ / ⬜ 三色标记。<strong>这一页必须放在原型部分开头。</strong></p>
+<p><strong>上屏</strong></p>
+<p>| 环节 | 状态 | 说明 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 多源录制与基础分析 | ✅ 已实现 | 窗口/URL/剪贴板/终端/快照/端侧语音转写 |</p>
+<p>| 浏览器真实事件采集 | ✅ 首版已实现并验证 | 离线插件 |</p>
+<p>| 能力发现与范围判定 | ✅ 已实现 | 候选发现、哈希校验、能力清单快照 |</p>
+<p>| 隔离会话自动补证 | ⚠️ 已有实现，<strong>需实测复核</strong> | 预算、续跑、暂停、证据落盘已具备 |</p>
+<p>| 证据化澄清与逐条审核 | ✅ 已实现 | 含强制校验，模型不得自评通过 |</p>
+<p>| 确定性渲染与多目标导出 | ✅ 已实现 | 多目标导出、草稿提醒、保存前成果检查 |</p>
+<p>| <strong>执行方式翻译（机制五）</strong> | ⚠️ <strong>方案已定，本期不作为已实现能力展示</strong> | 产物分流与映射语义校验已成文；<strong>受控业务 MCP 自动调用链路尚未接通</strong> |</p>
+<p>| 版本化依赖声明 | ⬜ <strong>未实施</strong> | 当前靠产物正文声明依赖，无结构化版本绑定 |</p>
+<p>| 独立 SOP / 使用手册生成导出 | ⚠️ <strong>首版已实现（尚未发布），内容质量未经业务验证</strong> | 不依赖能力快照 |</p>
+<p>| 真实业务试运行 | ⬜ <strong>本期不做</strong> | 产物固定标注&quot;尚未进行业务试运行&quot; |</p>
+<p>| Computer Use / Replay / 定时运行 | ⬜ <strong>不在本期范围</strong> | 见演进方向 |</p>
+<p><strong>上屏 · 一行口径红线（建议用深色条）</strong></p>
+<p><strong>方案讲多远都可以，原型到哪了必须如实。</strong></p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>先说清边界，后面所有演示才显得可信；反之一旦被发现&quot;演示的和说的不一样&quot;，整份材料的可信度会一次性归零。</p>
+<p>特别点出一条：机制五是本次最有分量的机制，也最容易被讲过头。它在方案部分我作为核心主张讲满了，那里讲的是&quot;应该怎么做&quot;；但在这一页，<strong>受控业务 MCP 的自动调用链路明确尚未接通</strong>。主动把两件事分开，比被追问出来强得多。</p>
+<p><strong>来源</strong>：§3.1</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide demo-page" data-title="现场演示与评测：用证据说话" data-page="15"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">原型</span></div><div class="page-heading"><p class="kicker">13 / 演示七步 · 生成质量评测</p><h2 class="h2">现场演示与评测：<span class="blue">用证据说话</span></h2></div><div class="page-body"><div class="demo-scenarios"><p><b>现场验证</b>研发交付流程【待补：具体工作】</p><p><b>只讲价值</b>报表取数 / 票据核对 / 邮件转线索</p><span>本期未做真实业务试跑</span></div><div class="demo-steps"><div class="demo-step"><span>01</span><h3>录制演示</h3><p>不写提示词，口述判断原因</p></div><div class="demo-step"><span>02</span><h3>忠实还原</h3><p>捕获未主动描述的步骤</p></div><div class="demo-step"><span>03</span><h3>自动补证</h3><p>系统先查，再问人</p></div><div class="demo-step"><span>04</span><h3>一次澄清</h3><p>自动解决 M / 待问 N【待补】</p></div><div class="demo-step"><span>05</span><h3>逐条审核</h3><p>故意拒绝一条，产物应改变</p></div><div class="demo-step"><span>06</span><h3>查看产物</h3><p>配置 / 输入与试运行标注</p></div><div class="demo-step"><span>07</span><h3>映射说明</h3><p>讲设计，不演执行</p></div></div><div class="demo-bottom"><div class="evidence-list"><h3>现场可打开的证据</h3><ul class="clean-list"><li>真实会话目录与还原步骤</li><li>结论来源：自动查到 vs 用户回答</li><li>产物全文与“尚未试运行”标注</li><li>SOP / Skill 同一步骤对照</li><li>错误固化反例与实际评测结果</li></ul><p class="boundary">备用：全程录屏；环境故障时直接播放。</p></div><div class="two demo-shots"><figure class="shot " data-shot="14"><div class="shot-heading"><span>实物截图 14</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>样本误固化的错误 / 正确反例</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>从“写死样本值”到“运行时查询”</figcaption></figure><figure class="shot " data-shot="15"><div class="shot-heading"><span>实物截图 15</span><span class="missing">待补 · 真实脱敏素材</span></div><div class="shot-placeholder"><span class="photo-icon" aria-hidden="true"><svg viewBox="0 0 32 26"><rect x="1" y="1" width="30" height="24" rx="3"/><circle cx="23" cy="8" r="3"/><path d="m3 22 9-10 7 7 4-4 7 7"/></svg></span><b>评测套件实际运行结果</b><span class="upload-hint">点击填入截图</span></div><figcaption><span>请看这里</span>实际分数【待补】；不是自我评价</figcaption></figure></div></div><div class="takeaway ">评测素材为<strong>合成构造</strong>：评的是生成质量，<strong>不是真实业务成功案例</strong>。</div><p class="boundary">第 7 步：执行方式翻译为方案设计，受控业务 MCP 自动调用链路尚未接通，现场不演示执行。</p></div><div class="deck-footer"><span>课题答辩　 /　 §3.2、§3.3、§3.4</span><span class="slide-number" data-current="15" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>现场演示七步，<strong>全程录屏备用：网络或环境出问题直接播录屏，不要现场调试。</strong></p>
+<p>前六步任何一个&quot;录屏回放&quot;产品都能演，<strong>只有第 7 步能说明这不是 RPA</strong>；而它恰恰是本期尚未全量实现的部分。所以这一步不演&quot;看它跑通了&quot;，而讲&quot;看它要往哪跑&quot;。</p>
+<p>评测部分我把口径说清楚：这是对生成质量的评测，素材是合成构造的，不是真实业务成功案例。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 现场演示与评测</p>
+<p><strong>版式</strong>：上半七步横向流程条（每步一句&quot;要让评委看到什么&quot;）；下半左侧关键证据清单，右侧评测分数 + 反例对照图。</p>
+<p><strong>上屏 · 演示场景</strong></p>
+<p><strong>验证场景（现场演示）：研发交付流程</strong>——目标 Agent 有现成原生命令行工具，最容易验证&quot;界面演示 → 原生工具执行计划&quot;这一关键转化，且不触碰业务数据。</p>
+<p><strong>价值场景（只讲不演）：企业内部管理类工作</strong>——周期性报表口径取数、票据与流水核对、询价邮件转线索登记。<strong>明确说明本期未做真实业务试跑。</strong></p>
+<p><strong>上屏 · 七步</strong></p>
+<p>| 步 | 动作 | 要让评委看到 |</p>
+<p>| --- | --- | --- |</p>
+<p>| 1 | 开始录制，按平时方式做一遍【待补】，中途口述两句&quot;为什么这样判断&quot; | <strong>全程没有写一个字的提示词</strong> |</p>
+<p>| 2 | 停止录制，展示还原出的意图与分步骤 | <strong>它捕获到了我自己没打算说的那一步</strong> |</p>
+<p>| 3 | 深度分析，展示自动补证过程与带证据的结论 | 系统先自己查，查不到才问人 |</p>
+<p>| 4 | 展示最终澄清问题清单 | <strong>只有 N 条，且每条都只有人能决定</strong>【待补：自动解决 M 条 vs 仍需问 N 条——最有冲击力的数字】 |</p>
+<p>| 5 | 逐条审核，<strong>故意拒绝一条</strong> | 人有否决权，且否决真的会改变产物 |</p>
+<p>| 6 | 展示最终产物正文 | 固定配置/运行时输入的区分、&quot;尚未业务试运行&quot;标注 |</p>
+<p>| 7 | 对着<strong>工具映射段落</strong>讲执行方式翻译——<strong>讲设计，不演执行</strong> | <strong>这一步最关键</strong>：将映射为哪些能力调用、哪些只能浏览器兜底、凭什么判定等价 |</p>
+<p><strong>第 7 步话术（照念）</strong></p>
+<p>&quot;<strong>注意这里——未来真正执行的不是我刚才点的那些按钮，而是这几个能力调用；我的点击只是用来告诉它我要干什么。</strong></p>
+<p><strong>这条执行方式翻译是方案已经定下来的设计，受控业务 MCP 的自动调用链路还没接通，这一点我在原型现状那页已经列明。</strong>&quot;</p>
+<p><strong>上屏 · 关键证据清单（现场最好能当场打开）</strong></p>
+<p>- 真实录制的会话目录结构；还原出的分步骤文档；</p>
+<p>- 带证据来源的结论列表——<strong>当场指出哪条是自动查到的、哪条是用户回答的</strong>；</p>
+<p>- 产物全文（含&quot;尚未业务试运行&quot;标注）；</p>
+<p>- <strong>SOP 与 Skill 同一步骤左右对照</strong>（📷13，执行方式翻译真实发生过的最硬证据）；</p>
+<p>- <strong>错误固化反例对照</strong>。</p>
+<p><strong>上屏 · 评测</strong></p>
+<p>- 项目自带基于固定素材的评测套件：分别评测还原质量、终端输出引用与脱敏、泛化能力；</p>
+<p>- <strong>诚实声明</strong>：评测素材为合成构造，<strong>是对生成质量的评测，不是真实业务成功案例</strong>；</p>
+<p>- 【待补：跑一次评测，把实际分数写进来】。</p>
+<p>📷<strong>【截图位 14】</strong>：错误固化反例对照——左边&quot;不做时间属性三分&quot;会被写死的那个样本值，右边正确处理后标为&quot;运行时查询&quot;。</p>
+<p>评委要看到：<strong>这个机制不是锦上添花，少了它产物就是错的。</strong></p>
+<p>📷<strong>【截图位 15】</strong>：评测套件实际运行结果（终端输出或报告页），分数清晰可读。</p>
+<p>评委要看到：<strong>有客观口径，不是自我感觉良好。</strong> 哪怕分数不高也要放——敢放分数本身就是可信度。</p>
+<p><strong>讲稿</strong>（180 秒 + 演示时间）</p>
+<p>现场演示七步，<strong>全程录屏备用：网络或环境出问题直接播录屏，不要现场调试。</strong></p>
+<p>前六步任何一个&quot;录屏回放&quot;产品都能演，<strong>只有第 7 步能说明这不是 RPA</strong>；而它恰恰是本期尚未全量实现的部分。所以这一步不演&quot;看它跑通了&quot;，而讲&quot;看它要往哪跑&quot;。</p>
+<p>评测部分我把口径说清楚：这是对生成质量的评测，素材是合成构造的，不是真实业务成功案例。</p>
+<p><strong>来源</strong>：§3.2、§3.3、§3.4</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section><section class="slide closing" data-title="大处着眼，小处着手" data-page="16"><div class="deck-header"><span class="brand"><i></i>人机协同新范式</span><span class="section-name">未来演进</span></div><div class="page-heading"><p class="kicker">14 / 从生成，走向资产治理</p><h2 class="h2">大处着眼，<span class="blue">小处着手</span></h2></div><div class="page-body"><div class="closing-top"><div class="lifecycle"><svg viewBox="0 0 520 420" aria-hidden="true"><ellipse cx="260" cy="210" rx="175" ry="135"/></svg><div class="ring-center"><span>Skill</span><b>全生命周期</b><small>未来演进图景</small></div><div class="life-node current" style="left:260px;top:57px"><span>01</span>生成</div><div class="life-node " style="left:415px;top:105px"><span>02</span>评估</div><div class="life-node " style="left:453px;top:239px"><span>03</span>发布</div><div class="life-node " style="left:341px;top:356px"><span>04</span>回测</div><div class="life-node " style="left:177px;top:356px"><span>05</span>A/B</div><div class="life-node " style="left:64px;top:239px"><span>06</span>运行监控</div><div class="life-node " style="left:104px;top:105px"><span>07</span>演进与退役</div></div><div class="directions"><p class="overline">三个优先演进方向</p><div class="mini "><h3>回测与漂移检测</h3><p>用规则的证据链，比对流程与依赖变化。</p></div><div class="mini "><h3>评估基准自动构建</h3><p>一次演示既是生成输入，也可沉淀为回归用例。</p></div><div class="mini "><h3>发布与权限治理</h3><p>Skill 触达业务系统，就成为具备权限的执行主体。</p></div><p class="boundary">本页全部为演进方向，不属于本课题交付范围。</p></div></div><div class="closing-line"><p><span>着眼的大处</span>把企业自己的工作方式交给模型</p><p><span>着手的小处</span>把一次演示中的事实，变成有证据、有边界的规则</p><h3>先把一次演示变成一份可信的知识，<br><em>再谈让一万个 Skill 在企业里可靠地跑起来。</em></h3></div></div><div class="deck-footer"><span>课题答辩　 /　 第五部分、§5.5</span><span class="slide-number" data-current="16" data-total="16"></span></div><aside class="notes"><div class="speaker-script"><p>生成一个 Skill 只是起点。一旦它进入企业日常使用，立刻撞上一串问题——而这些问题在软件工程里全部已有成熟答案。这说明本工具的演进路线不是拍脑袋想的，而是有明确参照系的：把软件工程的治理范式，迁移到 AI 指令资产上。</p>
+<p>七个环节我不平铺，只挑三个最值得优先投入的讲。特别点出第一个：漂移检测之所以可行，正是因为今天每条规则都挂着证据——这是当前证据化设计的延伸收益，说明今天这一步没有白走。</p>
+<p>最后一句话收尾：先把一次演示变成一份可信的知识，再谈让一万个 Skill 在企业里可靠地跑起来。</p></div><details><summary>本页完整逐页稿（含截图要求与待补）</summary><p> 大处着眼，小处着手</p>
+<p><strong>版式</strong>：上半七环节环形图（当前位置&quot;生成&quot;高亮）+ 三个优先方向小卡；下半收尾大字。</p>
+<p><strong>上屏 · 为什么&quot;只做生成&quot;远远不够</strong></p>
+<p>一行追问（可做成一串小问号）：质量够不够？谁可以用？系统改版了还有效吗？新版本好多少？跑了多少次错了几次？不用了怎么下线？</p>
+<p><strong>这些问题在软件工程里全部已有成熟答案。Skill 是一种新型可执行资产，因此必然需要一套同构的管理体系。</strong></p>
+<p><strong>图示 · 七环节（环形，&quot;1 生成&quot;高亮为当前聚焦）</strong></p>
+<p>| 环节 | 工程对应物 | 关键难点 |</p>
+<p>| --- | --- | --- |</p>
+<p>| <strong>1 生成</strong> | 编码 | <strong>事实→规则的鸿沟（本课题聚焦）</strong> |</p>
+<p>| 2 评估 | 单元测试 / 质量门禁 | 黄金样本与期望结果从哪来 |</p>
+<p>| 3 发布 | 版本 / 权限 / 灰度 | 依赖声明与审批流 |</p>
+<p>| 4 回测 | 回归测试 | 历史输入与人工结果作基线 |</p>
+<p>| 5 A/B | A/B 实验 | 指标与分流设计 |</p>
+<p>| 6 运行监控 | 可观测性 / 告警 | 失败归因 |</p>
+<p>| 7 演进与退役 | 依赖升级 / 废弃 | <strong>漂移检测</strong> |</p>
+<p><strong>上屏 · 三个优先方向</strong>（三张小卡，各一句&quot;为什么值得先做&quot;）</p>
+<p>1. <strong>回测与漂移检测</strong>：直接兑现保鲜承诺。<strong>之所以走得通，正是因为每条规则都挂着证据</strong>——没有证据链就无从比对。这是当前设计的意外收益。</p>
+<p>2. <strong>评估基准自动构建</strong>：录制天然包含&quot;人实际怎么做的、结果是什么&quot;，<strong>一次演示既是生成输入，也可沉淀为回归用例</strong>。相比纯 Prompt 管理方案，我们天生有基线。</p>
+<p>3. <strong>发布与权限治理</strong>：Skill 一旦触达业务系统，就是<strong>具备权限的执行主体</strong>。机制二约束&quot;能用什么&quot;，机制五决定&quot;走哪条通道&quot;——<strong>已是这条路上的前两块砖</strong>。</p>
+<p>⚠️ <strong>克制声明（建议现场照念）</strong>：本页全部内容属于演进方向，<strong>不属于本课题交付范围</strong>。列出它们是为了说明当前这一步在整张图里的位置，而不是承诺实现。</p>
+<p><strong>上屏 · 收尾大字</strong></p>
+<p><strong>着眼的大处</strong>：企业 AI 生产力的真正瓶颈，是能不能把自己的工作方式交给模型。</p>
+<p><strong>着手的小处</strong>：本课题只做第一个环节——生成，而且只攻最难的一步：<strong>把一次演示中的事实，变成有证据、有边界的规则。</strong></p>
+<p>为什么必须从这里起步：① 它是其余一切环节的前提，垃圾进垃圾出；② 它是唯一没有现成范式可抄的环节；③ 它是唯一必须有人参与的环节。</p>
+<p>先把一次演示变成一份可信的知识，再谈让一万个 Skill 在企业里可靠地跑起来。</p>
+<p><strong>讲稿</strong>（90 秒）</p>
+<p>生成一个 Skill 只是起点。一旦它进入企业日常使用，立刻撞上一串问题——而这些问题在软件工程里全部已有成熟答案。这说明本工具的演进路线不是拍脑袋想的，而是有明确参照系的：把软件工程的治理范式，迁移到 AI 指令资产上。</p>
+<p>七个环节我不平铺，只挑三个最值得优先投入的讲。特别点出第一个：漂移检测之所以可行，正是因为今天每条规则都挂着证据——这是当前证据化设计的延伸收益，说明今天这一步没有白走。</p>
+<p>最后一句话收尾：先把一次演示变成一份可信的知识，再谈让一万个 Skill 在企业里可靠地跑起来。</p>
+<p><strong>来源</strong>：第五部分、§5.5</p>
+<p>---</p></details><details><summary>答辩追问速查</summary><p>（不上屏，备于演讲者视图）</p>
+<p>| 质问 | 一句话回答 |</p>
+<p>| --- | --- |</p>
+<p>| 这不就是 RPA 吗？ | ①RPA 学路径，本方案学规则；②<strong>RPA 回放点击，本方案翻译成对既有 MCP/CLI/接口的调用</strong>，浏览器只是兜底 |</p>
+<p>| 录下来的点击凭什么稳定跑？ | <strong>我们不回放点击。</strong> 执行路径到公司既有能力里重选，产物标明每步载体与稳定性等级 |</p>
+<p>| 浏览器兜底不还是脆弱？ | 承认脆弱，所以是第三优先级且必须显式标注。关键是<strong>比例</strong>【待补：三级各占几步】；高频兜底会被反馈为能力建设需求 |</p>
+<p>| 公司没那么多 MCP 怎么办？ | ①没有也能用，只是更多步骤走兜底；②SOP/手册完全不依赖能力快照；③<strong>会沉淀一份带频次的能力缺口清单</strong>，反过来指导建设优先级 |</p>
+<p>| 怎么保证映射等价？ | 必须保留账号、线程归属、附件、数据范围与授权语义；<strong>不许凭名字相似认定等价</strong>；判不了的交人 |</p>
+<p>| 微软 / IrisGo 已经做了？ | 方向一致，但&quot;一次演示如何可信变成可复用规则&quot;未被解决：缺证据链、缺样本值固化防护、缺逐条审核 |</p>
+<p>| 为什么不培训业务人员写 Prompt？ | ①三重损耗与表达能力无关，越熟练遗漏越多；②培训不可规模化 |</p>
+<p>| SOP 自动保鲜是不是夸大？ | 当前已能从一次操作生成结构化记录，<strong>独立文档导出未发布、版本/变更提示未实现</strong>；保鲜是机制必然结果，不是已交付功能 |</p>
+<p>| 录屏不就是隐私黑洞？ | 本机处理、端侧转写、端侧敏感扫描、只读业务访问、发送前显式确认 |</p>
+<p>| 一次演示就能学会？ | <strong>明确否认。</strong> 一次演示只提供一个样例，必须叠加自动补证与一次澄清；本期只验收知识产出质量 |</p>
+<p>| 效果有数据吗？ | 评测分数 + 实测净收益口径；<strong>尚未开展真实业务试跑</strong> |</p>
+<p>| 这不就是个人效率工具？ | 模型是可买的公共品，<strong>企业自己的工作方式买不到</strong>；本方案是把&quot;手艺&quot;变成&quot;工艺标准&quot;的入口 |</p>
+<p>| 只解决生成够吗？ | 坦率承认不够，给出七环节完整图景；这套演进<strong>有软件工程范式作参照</strong> |</p>
+<p>| 为什么不先做更成熟的评估、发布？ | ①生成是其余环节的前提；②唯一没有现成范式可抄；③唯一必须有人参与、无法绕过 |</p>
+<p>完整版见提纲附录 A（共 18 条）。</p>
+<p>---</p></details></aside></section></main><nav class="deck-controls" aria-label="演示文稿控制"><button type="button" data-direction="prev" aria-label="上一页">←</button><span id="nav-count">01 / 16</span><button type="button" data-direction="next" aria-label="下一页">→</button><span class="control-divider"></span><button type="button" id="overview-button" title="总览 O" aria-label="页面总览">▦</button><button type="button" id="notes-button" title="备注 N" aria-label="显示讲稿">N</button><button type="button" id="fullscreen" title="全屏 F" aria-label="全屏演示">⛶</button><button type="button" id="save-deck" title="保存含截图的 HTML" aria-label="保存完整 HTML">↓</button></nav><script>
+/* html-ppt :: runtime.js
+ * Keyboard-driven deck runtime. Zero dependencies.
+ *
+ * Features:
+ *   ← → / space / PgUp PgDn / Home End  navigation
+ *   F  fullscreen
+ *   S  presenter mode (opens a NEW WINDOW with current/next slide preview + notes + timer)
+ *       The original window stays as audience view, synced via BroadcastChannel.
+ *       Slide previews use CSS transform:scale() at design resolution for pixel-perfect layout.
+ *   N  quick notes overlay (bottom drawer)
+ *   O  slide overview grid
+ *   T  cycle themes (reads data-themes on <html> or <body>)
+ *   A  cycle demo animation on current slide
+ *   URL hash #/N  deep-link to slide N (1-based)
+ *   Progress bar auto-managed
+ */
+(function () {
+  'use strict';
+
+  const ANIMS = ['fade-up','fade-down','fade-left','fade-right','rise-in','drop-in',
+    'zoom-pop','blur-in','glitch-in','typewriter','neon-glow','shimmer-sweep',
+    'gradient-flow','stagger-list','counter-up','path-draw','parallax-tilt',
+    'card-flip-3d','cube-rotate-3d','page-turn-3d','perspective-zoom',
+    'marquee-scroll','kenburns','confetti-burst','spotlight','morph-shape','ripple-reveal'];
+
+  function ready(fn){ if(document.readyState!='loading')fn(); else document.addEventListener('DOMContentLoaded',fn);}
+
+  /* ========== Parse URL for preview-only mode ==========
+   * When loaded as iframe.src = "index.html?preview=3", runtime enters a
+   * locked single-slide mode: only slide N is visible, no chrome, no keys,
+   * no hash updates. This is how the presenter window shows pixel-perfect
+   * previews — by loading the actual deck file in an iframe and telling it
+   * to display only a specific slide.
+   */
+  function getPreviewIdx() {
+    const m = /[?&]preview=(\d+)/.exec(location.search || '');
+    return m ? parseInt(m[1], 10) - 1 : -1;
+  }
+
+  ready(function () {
+    const deck = document.querySelector('.deck');
+    if (!deck) return;
+    const slides = Array.from(deck.querySelectorAll('.slide'));
+    if (!slides.length) return;
+
+    const previewOnlyIdx = getPreviewIdx();
+    const isPreviewMode = previewOnlyIdx >= 0 && previewOnlyIdx < slides.length;
+
+    /* ===== Preview-only mode: show one slide, hide everything else ===== */
+    if (isPreviewMode) {
+      function showSlide(i) {
+        slides.forEach((s, j) => {
+          const active = (j === i);
+          s.classList.toggle('is-active', active);
+          s.style.display = active ? '' : 'none';
+          if (active) {
+            s.style.opacity = '1';
+            s.style.transform = 'none';
+            s.style.pointerEvents = 'auto';
+          }
+        });
+      }
+      showSlide(previewOnlyIdx);
+      /* Hide chrome that the presenter shouldn't see in preview */
+      const hideSel = '.progress-bar, .notes-overlay, .overview, .notes, aside.notes, .speaker-notes';
+      document.querySelectorAll(hideSel).forEach(el => { el.style.display = 'none'; });
+      document.documentElement.setAttribute('data-preview', '1');
+      document.body.setAttribute('data-preview', '1');
+      /* Auto-detect theme base path for theme switching in preview mode */
+      function getPreviewThemeBase() {
+        const base = document.documentElement.getAttribute('data-theme-base');
+        if (base) return base;
+        const tl = document.getElementById('theme-link');
+        if (tl) {
+          const raw = tl.getAttribute('href') || '';
+          const ls = raw.lastIndexOf('/');
+          if (ls >= 0) return raw.substring(0, ls + 1);
+        }
+        return 'assets/themes/';
+      }
+      const previewThemeBase = getPreviewThemeBase();
+
+      /* Listen for postMessage from parent presenter window:
+       *  - preview-goto: switch visible slide WITHOUT reloading
+       *  - preview-theme: switch theme CSS link to match audience window */
+      window.addEventListener('message', function(e) {
+        if (!e.data) return;
+        if (e.data.type === 'preview-goto') {
+          const n = parseInt(e.data.idx, 10);
+          if (n >= 0 && n < slides.length) showSlide(n);
+        } else if (e.data.type === 'preview-theme' && e.data.name) {
+          let link = document.getElementById('theme-link');
+          if (!link) {
+            link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.id = 'theme-link';
+            document.head.appendChild(link);
+          }
+          link.href = previewThemeBase + e.data.name + '.css';
+          document.documentElement.setAttribute('data-theme', e.data.name);
+        }
+      });
+      /* Signal to parent that preview iframe is ready */
+      try { window.parent && window.parent.postMessage({ type: 'preview-ready' }, '*'); } catch(e) {}
+      return;
+    }
+
+    let idx = 0;
+    const total = slides.length;
+
+    /* ===== BroadcastChannel for presenter sync ===== */
+    const CHANNEL_NAME = 'html-ppt-presenter-' + location.pathname;
+    let bc;
+    try { bc = new BroadcastChannel(CHANNEL_NAME); } catch(e) { bc = null; }
+
+    // Are we running inside the presenter popup? (legacy flag, now unused)
+    const isPresenterWindow = false;
+
+    /* ===== progress bar ===== */
+    let bar = document.querySelector('.progress-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.className = 'progress-bar';
+      bar.innerHTML = '<span></span>';
+      document.body.appendChild(bar);
+    }
+    const barFill = bar.querySelector('span');
+
+    /* ===== notes overlay (N key) ===== */
+    let notes = document.querySelector('.notes-overlay');
+    if (!notes) {
+      notes = document.createElement('div');
+      notes.className = 'notes-overlay';
+      document.body.appendChild(notes);
+    }
+
+    /* ===== overview grid (O key) ===== */
+    let overview = document.querySelector('.overview');
+    if (!overview) {
+      overview = document.createElement('div');
+      overview.className = 'overview';
+      slides.forEach((s, i) => {
+        const t = document.createElement('div');
+        t.className = 'thumb';
+        // Force 16:9 aspect ratio robustly
+        t.style.padding = '0 0 56.25% 0';
+        t.style.height = '0';
+        t.style.position = 'relative';
+        t.style.overflow = 'hidden';
+
+        const title = s.getAttribute('data-title') ||
+          (s.querySelector('h1,h2,h3')||{}).textContent || ('Slide '+(i+1));
+        
+        // Create a container for the mini-slide
+        const mini = document.createElement('div');
+        mini.className = 'mini-slide';
+        mini.style.position = 'absolute';
+        mini.style.top = '0';
+        mini.style.left = '0';
+        mini.style.width = '1600px';
+        mini.style.height = '900px';
+        mini.style.transformOrigin = 'top left';
+        mini.style.pointerEvents = 'none';
+        mini.style.background = 'var(--bg)';
+        
+        // Clone the slide content
+        const clone = s.cloneNode(true);
+        clone.className = 'slide is-active'; // force active styles
+        clone.style.position = 'absolute';
+        clone.style.inset = '0';
+        clone.style.transform = 'none';
+        clone.style.opacity = '1';
+        clone.style.padding = '72px 96px'; // ensure padding is kept
+        
+        mini.appendChild(clone);
+        t.appendChild(mini);
+
+        // Add the number and title overlay
+        const overlay = document.createElement('div');
+        overlay.style.position = 'absolute';
+        overlay.style.inset = '0';
+        overlay.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.8) 100%)';
+        overlay.style.color = '#fff';
+        overlay.style.zIndex = '10';
+        overlay.style.pointerEvents = 'none';
+        
+        const n = document.createElement('div');
+        n.className = 'n';
+        n.textContent = i + 1;
+        n.style.position = 'absolute';
+        n.style.top = '12px';
+        n.style.left = '16px';
+        n.style.fontWeight = '700';
+        n.style.fontSize = '16px';
+        n.style.color = '#fff';
+        n.style.textShadow = '0 1px 4px rgba(0,0,0,0.8)';
+        
+        const text = document.createElement('div');
+        text.className = 't';
+        text.textContent = title.trim().slice(0,80);
+        text.style.position = 'absolute';
+        text.style.bottom = '12px';
+        text.style.left = '16px';
+        text.style.right = '16px';
+        text.style.fontWeight = '600';
+        text.style.fontSize = '14px';
+        text.style.color = '#fff';
+        text.style.textShadow = '0 1px 4px rgba(0,0,0,0.8)';
+        
+        overlay.appendChild(n);
+        overlay.appendChild(text);
+        t.appendChild(overlay);
+
+        t.addEventListener('click', () => { go(i); toggleOverview(false); });
+        overview.appendChild(t);
+      });
+      document.body.appendChild(overview);
+    }
+
+    /* ===== navigation ===== */
+    function go(n, fromRemote){
+      n = Math.max(0, Math.min(total-1, n));
+      slides.forEach((s,i) => {
+        s.classList.toggle('is-active', i===n);
+        s.classList.toggle('is-prev', i<n);
+      });
+      idx = n;
+      barFill.style.width = ((n+1)/total*100)+'%';
+      const numEl = slides[n].querySelector('.slide-number');
+      if (numEl) { numEl.setAttribute('data-current', n+1); numEl.setAttribute('data-total', total); }
+
+      // notes (bottom overlay)
+      const note = slides[n].querySelector('.notes, aside.notes, .speaker-notes');
+      notes.innerHTML = note ? note.innerHTML : '';
+
+      // hash
+      const hashTarget = '#/'+(n+1);
+      if (location.hash !== hashTarget && !isPresenterWindow) {
+        history.replaceState(null,'', hashTarget);
+      }
+
+      // re-trigger entry animations
+      slides[n].querySelectorAll('[data-anim]').forEach(el => {
+        const a = el.getAttribute('data-anim');
+        el.classList.remove('anim-'+a);
+        void el.offsetWidth;
+        el.classList.add('anim-'+a);
+      });
+
+      // counter-up
+      slides[n].querySelectorAll('.counter').forEach(el => {
+        const target = parseFloat(el.getAttribute('data-to')||el.textContent);
+        const dur = parseInt(el.getAttribute('data-dur')||'1200',10);
+        const start = performance.now();
+        const from = 0;
+        function tick(now){
+          const t = Math.min(1,(now-start)/dur);
+          const v = from + (target-from)*(1-Math.pow(1-t,3));
+          el.textContent = (target % 1 === 0) ? Math.round(v) : v.toFixed(1);
+          if (t<1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      });
+
+      // Broadcast to other window (audience ↔ presenter)
+      if (!fromRemote && bc) {
+        bc.postMessage({ type: 'go', idx: n });
+      }
+    }
+
+    /* ===== listen for remote navigation / theme changes ===== */
+    if (bc) {
+      bc.onmessage = function(e) {
+        if (!e.data) return;
+        if (e.data.type === 'go' && typeof e.data.idx === 'number') {
+          go(e.data.idx, true);
+        } else if (e.data.type === 'theme' && e.data.name) {
+          /* Sync theme across windows */
+          const i = themes.indexOf(e.data.name);
+          if (i >= 0) themeIdx = i;
+          applyTheme(e.data.name);
+        }
+      };
+    }
+
+    function toggleNotes(force){ notes.classList.toggle('open', force!==undefined?force:!notes.classList.contains('open')); }
+    function toggleOverview(force){
+      const isOpen = force!==undefined ? force : !overview.classList.contains('open');
+      overview.classList.toggle('open', isOpen);
+      if (isOpen) {
+        requestAnimationFrame(() => {
+          const thumbs = overview.querySelectorAll('.thumb');
+          if (thumbs.length) {
+            const scale = thumbs[0].clientWidth / 1600;
+            overview.querySelectorAll('.mini-slide').forEach(m => {
+              m.style.transform = 'scale(' + scale + ')';
+            });
+          }
+        });
+      }
+    }
+
+    /* ========== PRESENTER MODE — Magnetic-card popup window ========== */
+    /* Opens a new window with 4 draggable, resizable cards:
+     *   CURRENT  — iframe(?preview=N)   pixel-perfect preview of current slide
+     *   NEXT     — iframe(?preview=N+1) pixel-perfect preview of next slide
+     *   SCRIPT   — large speaker notes (逐字稿)
+     *   TIMER    — elapsed timer + page counter + controls
+     * Cards remember position/size in localStorage.
+     * Two windows sync via BroadcastChannel.
+     */
+    let presenterWin = null;
+
+    function openPresenterWindow() {
+      if (presenterWin && !presenterWin.closed) {
+        presenterWin.focus();
+        return;
+      }
+
+      // Build absolute URL of THIS deck file (without hash/query)
+      const deckUrl = location.protocol + '//' + location.host + location.pathname;
+
+      // Collect slide titles + notes (HTML strings)
+      const slideMeta = slides.map((s, i) => {
+        const note = s.querySelector('.notes, aside.notes, .speaker-notes');
+        return {
+          title: s.getAttribute('data-title') ||
+            (s.querySelector('h1,h2,h3')||{}).textContent || ('Slide '+(i+1)),
+          notes: note ? note.innerHTML : ''
+        };
+      });
+
+      /* Capture current theme so presenter previews match the audience */
+      const currentTheme = root.getAttribute('data-theme') || (themes[themeIdx] || '');
+      const presenterHTML = buildPresenterHTML(deckUrl, slideMeta, total, idx, CHANNEL_NAME, currentTheme);
+
+      presenterWin = window.open('', 'html-ppt-presenter', 'width=1280,height=820,menubar=no,toolbar=no');
+      if (!presenterWin) {
+        alert('请允许弹出窗口以使用演讲者视图');
+        return;
+      }
+      presenterWin.document.open();
+      presenterWin.document.write(presenterHTML);
+      presenterWin.document.close();
+    }
+
+    function buildPresenterHTML(deckUrl, slideMeta, total, startIdx, channelName, currentTheme) {
+      const metaJSON = JSON.stringify(slideMeta);
+      const deckUrlJSON = JSON.stringify(deckUrl);
+      const channelJSON = JSON.stringify(channelName);
+      const themeJSON = JSON.stringify(currentTheme || '');
+      const storageKey = 'html-ppt-presenter:' + location.pathname;
+
+      // Build the document as a single template string for clarity
+      return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Presenter View</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #1a1d24;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(88,166,255,.04), transparent 50%),
+      radial-gradient(circle at 80% 70%, rgba(188,140,255,.04), transparent 50%);
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", sans-serif;
+  }
+  /* Stage: positioned area where cards live */
+  #stage { position: absolute; inset: 0; overflow: hidden; }
+
+  /* Magnetic card */
+  .pcard {
+    position: absolute;
+    background: #0d1117;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.02);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    min-width: 180px; min-height: 100px;
+    transition: box-shadow .2s, border-color .2s;
+  }
+  .pcard.dragging { box-shadow: 0 16px 48px rgba(0,0,0,.6), 0 0 0 2px rgba(88,166,255,.5); border-color: #58a6ff; transition: none; z-index: 9999; }
+  .pcard.resizing { box-shadow: 0 16px 48px rgba(0,0,0,.6), 0 0 0 2px rgba(63,185,80,.5); border-color: #3fb950; transition: none; z-index: 9999; }
+  .pcard:hover { border-color: rgba(88,166,255,.3); }
+
+  /* Card header (drag handle) */
+  .pcard-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.04);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    cursor: move;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .pcard-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot-color, #58a6ff); flex-shrink: 0; }
+  .pcard-title {
+    font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
+    font-weight: 700; color: #8b949e; flex: 1;
+  }
+  .pcard-meta { font-size: 11px; color: #6e7681; }
+
+  /* Card body */
+  .pcard-body { flex: 1; position: relative; overflow: hidden; min-height: 0; }
+
+  /* Preview cards (CURRENT/NEXT) — iframe-based pixel-perfect render */
+  .pcard-preview .pcard-body { background: #000; }
+  .pcard-preview iframe {
+    position: absolute; top: 0; left: 0;
+    width: 1600px; height: 900px;
+    border: none;
+    transform-origin: top left;
+    pointer-events: none;
+    background: transparent;
+  }
+  .pcard-preview .preview-end {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: #484f58; font-size: 14px; letter-spacing: .12em;
+  }
+
+  /* Notes card */
+  .pcard-notes .pcard-body {
+    padding: 14px 18px;
+    overflow-y: auto;
+    font-size: 18px; line-height: 1.75;
+    color: #d0d7de;
+    font-family: "Noto Sans SC", -apple-system, sans-serif;
+  }
+  .pcard-notes .pcard-body p { margin: 0 0 .7em 0; }
+  .pcard-notes .pcard-body strong { color: #f0883e; }
+  .pcard-notes .pcard-body em { color: #58a6ff; font-style: normal; }
+  .pcard-notes .pcard-body code {
+    font-family: "SF Mono", monospace; font-size: .9em;
+    background: rgba(255,255,255,.08); padding: 1px 6px; border-radius: 4px;
+  }
+  .pcard-notes .empty { color: #484f58; font-style: italic; }
+
+  /* Timer card */
+  .pcard-timer .pcard-body {
+    display: flex; flex-direction: column; gap: 14px;
+    padding: 18px 20px; justify-content: center;
+  }
+  .timer-display {
+    font-family: "SF Mono", "JetBrains Mono", monospace;
+    font-size: 42px; font-weight: 700;
+    color: #3fb950;
+    letter-spacing: .04em;
+    line-height: 1;
+  }
+  .timer-row {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14px; color: #8b949e;
+  }
+  .timer-row .label { font-size: 10px; letter-spacing: .15em; text-transform: uppercase; color: #6e7681; }
+  .timer-row .val { color: #e6edf3; font-weight: 600; font-family: "SF Mono", monospace; }
+  .timer-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  .timer-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: #e6edf3;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .timer-btn:hover { background: rgba(88,166,255,.15); border-color: #58a6ff; }
+  .timer-btn:active { transform: translateY(1px); }
+
+  /* Resize handle */
+  .pcard-resize {
+    position: absolute; right: 0; bottom: 0;
+    width: 18px; height: 18px;
+    cursor: nwse-resize;
+    background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,.25) 50%, rgba(255,255,255,.25) 60%, transparent 60%, transparent 70%, rgba(255,255,255,.25) 70%, rgba(255,255,255,.25) 80%, transparent 80%);
+    z-index: 5;
+  }
+  .pcard-resize:hover { background: linear-gradient(135deg, transparent 50%, #58a6ff 50%, #58a6ff 60%, transparent 60%, transparent 70%, #58a6ff 70%, #58a6ff 80%, transparent 80%); }
+
+  /* Bottom hint bar */
+  .hint-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding: 6px 16px;
+    font-size: 11px; color: #8b949e;
+    display: flex; gap: 18px; align-items: center;
+    z-index: 1000;
+  }
+  .hint-bar kbd {
+    background: rgba(255,255,255,.08);
+    padding: 1px 6px; border-radius: 3px;
+    font-family: "SF Mono", monospace;
+    font-size: 10px;
+    border: 1px solid rgba(255,255,255,.1);
+    color: #e6edf3;
+  }
+  .hint-bar .reset-layout {
+    margin-left: auto;
+    background: transparent; border: 1px solid rgba(255,255,255,.15);
+    color: #8b949e; padding: 3px 10px; border-radius: 4px;
+    font-size: 11px; cursor: pointer; font-family: inherit;
+  }
+  .hint-bar .reset-layout:hover { background: rgba(248,81,73,.15); border-color: #f85149; color: #f85149; }
+
+  body.is-dragging-card * { user-select: none !important; }
+  body.is-dragging-card iframe { pointer-events: none !important; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div class="pcard pcard-preview" id="card-cur" style="--dot-color:#58a6ff">
+    <div class="pcard-head" data-drag>
+      <span class="pcard-dot"></span>
+      <span class="pcard-title">CURRENT</span>
+      <span class="pcard-meta" id="cur-meta">—</span>
+    </div>
+    <div class="pcard-body"><iframe id="iframe-cur"></iframe></div>
+    <div class="pcard-resize" data-resize></div>
+  </div>
+
+  <div class="pcard pcard-preview" id="card-nxt" style="--dot-color:#bc8cff">
+    <div class="pcard-head" data-drag>
+      <span class="pcard-dot"></span>
+      <span class="pcard-title">NEXT</span>
+      <span class="pcard-meta" id="nxt-meta">—</span>
+    </div>
+    <div class="pcard-body"><iframe id="iframe-nxt"></iframe></div>
+    <div class="pcard-resize" data-resize></div>
+  </div>
+
+  <div class="pcard pcard-notes" id="card-notes" style="--dot-color:#f0883e">
+    <div class="pcard-head" data-drag>
+      <span class="pcard-dot"></span>
+      <span class="pcard-title">SPEAKER SCRIPT · 逐字稿</span>
+    </div>
+    <div class="pcard-body" id="notes-body"></div>
+    <div class="pcard-resize" data-resize></div>
+  </div>
+
+  <div class="pcard pcard-timer" id="card-timer" style="--dot-color:#3fb950">
+    <div class="pcard-head" data-drag>
+      <span class="pcard-dot"></span>
+      <span class="pcard-title">TIMER</span>
+    </div>
+    <div class="pcard-body">
+      <div class="timer-display" id="timer-display">00:00</div>
+      <div class="timer-row">
+        <span class="label">Slide</span>
+        <span class="val" id="timer-count">1 / ${total}</span>
+      </div>
+      <div class="timer-controls">
+        <button class="timer-btn" id="btn-prev">← Prev</button>
+        <button class="timer-btn" id="btn-next">Next →</button>
+        <button class="timer-btn" id="btn-reset">⏱ Reset</button>
+      </div>
+    </div>
+    <div class="pcard-resize" data-resize></div>
+  </div>
+</div>
+
+<div class="hint-bar">
+  <span><kbd>← →</kbd> 翻页</span>
+  <span><kbd>R</kbd> 重置计时</span>
+  <span><kbd>Esc</kbd> 关闭</span>
+  <span style="color:#6e7681">拖动卡片头部移动 · 拖动右下角调整大小</span>
+  <button class="reset-layout" id="reset-layout">重置布局</button>
+</div>
+
+<script>
+(function(){
+  var slideMeta = ${metaJSON};
+  var total = ${total};
+  var idx = ${startIdx};
+  var deckUrl = ${deckUrlJSON};
+  var STORAGE_KEY = ${JSON.stringify(storageKey)};
+  var bc;
+  try { bc = new BroadcastChannel(${channelJSON}); } catch(e) {}
+
+  var iframeCur = document.getElementById('iframe-cur');
+  var iframeNxt = document.getElementById('iframe-nxt');
+  var notesBody = document.getElementById('notes-body');
+  var curMeta = document.getElementById('cur-meta');
+  var nxtMeta = document.getElementById('nxt-meta');
+  var timerDisplay = document.getElementById('timer-display');
+  var timerCount = document.getElementById('timer-count');
+
+  /* ===== Default card layout ===== */
+  function defaultLayout() {
+    var w = window.innerWidth;
+    var h = window.innerHeight - 36; /* leave room for hint bar */
+    return {
+      'card-cur':   { x: 16,        y: 16,            w: Math.round(w*0.55) - 24, h: Math.round(h*0.62) - 16 },
+      'card-nxt':   { x: Math.round(w*0.55) + 8, y: 16, w: w - Math.round(w*0.55) - 24, h: Math.round(h*0.42) - 16 },
+      'card-notes': { x: Math.round(w*0.55) + 8, y: Math.round(h*0.42) + 8, w: w - Math.round(w*0.55) - 24, h: h - Math.round(h*0.42) - 16 },
+      'card-timer': { x: 16,        y: Math.round(h*0.62) + 8, w: Math.round(w*0.55) - 24, h: h - Math.round(h*0.62) - 16 }
+    };
+  }
+
+  /* ===== Apply / save / restore layout ===== */
+  function applyLayout(layout) {
+    Object.keys(layout).forEach(function(id){
+      var el = document.getElementById(id);
+      var l = layout[id];
+      if (el && l) {
+        el.style.left = l.x + 'px';
+        el.style.top = l.y + 'px';
+        el.style.width = l.w + 'px';
+        el.style.height = l.h + 'px';
+      }
+    });
+    rescaleAll();
+  }
+  function readLayout() {
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    return defaultLayout();
+  }
+  function saveLayout() {
+    var layout = {};
+    ['card-cur','card-nxt','card-notes','card-timer'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) {
+        layout[id] = {
+          x: parseInt(el.style.left,10) || 0,
+          y: parseInt(el.style.top,10) || 0,
+          w: parseInt(el.style.width,10) || 300,
+          h: parseInt(el.style.height,10) || 200
+        };
+      }
+    });
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(layout)); } catch(e) {}
+  }
+
+  /* ===== iframe rescale to fit card body ===== */
+  function rescaleIframe(iframe) {
+    if (!iframe || iframe.style.display === 'none') return;
+    var body = iframe.parentElement;
+    var cw = body.clientWidth, ch = body.clientHeight;
+    if (!cw || !ch) return;
+    var s = Math.min(cw / 1600, ch / 900);
+    iframe.style.transform = 'scale(' + s + ')';
+    /* Center the scaled iframe in the body */
+    var sw = 1600 * s, sh = 900 * s;
+    iframe.style.left = Math.max(0, (cw - sw) / 2) + 'px';
+    iframe.style.top = Math.max(0, (ch - sh) / 2) + 'px';
+  }
+  function rescaleAll() {
+    rescaleIframe(iframeCur);
+    rescaleIframe(iframeNxt);
+  }
+  window.addEventListener('resize', rescaleAll);
+
+  /* ===== Drag (move card by header) ===== */
+  document.querySelectorAll('[data-drag]').forEach(function(handle){
+    handle.addEventListener('mousedown', function(e){
+      if (e.button !== 0) return;
+      var card = handle.closest('.pcard');
+      if (!card) return;
+      e.preventDefault();
+      card.classList.add('dragging');
+      document.body.classList.add('is-dragging-card');
+      var startX = e.clientX, startY = e.clientY;
+      var startL = parseInt(card.style.left,10) || 0;
+      var startT = parseInt(card.style.top,10)  || 0;
+      function onMove(ev){
+        var nx = Math.max(0, Math.min(window.innerWidth - 100, startL + ev.clientX - startX));
+        var ny = Math.max(0, Math.min(window.innerHeight - 50, startT + ev.clientY - startY));
+        card.style.left = nx + 'px';
+        card.style.top = ny + 'px';
+      }
+      function onUp(){
+        card.classList.remove('dragging');
+        document.body.classList.remove('is-dragging-card');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        saveLayout();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+
+  /* ===== Resize (drag bottom-right corner) ===== */
+  document.querySelectorAll('[data-resize]').forEach(function(handle){
+    handle.addEventListener('mousedown', function(e){
+      if (e.button !== 0) return;
+      var card = handle.closest('.pcard');
+      if (!card) return;
+      e.preventDefault(); e.stopPropagation();
+      card.classList.add('resizing');
+      document.body.classList.add('is-dragging-card');
+      var startX = e.clientX, startY = e.clientY;
+      var startW = parseInt(card.style.width,10)  || card.offsetWidth;
+      var startH = parseInt(card.style.height,10) || card.offsetHeight;
+      function onMove(ev){
+        var nw = Math.max(180, startW + ev.clientX - startX);
+        var nh = Math.max(100, startH + ev.clientY - startY);
+        card.style.width = nw + 'px';
+        card.style.height = nh + 'px';
+        if (card.querySelector('iframe')) rescaleIframe(card.querySelector('iframe'));
+      }
+      function onUp(){
+        card.classList.remove('resizing');
+        document.body.classList.remove('is-dragging-card');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        rescaleAll();
+        saveLayout();
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+
+  /* ===== Preview iframe ready tracking =====
+   * Each iframe loads the deck ONCE with ?preview=1 on init. Subsequent
+   * slide changes are sent via postMessage('preview-goto') so the iframe
+   * just toggles visibility of a different .slide — no reload, no flicker.
+   */
+  var iframeReady = { cur: false, nxt: false };
+  var currentTheme = ${themeJSON};
+  window.addEventListener('message', function(e) {
+    if (!e.data || e.data.type !== 'preview-ready') return;
+    var iframe = null;
+    if (e.source === iframeCur.contentWindow) {
+      iframeReady.cur = true;
+      iframe = iframeCur;
+      postPreviewGoto(iframeCur, idx);
+    } else if (e.source === iframeNxt.contentWindow) {
+      iframeReady.nxt = true;
+      iframe = iframeNxt;
+      postPreviewGoto(iframeNxt, idx + 1 < total ? idx + 1 : idx);
+    }
+    /* Sync current theme to the iframe */
+    if (iframe && currentTheme) {
+      try { iframe.contentWindow.postMessage({ type: 'preview-theme', name: currentTheme }, '*'); } catch(err) {}
+    }
+    if (iframe) rescaleIframe(iframe);
+  });
+
+  function postPreviewGoto(iframe, n) {
+    try {
+      iframe.contentWindow.postMessage({ type: 'preview-goto', idx: n }, '*');
+    } catch(e) {}
+  }
+
+  /* ===== Update content =====
+   * Smooth (no-reload) navigation: send postMessage to iframes instead of
+   * resetting src. Iframes stay loaded, just switch visible .slide.
+   */
+  function update(n) {
+    n = Math.max(0, Math.min(total - 1, n));
+    idx = n;
+
+    /* Current preview — postMessage (smooth) */
+    if (iframeReady.cur) postPreviewGoto(iframeCur, n);
+    curMeta.textContent = (n + 1) + '/' + total;
+
+    /* Next preview */
+    if (n + 1 < total) {
+      iframeNxt.style.display = '';
+      var endEl = document.querySelector('#card-nxt .preview-end');
+      if (endEl) endEl.remove();
+      if (iframeReady.nxt) postPreviewGoto(iframeNxt, n + 1);
+      nxtMeta.textContent = (n + 2) + '/' + total;
+    } else {
+      iframeNxt.style.display = 'none';
+      var body = document.querySelector('#card-nxt .pcard-body');
+      if (body && !body.querySelector('.preview-end')) {
+        var end = document.createElement('div');
+        end.className = 'preview-end';
+        end.textContent = '— END OF DECK —';
+        body.appendChild(end);
+      }
+      nxtMeta.textContent = 'END';
+    }
+
+    /* Notes */
+    var note = slideMeta[n].notes;
+    notesBody.innerHTML = note || '<span class="empty">（这一页还没有逐字稿）</span>';
+
+    /* Timer count */
+    timerCount.textContent = (n + 1) + ' / ' + total;
+  }
+
+  /* ===== Timer ===== */
+  var tStart = Date.now();
+  setInterval(function(){
+    var s = Math.floor((Date.now() - tStart) / 1000);
+    var mm = String(Math.floor(s/60)).padStart(2,'0');
+    var ss = String(s%60).padStart(2,'0');
+    timerDisplay.textContent = mm + ':' + ss;
+  }, 1000);
+  function resetTimer(){ tStart = Date.now(); timerDisplay.textContent = '00:00'; }
+
+  /* ===== BroadcastChannel sync ===== */
+  if (bc) {
+    bc.onmessage = function(e){
+      if (!e.data) return;
+      if (e.data.type === 'go') update(e.data.idx);
+      else if (e.data.type === 'theme' && e.data.name) {
+        currentTheme = e.data.name;
+        /* Forward theme change to preview iframes */
+        [iframeCur, iframeNxt].forEach(function(iframe){
+          try {
+            iframe.contentWindow.postMessage({ type: 'preview-theme', name: e.data.name }, '*');
+          } catch(err) {}
+        });
+      }
+    };
+  }
+  function go(n) {
+    update(n);
+    if (bc) bc.postMessage({ type: 'go', idx: idx });
+  }
+
+  /* ===== Buttons ===== */
+  document.getElementById('btn-prev').addEventListener('click', function(){ go(idx - 1); });
+  document.getElementById('btn-next').addEventListener('click', function(){ go(idx + 1); });
+  document.getElementById('btn-reset').addEventListener('click', resetTimer);
+  document.getElementById('reset-layout').addEventListener('click', function(){
+    if (confirm('恢复默认卡片布局？')) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+      applyLayout(defaultLayout());
+    }
+  });
+
+  /* ===== Keyboard ===== */
+  document.addEventListener('keydown', function(e){
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch(e.key) {
+      case 'ArrowRight': case ' ': case 'PageDown': go(idx + 1); e.preventDefault(); break;
+      case 'ArrowLeft':  case 'PageUp':   go(idx - 1); e.preventDefault(); break;
+      case 'Home': go(0); break;
+      case 'End':  go(total - 1); break;
+      case 'r': case 'R': resetTimer(); break;
+      case 'Escape': window.close(); break;
+    }
+  });
+
+  /* ===== Iframe load → rescale (catches initial size) ===== */
+  iframeCur.addEventListener('load', function(){ rescaleIframe(iframeCur); });
+  iframeNxt.addEventListener('load', function(){ rescaleIframe(iframeNxt); });
+
+  /* ===== Init =====
+   * Load each iframe ONCE with the deck file. After they post
+   * 'preview-ready', all subsequent navigation is via postMessage
+   * (smooth, no reload, no flicker).
+   */
+  applyLayout(readLayout());
+  iframeCur.src = deckUrl + '?preview=' + (idx + 1);
+  if (idx + 1 < total) iframeNxt.src = deckUrl + '?preview=' + (idx + 2);
+  /* Initialize notes/timer/count without touching iframes */
+  notesBody.innerHTML = slideMeta[idx].notes || '<span class="empty">（这一页还没有逐字稿）</span>';
+  curMeta.textContent = (idx + 1) + '/' + total;
+  nxtMeta.textContent = (idx + 2) + '/' + total;
+  timerCount.textContent = (idx + 1) + ' / ' + total;
+})();
+</` + `script>
+</body></html>`;
+    }
+
+    function fullscreen(){ const el=document.documentElement;
+      if (!document.fullscreenElement) el.requestFullscreen&&el.requestFullscreen();
+      else document.exitFullscreen&&document.exitFullscreen();
+    }
+
+    // theme cycling
+    const root = document.documentElement;
+    const themesAttr = root.getAttribute('data-themes') || document.body.getAttribute('data-themes');
+    const themes = themesAttr ? themesAttr.split(',').map(s=>s.trim()).filter(Boolean) : [];
+    let themeIdx = 0;
+
+    // Auto-detect theme base path from existing <link id="theme-link">
+    let themeBase = root.getAttribute('data-theme-base');
+    if (!themeBase) {
+      const existingLink = document.getElementById('theme-link');
+      if (existingLink) {
+        // el.getAttribute('href') gives the raw relative path written in HTML
+        const rawHref = existingLink.getAttribute('href') || '';
+        const lastSlash = rawHref.lastIndexOf('/');
+        themeBase = lastSlash >= 0 ? rawHref.substring(0, lastSlash + 1) : 'assets/themes/';
+      } else {
+        themeBase = 'assets/themes/';
+      }
+    }
+
+    function applyTheme(name) {
+      let link = document.getElementById('theme-link');
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.id = 'theme-link';
+        document.head.appendChild(link);
+      }
+      link.href = themeBase + name + '.css';
+      root.setAttribute('data-theme', name);
+      const ind = document.querySelector('.theme-indicator');
+      if (ind) ind.textContent = name;
+    }
+    function cycleTheme(fromRemote){
+      if (!themes.length) return;
+      themeIdx = (themeIdx+1) % themes.length;
+      const name = themes[themeIdx];
+      applyTheme(name);
+      /* Broadcast to other window (audience ↔ presenter) */
+      if (!fromRemote && bc) bc.postMessage({ type: 'theme', name: name });
+    }
+
+    // animation cycling on current slide
+    let animIdx = 0;
+    function cycleAnim(){
+      animIdx = (animIdx+1) % ANIMS.length;
+      const a = ANIMS[animIdx];
+      const target = slides[idx].querySelector('[data-anim-target]') || slides[idx];
+      ANIMS.forEach(x => target.classList.remove('anim-'+x));
+      void target.offsetWidth;
+      target.classList.add('anim-'+a);
+      target.setAttribute('data-anim', a);
+      const ind = document.querySelector('.anim-indicator');
+      if (ind) ind.textContent = a;
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.metaKey||e.ctrlKey||e.altKey) return;
+      switch (e.key) {
+        case 'ArrowRight': case ' ': case 'PageDown': case 'Enter': go(idx+1); e.preventDefault(); break;
+        case 'ArrowLeft': case 'PageUp': case 'Backspace': go(idx-1); e.preventDefault(); break;
+        case 'Home': go(0); break;
+        case 'End': go(total-1); break;
+        case 'f': case 'F': fullscreen(); break;
+        case 's': case 'S': openPresenterWindow(); break;
+        case 'n': case 'N': toggleNotes(); break;
+        case 'o': case 'O': toggleOverview(); break;
+        case 't': case 'T': cycleTheme(); break;
+        case 'a': case 'A': cycleAnim(); break;
+        case 'Escape': toggleOverview(false); toggleNotes(false); break;
+      }
+    });
+
+    // hash deep-link
+    function fromHash(){
+      const m = /^#\/(\d+)/.exec(location.hash||'');
+      if (m) go(Math.max(0, parseInt(m[1],10)-1));
+    }
+    window.addEventListener('hashchange', fromHash);
+    fromHash();
+    go(idx);
+  });
+})();
+
+</script><script>
+(() => {
+  const resize = () => document.documentElement.style.setProperty('--deck-scale', Math.min(innerWidth / 1600, innerHeight / 900));
+  resize();
+  addEventListener('resize', resize);
+  const sync = () => {
+    const slides = [...document.querySelectorAll('.deck > .slide')];
+    const idx = slides.findIndex(slide => slide.classList.contains('is-active'));
+    slides.forEach((slide, i) => {slide.setAttribute('aria-hidden', String(i !== idx)); slide.inert = i !== idx;});
+    document.querySelector('#nav-count').textContent = `${String(idx + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+    document.querySelector('[data-direction="prev"]').disabled = idx === 0;
+    document.querySelector('[data-direction="next"]').disabled = idx === slides.length - 1;
+  };
+  document.querySelectorAll('[data-direction]').forEach(button => button.addEventListener('click', () => document.dispatchEvent(new KeyboardEvent('keydown', { key: button.dataset.direction === 'next' ? 'ArrowRight' : 'ArrowLeft', bubbles: true }))));
+  document.querySelector('#fullscreen').addEventListener('click', async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch {}
+  });
+  let hideControls;
+  addEventListener('pointermove', () => {document.body.classList.add('show-controls'); clearTimeout(hideControls); hideControls = setTimeout(() => document.body.classList.remove('show-controls'), 1600);});
+  new MutationObserver(sync).observe(document.querySelector('.deck'), {subtree:true, attributes:true, attributeFilter:['class']});
+  addEventListener('DOMContentLoaded', sync);
+})();
+
+// Offline image insertion and export. Only user-selected files are read.
+(() => {
+  const key = key => document.dispatchEvent(new KeyboardEvent('keydown', {key, bubbles:true}));
+  document.querySelector('#overview-button').addEventListener('click', () => key('o'));
+  document.querySelector('#notes-button').addEventListener('click', () => key('n'));
+  const toast = message => {
+    document.querySelector('.toast')?.remove();
+    const node=document.createElement('div');node.className='toast';node.textContent=message;document.body.append(node);setTimeout(()=>node.remove(),3000);
+  };
+  const fill = figure => {
+    const input=document.createElement('input');input.type='file';input.accept='image/png,image/jpeg,image/webp';
+    input.addEventListener('change',()=>{
+      const file=input.files?.[0]; if(!file)return;
+      if(!['image/png','image/jpeg','image/webp'].includes(file.type)){toast('请选择 PNG、JPG 或 WebP 图片');return;}
+      const reader=new FileReader();reader.onload=()=>{
+        const holder=figure.querySelector('.shot-placeholder');
+        const image=document.createElement('img');image.className='shot-image';image.src=String(reader.result);image.alt=figure.querySelector('.shot-placeholder b')?.textContent||figure.querySelector('figcaption').textContent;
+        holder.replaceChildren(image);figure.classList.add('has-image');
+        figure.querySelector('.missing').textContent='已填入 · 请核实脱敏与红框标注';
+        toast('截图已填入；点底部 ↓ 可保存到 HTML');
+      };reader.readAsDataURL(file);
+    });input.click();
+  };
+  const open = figure => {
+    const src=figure.querySelector('.shot-image')?.src;
+    if(!src){fill(figure);return;}
+    const overlay=document.createElement('div');overlay.className='shot-lightbox';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-label','截图预览');
+    const image=document.createElement('img');image.src=src;image.alt=figure.querySelector('figcaption').textContent;
+    const controls=document.createElement('div');controls.className='shot-lightbox-controls';
+    const close=document.createElement('button');close.textContent='关闭 · Esc';
+    const change=document.createElement('button');change.textContent='更换截图';
+    const onKey=e=>{if(e.key==='Escape'){e.stopImmediatePropagation();dismiss();}};
+    const dismiss=()=>{overlay.remove();removeEventListener('keydown',onKey,true);figure.focus();};
+    close.onclick=dismiss;change.onclick=()=>{dismiss();fill(figure);};
+    controls.append(close,change);overlay.append(image,controls);document.body.append(overlay);addEventListener('keydown',onKey,true);close.focus();
+  };
+  document.querySelectorAll('.deck > .slide figure.shot').forEach(figure=>{
+    figure.tabIndex=0;figure.setAttribute('role','button');figure.setAttribute('aria-label','填入或查看截图 '+figure.dataset.shot);
+    figure.addEventListener('click',()=>open(figure));
+    figure.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.stopPropagation();event.preventDefault();open(figure);}});
+  });
+  document.querySelector('#save-deck').addEventListener('click',async()=>{
+    const clone=document.documentElement.cloneNode(true);
+    // Resolve only local deck assets for the folder edition. The standalone edition is already inline.
+    try {
+      for(const link of clone.querySelectorAll('link[rel="stylesheet"]')){
+        const response=await fetch(link.href);if(!response.ok)throw new Error('style');const style=document.createElement('style');style.textContent=await response.text();link.replaceWith(style);
+      }
+      for(const script of clone.querySelectorAll('script[src]')){
+        const response=await fetch(script.src);if(!response.ok)throw new Error('script');script.textContent=await response.text();script.removeAttribute('src');
+      }
+    } catch {toast('请打开 docs/课题答辩.html 单文件版本后保存截图');return;}
+    clone.querySelectorAll('.overview,.notes-overlay,.progress-bar,.toast,.shot-lightbox').forEach(n=>n.remove());
+    clone.querySelector('body').classList.remove('show-controls');
+    const blob=new Blob(['<!doctype html>\n'+clone.outerHTML],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='课题答辩-含截图.html';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('已保存完整 HTML（含填入的截图）');
+  });
+})();
+
+</script></body></html>

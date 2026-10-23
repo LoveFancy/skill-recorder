@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>演示式输入 · 路径示意</title>
+<style>
+  :root{
+    --bg-soft:#f5f8fd;--border:#dbe5f1;--border-strong:#bfd2ec;
+    --text-1:#152c49;--text-2:#526983;--text-3:#788ba3;
+    --accent:#1765dc;--blue-deep:#124a9b;--blue-pale:#eaf3ff;
+    --font-sans:'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',Arial,sans-serif;
+  }
+  html,body{margin:0;padding:0;background:#fff}
+  body{width:780px;height:362px;font-family:var(--font-sans);color:var(--text-1);-webkit-font-smoothing:antialiased}
+  .frame{box-sizing:border-box;width:732px;margin:24px;padding:28px 34px 26px;
+    background:var(--blue-pale);border:1px solid var(--border-strong);border-radius:10px}
+
+  .top{display:flex;align-items:baseline;gap:18px}
+  .top span{font-size:13px;color:var(--text-3)}
+  .top h1{font-size:27px;font-weight:600;margin:0;color:var(--accent);letter-spacing:-.01em}
+
+  .route{display:flex;align-items:flex-start;gap:24px;margin:26px 0 0}
+  .node{display:flex;flex-direction:column;gap:8px}
+  .node b{font-size:30px;font-weight:650;line-height:1.2;letter-spacing:-.01em}
+  .node small{font-size:13px;color:var(--text-3);line-height:1.4}
+  .arrow{font-size:24px;color:var(--accent);line-height:1;margin-top:11px}
+
+  .tags{display:flex;gap:12px;margin-top:18px}
+  .tags span{font-size:14px;padding:3px 15px;border:1px solid var(--border-strong);border-radius:6px;
+    color:var(--blue-deep);background:rgba(255,255,255,.7)}
+
+  .record{margin-top:24px;border-left:3px solid var(--accent);padding-left:16px}
+  .record p{margin:0;font-size:15px;line-height:1.75;color:var(--text-2)}
+  .record b{color:var(--blue-deep);font-weight:600}
+
+  .caption{margin-top:20px;padding-top:16px;border-top:1px solid var(--border);
+    font-size:13.5px;color:var(--text-3);line-height:1.7}
+  .caption b{color:var(--text-2);font-weight:600}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <div class="top"><span>本课题</span><h1>演示式输入</h1></div>
+
+    <div class="route" role="img" aria-label="人照常演示一遍，系统同步记录屏幕、语音与事件，AI 还原步骤并提炼规则">
+      <div class="node"><b>人</b><small>照常做一遍</small></div>
+      <span class="arrow">→</span>
+      <div class="node"><b>演示</b><small>屏幕 · 语音 · 事件</small></div>
+      <span class="arrow">→</span>
+      <div class="node"><b>AI</b><small>还原步骤、提炼规则</small></div>
+    </div>
+
+    <div class="tags"><span>完整</span><span>真实</span><span>低成本</span></div>
+
+    <div class="record">
+      <p><b>边做边录</b>：不用先想清楚怎么说，操作过程本身就是输入。</p>
+    </div>
+
+    <div class="caption">同一条链路，中间这一步从“转述”换成“演示”：<b>人 → 文字 → AI</b>　→　<b>人 → 演示 → AI</b></div>
+  </div>
+</body>
+</html>

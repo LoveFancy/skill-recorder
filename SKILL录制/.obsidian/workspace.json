@@ -1,0 +1,217 @@
+{
+  "main": {
+    "id": "a49123420a105bf6",
+    "type": "split",
+    "children": [
+      {
+        "id": "a7887019698e01c0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "aa14ce4684b54bc9",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "课题答辩-逐页稿.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "课题答辩-逐页稿"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "667d74067c24c348",
+    "type": "split",
+    "children": [
+      {
+        "id": "c7165b4184c3a26b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3fd81d6efe4719b1",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "ecf332f500dd222a",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "0e2d46f704d9f5b9",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "eaafaff33d316e1e",
+    "type": "split",
+    "children": [
+      {
+        "id": "8a6b6a36ef550d9b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5dea976debba82b6",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "反向链接"
+            }
+          },
+          {
+            "id": "a40e50cb85472a5e",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "出链"
+            }
+          },
+          {
+            "id": "c974265b00c217dd",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "52ab23c220e68b87",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "237cc6775d0b0c05",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "aa14ce4684b54bc9",
+  "lastOpenFiles": [
+    "课题答辩-最终版逐页截图.zip",
+    "课题答辩-秦晓-科技蓝-最终版.pptx",
+    "课题答辩-最新版逐页截图.zip",
+    "课题答辩-秦晓-科技蓝-最新版截图版.pptx",
+    "超级个体课题-秦晓.pptx",
+    "课题答辩-v2-科技蓝.pptx",
+    "presentation/defense-v2/assets/images/generate-options.png",
+    "presentation/defense-v2/assets/images/auto-analysis.png",
+    "presentation/defense-v2/assets/images/capture-timeline.png",
+    "presentation/defense-v2/assets/images/flow-stages.b64.txt",
+    "presentation/defense-v2/assets/images/flow-stages.png",
+    "presentation/defense-v2/assets/images",
+    "presentation/defense-v2/P2-分层框架-改版文稿.md",
+    "presentation/defense-v2/diagrams/check-p3.png",
+    "presentation/defense-v2/diagrams/check-index.png",
+    "presentation/defense-v2/diagrams/check-p4.png",
+    "presentation/defense-v2/diagrams/演示式输入-路径示意.png",
+    "presentation/defense-v2/diagrams/演示式输入-路径示意.html",
+    "presentation/defense-v2/diagrams",
+    "presentation/defense-v2/previews/outputs-mobile.png",
+    "presentation/defense-v2/previews/outputs-desktop.png",
+    "presentation/defense-v2/README.md",
+    "presentation/defense-v2/逐页稿快照.md",
+    "课题答辩-v2-科技蓝.html",
+    "课题答辩材料提纲.md",
+    "课题答辩-逐页稿.md"
+  ]
+}
